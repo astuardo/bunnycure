@@ -11,6 +11,7 @@ public abstract class BaseController {
         if (uri.startsWith("/customers"))    return "customers";
         if (uri.startsWith("/appointments")) return "appointments";
         if (uri.startsWith("/admin/services")) return "services";
+        if (uri.startsWith("/admin/settings")) return "settings";
         return "dashboard";
     }
 }

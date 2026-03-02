@@ -1,7 +1,9 @@
 package cl.bunnycure.config;
 
+import cl.bunnycure.domain.model.AppSettings;
 import cl.bunnycure.domain.model.Customer;
 import cl.bunnycure.domain.model.ServiceCatalog;
+import cl.bunnycure.domain.repository.AppSettingsRepository;
 import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.domain.repository.ServiceCatalogRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private final CustomerRepository      customerRepository;
     private final ServiceCatalogRepository serviceCatalogRepository;
+    private final AppSettingsRepository appSettingsRepository;
 
     @Override
     public void run(String ... args) {
@@ -100,6 +103,24 @@ public class DataInitializer implements CommandLineRunner {
                     new Customer("Javiera Muñoz",    "+56911223344", "javi@test.cl")
             ));
             log.info("✅ Clientes de prueba inicializados");
+        }
+
+        // ── Settings por defecto ─────────────────────────────────────────────
+        if (appSettingsRepository.count() == 0) {
+            appSettingsRepository.saveAll(List.of(
+                    new AppSettings("booking.enabled",                  "true",  "Portal de reservas habilitado"),
+                    new AppSettings("whatsapp.number",                  "56964499995", "Número WhatsApp negocio"),
+                    new AppSettings("booking.message.template",
+                            "Hola Bunny Cure! 🐰\nMe gustaría reservar una cita:\n• Servicio: {servicio}\n• Fecha: {fecha}\n• Bloque: {bloque}\n• Nombre: {nombre}\n• Teléfono: {telefono}\n¿Tienen disponibilidad?",
+                            "Template mensaje WhatsApp"),
+                    new AppSettings("booking.block.morning",            "09:00 – 13:00", "Bloque mañana"),
+                    new AppSettings("booking.block.afternoon",          "15:00 – 18:00", "Bloque tarde"),
+                    new AppSettings("booking.block.night",              "19:00 – 22:00", "Bloque noche"),
+                    new AppSettings("booking.block.morning.enabled",    "true",  "Mañana habilitado"),
+                    new AppSettings("booking.block.afternoon.enabled",  "true",  "Tarde habilitado"),
+                    new AppSettings("booking.block.night.enabled",      "true",  "Noche habilitado")
+            ));
+            log.info("✅ Configuración inicial cargada");
         }
     }
 }

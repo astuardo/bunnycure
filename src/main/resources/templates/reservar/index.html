@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Reservar Cita – Bunny Cure</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet"/>
+    <style>
+        :root {
+            --bc-pink:   #F472B6;
+            --bc-purple: #8B5CF6;
+            --bc-light:  #FDF4FF;
+        }
+        body { background: var(--bc-light); font-family: 'Segoe UI', sans-serif; }
+
+        .bc-header {
+            background: linear-gradient(135deg, #F472B6, #8B5CF6);
+            color: white;
+            padding: 2.5rem 1rem 2rem;
+            text-align: center;
+        }
+        .bc-header h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; }
+        .bc-header p  { opacity: .85; margin: 0; }
+
+        .step-label {
+            font-size: .7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--bc-purple);
+            margin-bottom: .4rem;
+        }
+        .card-service {
+            border: 2px solid #E9D5FF;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all .2s;
+            background: white;
+        }
+        .card-service:hover,
+        .card-service.selected {
+            border-color: var(--bc-purple);
+            background: #F5F3FF;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139,92,246,.15);
+        }
+        .card-service .price {
+            font-weight: 700;
+            color: var(--bc-purple);
+        }
+        .card-service .duration {
+            font-size: .78rem;
+            color: #9CA3AF;
+        }
+        .block-btn {
+            border: 2px solid #E9D5FF;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            padding: .75rem 1.25rem;
+            transition: all .2s;
+            text-align: center;
+            width: 100%;
+        }
+        .block-btn:hover,
+        .block-btn.selected {
+            border-color: var(--bc-purple);
+            background: #F5F3FF;
+            color: var(--bc-purple);
+            font-weight: 600;
+        }
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: .85rem 2rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+            width: 100%;
+            transition: background .2s;
+        }
+        .btn-whatsapp:hover { background: #1ebe5d; color: white; }
+        .btn-whatsapp:disabled { background: #A7F3D0; cursor: not-allowed; }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #E9D5FF;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--bc-purple);
+            box-shadow: 0 0 0 3px rgba(139,92,246,.1);
+        }
+        .main-card {
+            max-width: 640px;
+            margin: 2rem auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(139,92,246,.1);
+            padding: 2rem;
+        }
+        .disabled-overlay {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+        .whatsapp-preview {
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            border-radius: 10px;
+            padding: 1rem;
+            font-size: .85rem;
+            white-space: pre-line;
+            color: #166534;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="bc-header">
+    <div style="font-size:2.5rem;">🐰</div>
+    <h1>Bunny Cure</h1>
+    <p>Arte en tus manos · Reserva tu cita</p>
+</div>
+
+<!-- Booking deshabilitado -->
+<div th:unless="${bookingEnabled}" class="main-card">
+    <div class="disabled-overlay">
+        <div style="font-size:3rem;">🌸</div>
+        <h4 class="fw-bold mt-3">Reservas temporalmente no disponibles</h4>
+        <p class="text-muted mt-2">Por el momento las reservas online están pausadas.<br>
+            Contáctanos directamente por WhatsApp o Instagram.</p>
+        <a th:href="'https://wa.me/' + ${whatsappNumber}"
+           class="btn btn-success mt-3 px-4">
+            <i class="bi bi-whatsapp me-2"></i>Escribir por WhatsApp
+        </a>
+        <a href="https://instagram.com/bunny.cure"
+           class="btn btn-outline-secondary mt-3 ms-2 px-4">
+            <i class="bi bi-instagram me-2"></i>@bunny.cure
+        </a>
+    </div>
+</div>
+
+<!-- Formulario principal -->
+<div th:if="${bookingEnabled}" class="main-card">
+
+    <!-- Paso 1: Datos personales -->
+    <div class="step-label"><i class="bi bi-person me-1"></i>Paso 1 — Tus datos</div>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <input type="text" id="clientName" class="form-control"
+                   placeholder="Tu nombre *" maxlength="100"/>
+        </div>
+        <div class="col-md-6">
+            <input type="tel" id="clientPhone" class="form-control"
+                   placeholder="Tu teléfono * (+569...)" maxlength="20"/>
+        </div>
+    </div>
+
+    <hr class="my-3" style="border-color:#E9D5FF;">
+
+    <!-- Paso 2: Servicio -->
+    <div class="step-label"><i class="bi bi-scissors me-1"></i>Paso 2 — Elige tu servicio</div>
+    <div class="row g-2 mb-4" id="serviceGrid">
+        <div th:each="s : ${services}" class="col-md-6">
+            <div class="card-service p-3"
+                 th:data-id="${s.id}"
+                 th:data-name="${s.name}"
+                 th:data-duration="${s.durationFormatted}"
+                 th:data-price="${#numbers.formatInteger(s.price, 0, 'POINT')}"
+                 onclick="selectService(this)">
+                <div class="fw-semibold" th:text="${s.name}"></div>
+                <div class="d-flex justify-content-between mt-1">
+                    <span class="duration"><i class="bi bi-clock me-1"></i>
+                        <span th:text="${s.durationFormatted}"></span>
+                    </span>
+                    <span class="price" th:text="'$' + ${#numbers.formatInteger(s.price, 0, 'POINT')}"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-3" style="border-color:#E9D5FF;">
+
+    <!-- Paso 3: Fecha -->
+    <div class="step-label"><i class="bi bi-calendar3 me-1"></i>Paso 3 — Fecha preferida</div>
+    <input type="date" id="bookingDate" class="form-control mb-4"
+           style="max-width:220px;"/>
+
+    <hr class="my-3" style="border-color:#E9D5FF;">
+
+    <!-- Paso 4: Bloque horario -->
+    <div class="step-label"><i class="bi bi-clock me-1"></i>Paso 4 — Bloque horario</div>
+    <div class="row g-2 mb-4" id="blockGrid">
+        <div th:each="entry : ${blocks}" class="col-4">
+            <button class="block-btn"
+                    th:data-block="${entry.key} (${entry.value})"
+                    th:text="${entry.key}"
+                    onclick="selectBlock(this)">
+            </button>
+            <div class="text-center mt-1" style="font-size:.72rem;color:#9CA3AF;"
+                 th:text="${entry.value}"></div>
+        </div>
+    </div>
+
+    <hr class="my-3" style="border-color:#E9D5FF;">
+
+    <!-- Preview mensaje -->
+    <div class="step-label"><i class="bi bi-chat-dots me-1"></i>Vista previa del mensaje</div>
+    <div class="whatsapp-preview mb-4" id="msgPreview"></div>
+
+    <!-- Botón WhatsApp -->
+    <button class="btn-whatsapp" id="btnWhatsapp" disabled onclick="openWhatsApp()">
+        <i class="bi bi-whatsapp me-2"></i>Solicitar cita por WhatsApp
+    </button>
+
+    <p class="text-center text-muted small mt-3">
+        Al hacer clic serás redirigido a WhatsApp para confirmar tu cita con nosotros 🐰
+    </p>
+
+</div>
+
+<!-- Footer -->
+<div class="text-center py-4 text-muted small">
+    <a href="https://instagram.com/bunny.cure" class="text-decoration-none text-muted me-3">
+        <i class="bi bi-instagram"></i> @bunny.cure
+    </a>
+    <a th:href="'https://wa.me/' + ${whatsappNumber}" class="text-decoration-none text-muted">
+        <i class="bi bi-whatsapp"></i> WhatsApp
+    </a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:inline="javascript">
+    const WHATSAPP_NUMBER  = /*[[${whatsappNumber}]]*/ '56964499995';
+    const MSG_TEMPLATE     = /*[[${messageTemplate}]]*/ '';
+
+    let selectedService = null;
+    let selectedBlock   = null;
+
+    // Fecha mínima = hoy, sin domingos
+    const dateInput = document.getElementById('bookingDate');
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    dateInput.min = today.toISOString().split('T')[0];
+    dateInput.addEventListener('change', () => {
+        const d = new Date(dateInput.value + 'T00:00:00');
+        if (d.getDay() === 0) {
+            dateInput.value = '';
+            alert('Los domingos no hay atención. Por favor elige otro día.');
+        }
+        updatePreview();
+    });
+
+    function selectService(el) {
+        document.querySelectorAll('.card-service').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedService = {
+            name:     el.dataset.name,
+            duration: el.dataset.duration,
+            price:    el.dataset.price
+        };
+        updatePreview();
+    }
+
+    function selectBlock(el) {
+        document.querySelectorAll('.block-btn').forEach(b => b.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedBlock = el.dataset.block;
+        updatePreview();
+    }
+
+    function formatDate(val) {
+        if (!val) return '';
+        const d = new Date(val + 'T00:00:00');
+        return d.toLocaleDateString('es-CL', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+        });
+    }
+
+    function updatePreview() {
+        const name  = document.getElementById('clientName').value.trim();
+        const phone = document.getElementById('clientPhone').value.trim();
+        const date  = document.getElementById('bookingDate').value;
+
+        const ready = name && phone && selectedService && date && selectedBlock;
+        document.getElementById('btnWhatsapp').disabled = !ready;
+
+        const preview = document.getElementById('msgPreview');
+        if (ready) {
+            const msg = MSG_TEMPLATE
+                .replace('{servicio}',  selectedService.name)
+                .replace('{fecha}',     formatDate(date))
+                .replace('{bloque}',    selectedBlock)
+                .replace('{nombre}',    name)
+                .replace('{telefono}',  phone);
+            preview.textContent = msg;
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    function openWhatsApp() {
+        const name  = document.getElementById('clientName').value.trim();
+        const phone = document.getElementById('clientPhone').value.trim();
+        const date  = document.getElementById('bookingDate').value;
+
+        const msg = MSG_TEMPLATE
+            .replace('{servicio}',  selectedService.name)
+            .replace('{fecha}',     formatDate(date))
+            .replace('{bloque}',    selectedBlock)
+            .replace('{nombre}',    name)
+            .replace('{telefono}',  phone);
+
+        const url = 'https://wa.me/' + WHATSAPP_NUMBER +
+            '?text=' + encodeURIComponent(msg);
+        window.open(url, '_blank');
+    }
+
+    document.getElementById('clientName').addEventListener('input', updatePreview);
+    document.getElementById('clientPhone').addEventListener('input', updatePreview);
+</script>
+</body>
+</html>

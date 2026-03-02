@@ -168,6 +168,13 @@
                 <i class="bi bi-scissors me-2"></i> Servicios
             </a>
         </li>
+        <li class="nav-item">
+            <a th:href="@{/admin/settings}"
+               class="nav-link"
+               th:classappend="${activeMenu == 'settings'} ? 'active'">
+                <i class="bi bi-gear me-2"></i>Configuración
+            </a>
+        </li>
     </ul>
 
     <div class="sidebar-footer">

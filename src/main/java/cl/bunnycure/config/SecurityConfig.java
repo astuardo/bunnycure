@@ -42,7 +42,7 @@ public class SecurityConfig {
 		// ── Autorización ──────────────────────────────────────────────────────
 		http.authorizeHttpRequests(auth -> {
 			auth.requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll();
-			auth.requestMatchers("/login", "/login/**").permitAll();
+			auth.requestMatchers("/reservar/**","/login", "/login/**").permitAll();
 
 			if (isLocal) {
 				auth.requestMatchers("/h2-console/**").permitAll();
