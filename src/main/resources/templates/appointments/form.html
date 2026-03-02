@@ -48,10 +48,12 @@
                         <label class="form-label fw-semibold">
                             Servicio <span class="text-danger">*</span>
                         </label>
-                        <select name="serviceId" class="form-select">
+                        <select name="serviceId" class="form-select"
+                                th:classappend="${#fields.hasErrors('serviceId')} ? 'is-invalid'">
                             <option value="">Selecciona un servicio...</option>
                             <option th:each="s : ${serviceTypes}"
                                     th:value="${s.id}"
+                                    th:selected="${appointment.serviceId != null && appointment.serviceId == s.id}"
                                     th:text="${s.name} + ' — ' + ${s.durationFormatted} + ' · $' +
                       ${#numbers.formatInteger(s.price, 0, 'POINT')}">
                             </option>
