@@ -78,7 +78,7 @@ public class AppointmentService {
     }
 
     public Appointment findById(Long id) {
-        return appointmentRepository.findById(id)
+        return appointmentRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con ID: " + id));
     }
 

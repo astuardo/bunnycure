@@ -35,13 +35,24 @@ public class ServiceCatalogService {
 
     @Transactional
     public ServiceCatalog save(ServiceCatalogDto dto) {
-        var s = (dto.getId() != null) ? findById(dto.getId()) : new ServiceCatalog();
+        ServiceCatalog s;
+        if (dto.getId() != null) {
+            s = findById(dto.getId());
+        } else {
+            s = new ServiceCatalog();
+            s.setActive(true);
+            // ✅ displayOrder = último + 1, o usa el valor del form si lo ingresaron
+            int nextOrder = dto.getDisplayOrder() != null && dto.getDisplayOrder() > 0
+                    ? dto.getDisplayOrder()
+                    : repository.findMaxDisplayOrder() + 1;
+            s.setDisplayOrder(nextOrder);
+        }
         s.setName(dto.getName());
         s.setDurationMinutes(dto.getDurationMinutes());
         s.setPrice(dto.getPrice());
         s.setDescription(dto.getDescription());
-        s.setActive(dto.getActive() != null ? dto.getActive() : true);
-        s.setDisplayOrder(dto.getDisplayOrder() != null ? dto.getDisplayOrder() : 0);
+        if (dto.getActive() != null) s.setActive(dto.getActive());
+        if (dto.getDisplayOrder() != null && dto.getId() != null) s.setDisplayOrder(dto.getDisplayOrder());
         return repository.save(s);
     }
 

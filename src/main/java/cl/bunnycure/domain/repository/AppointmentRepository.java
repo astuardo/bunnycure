@@ -8,13 +8,14 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    // ✅ Vista semanal — con JOIN FETCH
     @Query("""
         SELECT a FROM Appointment a
         JOIN FETCH a.customer
+        JOIN FETCH a.service
         WHERE a.appointmentDate BETWEEN :start AND :end
         ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
     """)
@@ -23,23 +24,43 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             @Param("end") LocalDate end
     );
 
-    // ✅ Dashboard — ya tenía JOIN FETCH
     @Query("""
         SELECT a FROM Appointment a
         JOIN FETCH a.customer
+        JOIN FETCH a.service
         WHERE a.appointmentDate = :date
         ORDER BY a.appointmentTime ASC
     """)
     List<Appointment> findByDateWithCustomer(@Param("date") LocalDate date);
 
-    // ✅ Historial por cliente — no necesita JOIN FETCH (customer ya está en contexto)
+    @Query("""
+        SELECT a FROM Appointment a
+        JOIN FETCH a.customer
+        JOIN FETCH a.service
+        WHERE a.id = :id
+    """)
+    Optional<Appointment> findByIdWithDetails(@Param("id") Long id);
+
+    @Query("""
+        SELECT a FROM Appointment a
+        JOIN FETCH a.customer
+        JOIN FETCH a.service
+        WHERE a.customer.id = :customerId
+        ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
+    """)
     List<Appointment> findByCustomerIdOrderByAppointmentDateDescAppointmentTimeDesc(
-            Long customerId
+            @Param("customerId") Long customerId
     );
 
-    // ✅ Notificaciones pendientes
     List<Appointment> findByStatusAndNotificationSentFalse(AppointmentStatus status);
 
-    // ✅ Contadores para dashboard
-    long countByStatusAndAppointmentDate(AppointmentStatus status, LocalDate date);
+    @Query("""
+        SELECT COUNT(a) FROM Appointment a
+        WHERE a.status = :status
+        AND a.appointmentDate = :date
+    """)
+    long countByStatusAndAppointmentDate(
+            @Param("status") AppointmentStatus status,
+            @Param("date") LocalDate date
+    );
 }
