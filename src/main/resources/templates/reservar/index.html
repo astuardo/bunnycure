@@ -196,7 +196,7 @@
     <div class="row g-2 mb-4" id="blockGrid">
         <div th:each="entry : ${blocks}" class="col-4">
             <button class="block-btn"
-                    th:data-block="${entry.key} (${entry.value})"
+                    th:data-block="${entry.key + ' (' + entry.value + ')'}"
                     th:text="${entry.key}"
                     onclick="selectBlock(this)">
             </button>
