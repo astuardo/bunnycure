@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head><title>Detalle Cliente – BunnyCure</title></head>
+<body>
+<section th:fragment="content">
+
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a th:href="@{/customers}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h4 class="fw-bold mb-0" th:text="${customer.fullName}"></h4>
+            <p class="text-muted small mb-0">Historial completo del cliente</p>
+        </div>
+        <a th:href="@{/customers/{id}/edit(id=${customer.id})}"
+           class="btn btn-sm btn-bc ms-auto">
+            <i class="bi bi-pencil me-1"></i> Editar
+        </a>
+    </div>
+
+    <div class="row g-3">
+
+        <!-- Info del cliente -->
+        <div class="col-md-4">
+            <div class="card table-card p-3">
+                <div class="text-center mb-3">
+                    <div class="mx-auto mb-2"
+                         style="width:60px;height:60px;border-radius:50%;
+                                background:linear-gradient(135deg,#8B5CF6,#EC4899);
+                                display:flex;align-items:center;justify-content:center;">
+                        <i class="bi bi-person text-white" style="font-size:1.5rem;"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0" th:text="${customer.fullName}"></h6>
+                    <small class="text-muted">Cliente desde
+                        <span th:text="${#temporals.format(customer.createdAt, 'MMM yyyy')}"></span>
+                    </small>
+                </div>
+                <hr class="my-2"/>
+                <div class="d-flex flex-column gap-2">
+                    <div>
+                        <small class="text-muted d-block">📱 Teléfono</small>
+                        <span class="fw-semibold" th:text="${customer.phone}"></span>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">✉️ Email</small>
+                        <span class="small" th:text="${customer.email}"></span>
+                    </div>
+                    <div th:if="${customer.notes}">
+                        <small class="text-muted d-block">📝 Notas</small>
+                        <span class="small" th:text="${customer.notes}"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial de citas -->
+        <div class="col-md-8">
+            <div class="card table-card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-calendar3 me-2"></i>Historial de Citas
+                    </h6>
+                    <a th:href="@{/appointments/new(customerId=${customer.id})}"
+                       class="btn btn-sm btn-bc">
+                        <i class="bi bi-plus"></i> Nueva Cita
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div th:if="${#lists.isEmpty(customer.appointments)}"
+                         class="text-center text-muted py-4">
+                        <i class="bi bi-calendar-x" style="font-size:1.5rem;"></i>
+                        <p class="mt-2 mb-0 small">Sin citas registradas.</p>
+                    </div>
+                    <table th:unless="${#lists.isEmpty(customer.appointments)}"
+                           class="table table-hover mb-0">
+                        <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Servicio</th>
+                            <th>Estado</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="apt : ${customer.appointments}">
+                            <td>
+                                <span th:text="${#temporals.format(apt.appointmentDate, 'dd/MM/yyyy')}"></span>
+                                <small class="text-muted ms-1"
+                                       th:text="${#temporals.format(apt.appointmentTime, 'HH:mm')}">
+                                </small>
+                            </td>
+                            <td th:text="${apt.service.name}"></td>
+                            <td>
+                                    <span class="badge rounded-pill px-2"
+                                          th:classappend="${apt.status.name() == 'PENDING'}   ? 'badge-pending'   :
+                                                          (${apt.status.name() == 'COMPLETED'} ? 'badge-completed' : 'badge-cancelled')"
+                                          th:text="${apt.status.displayName}">
+                                    </span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</section>
+</body>
+</html>

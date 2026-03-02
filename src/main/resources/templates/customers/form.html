@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head><title>Cliente – BunnyCure</title></head>
+<body>
+<section th:fragment="content">
+
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a th:href="@{/customers}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h4 class="fw-bold mb-0"
+                th:text="${isNew} ? 'Nuevo Cliente' : 'Editar Cliente'">
+            </h4>
+            <p class="text-muted small mb-0"
+               th:text="${isNew} ? 'Completa los datos del nuevo cliente' : 'Modifica los datos del cliente'">
+            </p>
+        </div>
+    </div>
+
+    <!-- Error general -->
+    <div th:if="${errorMsg}" class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${errorMsg}"></span>
+    </div>
+
+    <div class="card table-card">
+        <div class="card-body p-4">
+            <form th:action="${isNew} ? @{/customers} : @{/customers/{id}/edit(id=${customer.id})}"
+                  th:object="${customer}"
+                  method="post"
+                  novalidate>
+
+                <div class="row g-3">
+                    <!-- Nombre -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Nombre completo <span class="text-danger">*</span>
+                        </label>
+                        <input type="text"
+                               th:field="*{fullName}"
+                               th:classappend="${#fields.hasErrors('fullName')} ? 'is-invalid'"
+                               class="form-control"
+                               placeholder="Ej: María González"/>
+                        <div class="invalid-feedback"
+                             th:errors="*{fullName}">
+                        </div>
+                    </div>
+
+                    <!-- Teléfono -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Teléfono <span class="text-danger">*</span>
+                        </label>
+                        <input type="text"
+                               th:field="*{phone}"
+                               th:classappend="${#fields.hasErrors('phone')} ? 'is-invalid'"
+                               class="form-control"
+                               placeholder="+56912345678"/>
+                        <div class="invalid-feedback"
+                             th:errors="*{phone}">
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Email <span class="text-danger">*</span>
+                        </label>
+                        <input type="email"
+                               th:field="*{email}"
+                               th:classappend="${#fields.hasErrors('email')} ? 'is-invalid'"
+                               class="form-control"
+                               th:readonly="${!isNew}"
+                               placeholder="cliente@email.com"/>
+                        <div class="invalid-feedback"
+                             th:errors="*{email}">
+                        </div>
+                        <div th:unless="${isNew}"
+                             class="form-text text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            El email no puede modificarse.
+                        </div>
+                    </div>
+
+                    <!-- Notas -->
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Notas</label>
+                        <textarea th:field="*{notes}"
+                                  class="form-control"
+                                  rows="3"
+                                  placeholder="Observaciones adicionales..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Botones -->
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-bc px-4">
+                        <i class="bi bi-check-lg me-1"></i>
+                        <span th:text="${isNew} ? 'Crear Cliente' : 'Guardar Cambios'"></span>
+                    </button>
+                    <a th:href="@{/customers}" class="btn btn-outline-secondary px-4">
+                        Cancelar
+                    </a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+</section>
+</body>
+</html>

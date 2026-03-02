@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Confirmación de Cita – Bunny Cure</title>
+  <style>
+    body { margin:0; padding:0; font-family:'Segoe UI',Arial,sans-serif;
+      background:#FDF2F8; color:#333; }
+    .container { max-width:560px; margin:32px auto; background:#fff;
+      border-radius:20px; overflow:hidden;
+      box-shadow:0 4px 24px rgba(236,72,153,.15); }
+    .header { background:linear-gradient(135deg,#F472B6,#EC4899,#C084FC);
+      padding:40px 24px 32px; text-align:center; color:#fff; }
+    .brand { font-size:2.4rem; margin-bottom:4px; }
+    .header h1 { margin:8px 0 4px; font-size:22px; font-weight:800;
+      letter-spacing:-.3px; }
+    .header p  { margin:6px 0 0; font-size:13px; opacity:.93; }
+    .body { padding:28px 28px 20px; }
+    .greeting { font-size:15px; color:#374151; margin:0 0 20px;
+      line-height:1.6; }
+    .card { background:#FDF2F8; border-radius:12px; padding:16px 20px;
+      margin:0 0 20px; border-left:4px solid #EC4899; }
+    .card-row { display:flex; justify-content:space-between;
+      align-items:center; padding:9px 0;
+      border-bottom:1px solid #FCE7F3; font-size:14px; }
+    .card-row:last-child { border-bottom:none; padding-bottom:0; }
+    .label { color:#9CA3AF; font-size:13px; }
+    .value { font-weight:600; color:#1F2937; text-align:right; }
+    .badge-num { display:inline-block;
+      background:linear-gradient(135deg,#EC4899,#C084FC);
+      color:#fff; padding:4px 14px; border-radius:20px;
+      font-size:12px; font-weight:700; }
+    .tip { border-radius:12px; padding:14px 18px; margin-bottom:20px;
+      font-size:13px; line-height:1.6; }
+    .tip-pink { background:#FDF2F8; color:#9D174D;
+      border:1px solid #FBCFE8; }
+    .tip-purple { background:#FAF5FF; color:#6B21A8;
+      border:1px solid #E9D5FF; }
+    .tip strong { display:block; margin-bottom:4px;
+      font-size:13px; font-weight:700; }
+    .divider { height:1px; background:linear-gradient(90deg,
+    transparent,#FBCFE8,transparent);
+      margin:20px 0; border:none; }
+    .social { text-align:center; padding:0 0 4px; }
+    .social a { color:#EC4899; font-weight:600; font-size:13px;
+      text-decoration:none; }
+    .footer { text-align:center; padding:20px 24px; font-size:12px;
+      color:#9CA3AF; background:#FDF2F8;
+      border-top:1px solid #FCE7F3; line-height:1.8; }
+    .footer strong { color:#EC4899; font-size:13px; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">🐰</div>
+    <h1>¡Tu cita está confirmada!</h1>
+    <p>Hola <strong th:text="${customer.fullName}"></strong>,
+      ¡te esperamos con mucho cariño! 💕</p>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <p class="greeting">
+      Tu reserva ha sido registrada exitosamente. Para aprovechar
+      al máximo tu servicio, te recomendamos llegar con las uñas
+      limpias y sin esmalte. 🌸
+    </p>
+
+    <!-- Detalles de la cita -->
+    <div class="card">
+      <div class="card-row">
+        <span class="label" style="margin-right: 8px;">💅 Servicio: </span>
+        <span class="value" th:text="${appointment.serviceType.displayName}"></span>
+      </div>
+      <div class="card-row">
+        <span class="label"style="margin-right: 8px;">📅 Fecha: </span>
+        <span class="value" th:text="${fechaFormateada}"></span>
+      </div>
+      <div class="card-row">
+        <span class="label" style="margin-right: 8px;">🕐 Hora: </span>
+        <span class="value"
+              th:text="${#temporals.format(appointment.appointmentTime,'HH:mm')} + ' hrs'">
+                </span>
+      </div>
+      <div class="card-row">
+        <span class="label" style="margin-right: 8px;">🔖 N° de reserva: </span>
+        <span class="badge-num" th:text="'#' + ${appointment.id}"></span>
+      </div>
+    </div>
+
+    <!-- Nota si existe -->
+    <div th:if="${appointment.observations}"
+         class="tip tip-purple">
+      <strong>📝 Nota de tu cita:</strong>
+      <span th:text="${appointment.observations}"></span>
+    </div>
+
+    <!-- Cuidados post-manicure -->
+    <div class="tip tip-pink">
+      <strong>✨ Cuidados post-manicure</strong>
+      💧 Hidrata tus cutículas diariamente con aceite ·
+      🧤 Usa guantes para tareas domésticas ·
+      🚫 No uses tus uñas como herramientas ·
+      ✂️ Nunca arranques el esmalte tú sola
+    </div>
+
+    <hr class="divider"/>
+
+    <div class="social">
+      Síguenos en Instagram
+      <a href="https://www.instagram.com/bunny.cure" target="_blank">
+        @bunny.cure
+      </a>
+      para ver los últimos diseños 💅
+    </div>
+
+    <hr class="divider"/>
+
+    <p style="font-size:13px;color:#9CA3AF;margin:8px 0 0;text-align:center;">
+      ¿Necesitas cancelar o reagendar? Avísanos con anticipación. ¡Te queremos! 💕
+    </p>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <strong>Bunny Cure 🐰</strong><br/>
+    Arte en tus manos · Manicure especializada en uña natural<br/>
+    Nail Art · Diseños a mano alzada · Técnicas en tendencia<br/>
+    <a href="https://www.instagram.com/bunny.cure"
+       style="color:#EC4899;text-decoration:none;">
+      @bunny.cure
+    </a>
+    ·
+    <a href="https://www.bunnycure.cl"
+       style="color:#EC4899;text-decoration:none;">
+      bunnycure.cl
+    </a>
+    <br/><br/>
+    <span style="font-size:11px;">
+            Este mensaje fue enviado automáticamente, por favor no respondas este correo.
+        </span>
+  </div>
+
+</div>
+</body>
+</html>

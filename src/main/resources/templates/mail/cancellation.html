@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Cita Cancelada – Bunny Cure</title>
+  <style>
+    body { margin:0; padding:0; font-family:'Segoe UI',Arial,sans-serif;
+      background:#F9FAFB; color:#333; }
+    .container { max-width:560px; margin:32px auto; background:#fff;
+      border-radius:20px; overflow:hidden;
+      box-shadow:0 4px 24px rgba(0,0,0,.08); }
+    .header { background:linear-gradient(135deg,#9CA3AF,#6B7280,#4B5563);
+      padding:40px 24px 32px; text-align:center; color:#fff; }
+    .brand { font-size:2.4rem; margin-bottom:4px; }
+    .header h1 { margin:8px 0 4px; font-size:22px; font-weight:800; }
+    .header p  { margin:6px 0 0; font-size:13px; opacity:.9; }
+    .body { padding:28px; }
+    .card { background:#F9FAFB; border-radius:12px; padding:16px 20px;
+      margin:16px 0; border-left:4px solid #9CA3AF; }
+    .card-row { display:flex; justify-content:space-between;
+      padding:9px 0; border-bottom:1px solid #E5E7EB;
+      font-size:14px; }
+    .card-row:last-child { border-bottom:none; }
+    .label { color:#9CA3AF; font-size:13px; }
+    .value { font-weight:600; color:#1F2937; }
+    .tip { background:#FDF2F8; border-radius:12px; padding:14px 18px;
+      font-size:13px; color:#9D174D; border:1px solid #FBCFE8;
+      margin:16px 0; line-height:1.6; }
+    .tip strong { display:block; margin-bottom:4px;
+      color:#EC4899; font-weight:700; }
+    .footer { text-align:center; padding:20px 24px; font-size:12px;
+      color:#9CA3AF; background:#F9FAFB;
+      border-top:1px solid #E5E7EB; line-height:1.8; }
+    .footer strong { color:#EC4899; font-size:13px; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="brand">🐰</div>
+    <h1>Cita Cancelada</h1>
+    <p>Hola <strong th:text="${customer.fullName}"></strong>,
+      esperamos verte pronto 💕</p>
+  </div>
+
+  <div class="body">
+
+    <p style="margin-top:0;font-size:15px;color:#374151;line-height:1.6;">
+      Te informamos que tu cita ha sido cancelada. Esperamos poder
+      atenderte muy pronto y consentir tus manos como se merecen. 🌸
+    </p>
+
+    <div class="card">
+      <div class="card-row">
+        <span class="label" style="margin-right: 8px;">💅 Servicio: </span>
+        <span class="value" th:text="${appointment.serviceType.displayName}"></span>
+      </div>
+      <div class="card-row">
+        <span class="label" style="margin-right: 8px;">📅 Fecha: </span>
+        <span class="value" th:text="${fechaFormateada}"></span>
+      </div>
+      <div class="card-row">
+        <span class="label" style="margin-right: 8px;">🕐 Hora: </span>
+        <span class="value"
+              th:text="${#temporals.format(appointment.appointmentTime,'HH:mm')} + ' hrs'">
+                </span>
+      </div>
+    </div>
+
+    <div class="tip">
+      <strong>¿Deseas reagendar? 🌸</strong>
+      Visita nuestro Instagram
+      <a href="https://www.instagram.com/bunny.cure"
+         style="color:#EC4899;font-weight:600;">
+        @bunny.cure
+      </a>
+      o escríbenos directamente y con gusto encontramos
+      un nuevo horario para ti. ¡Te esperamos! 💕
+    </div>
+
+    <p style="font-size:13px;color:#9CA3AF;margin:0;">
+      Lamentamos los inconvenientes ocasionados. 💕
+    </p>
+
+  </div>
+
+  <div class="footer">
+    <strong>Bunny Cure 🐰</strong><br/>
+    Arte en tus manos · Manicure especializada en uña natural<br/>
+    <a href="https://www.instagram.com/bunny.cure"
+       style="color:#EC4899;text-decoration:none;">@bunny.cure</a>
+    ·
+    <a href="https://www.bunnycure.cl"
+       style="color:#EC4899;text-decoration:none;">bunnycure.cl</a>
+    <br/><br/>
+    <span style="font-size:11px;">
+            Este mensaje fue enviado automáticamente, por favor no respondas este correo.
+        </span>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head>
+    <title>Dashboard – BunnyCure</title>
+</head>
+<body>
+<section th:fragment="content">
+
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Dashboard</h4>
+            <p class="text-muted small mb-0"
+               th:text="${todayFormatted}">
+                Hoy
+            </p>
+        </div>
+        <a th:href="@{/appointments/new}" class="btn btn-bc">
+            <i class="bi bi-plus-lg me-1"></i> Nueva Cita
+        </a>
+    </div>
+
+    <!-- Tarjetas estadísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted small mb-1">Citas Hoy</p>
+                        <h3 class="fw-bold mb-0" th:text="${todayCount}">0</h3>
+                    </div>
+                    <div class="icon-box" style="background:#EDE9FE;">
+                        <i class="bi bi-calendar-check" style="color:#8B5CF6;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted small mb-1">Pendientes</p>
+                        <h3 class="fw-bold mb-0" th:text="${pendingCount}">0</h3>
+                    </div>
+                    <div class="icon-box" style="background:#FEF3C7;">
+                        <i class="bi bi-clock" style="color:#D97706;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted small mb-1">Completadas Hoy</p>
+                        <h3 class="fw-bold mb-0" th:text="${completedCount}">0</h3>
+                    </div>
+                    <div class="icon-box" style="background:#D1FAE5;">
+                        <i class="bi bi-check-circle" style="color:#059669;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted small mb-1">Total Clientes</p>
+                        <h3 class="fw-bold mb-0" th:text="${customerCount}">0</h3>
+                    </div>
+                    <div class="icon-box" style="background:#FCE7F3;">
+                        <i class="bi bi-people" style="color:#EC4899;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Citas del día -->
+    <div class="card table-card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2"></i>Citas de Hoy</h6>
+            <a th:href="@{/appointments}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+        </div>
+        <div class="card-body p-0">
+            <div th:if="${#lists.isEmpty(todayAppointments)}"
+                 class="text-center text-muted py-5">
+                <i class="bi bi-calendar-x" style="font-size:2rem;"></i>
+                <p class="mt-2 mb-0">No hay citas programadas para hoy.</p>
+            </div>
+            <table th:unless="${#lists.isEmpty(todayAppointments)}"
+                   class="table table-hover mb-0">
+                <thead>
+                <tr>
+                    <th>Hora</th>
+                    <th>Cliente</th>
+                    <th>Servicio</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="apt : ${todayAppointments}">
+                    <td class="fw-semibold"
+                        th:text="${#temporals.format(apt.appointmentTime, 'HH:mm')}">
+                        10:00
+                    </td>
+                    <td th:text="${apt.customer.fullName}">Cliente</td>
+                    <td th:text="${apt.service.name}">Servicio</td>
+                    <td>
+                            <span class="badge rounded-pill px-3 py-1"
+                                  th:classappend="${apt.status.name() == 'PENDING'}   ? 'badge-pending'   :
+                                                  (${apt.status.name() == 'COMPLETED'} ? 'badge-completed' : 'badge-cancelled')"
+                                  th:text="${apt.status.displayName}">
+                                Estado
+                            </span>
+                    </td>
+                    <td>
+                        <a th:href="@{/appointments/{id}(id=${apt.id})}"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</section>
+</body>
+</html>
