@@ -111,7 +111,7 @@ public class DataInitializer implements CommandLineRunner {
                     new AppSettings("booking.enabled",                  "true",  "Portal de reservas habilitado"),
                     new AppSettings("whatsapp.number",                  "56964499995", "Número WhatsApp negocio"),
                     new AppSettings("booking.message.template",
-                            "Hola Bunny Cure! 🐰\nMe gustaría reservar una cita:\n• Servicio: {servicio}\n• Fecha: {fecha}\n• Bloque: {bloque}\n• Nombre: {nombre}\n• Teléfono: {telefono}\n¿Tienen disponibilidad?",
+                            "Hola Bunny Cure! [conejo]\nMe gustar\u00EDa reservar una cita:\n\u2022 Servicio: {servicio}\n\u2022 Fecha: {fecha}\n\u2022 Bloque: {bloque}\n\u2022 Nombre: {nombre}\n\u2022 Tel\u00E9fono: {telefono}\n\u00BFTienen disponibilidad?",
                             "Template mensaje WhatsApp"),
                     new AppSettings("booking.block.morning",            "09:00 – 13:00", "Bloque mañana"),
                     new AppSettings("booking.block.afternoon",          "15:00 – 18:00", "Bloque tarde"),

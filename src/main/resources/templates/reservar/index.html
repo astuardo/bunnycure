@@ -290,33 +290,31 @@
 
         const preview = document.getElementById('msgPreview');
         if (ready) {
-            const msg = MSG_TEMPLATE
-                .replace('{servicio}',  selectedService.name)
-                .replace('{fecha}',     formatDate(date))
-                .replace('{bloque}',    selectedBlock)
-                .replace('{nombre}',    name)
-                .replace('{telefono}',  phone);
-            preview.textContent = msg;
+            preview.textContent = buildMsg();
             preview.style.display = 'block';
         } else {
             preview.style.display = 'none';
         }
     }
 
-    function openWhatsApp() {
+    function buildMsg() {
         const name  = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
         const date  = document.getElementById('bookingDate').value;
 
-        const msg = MSG_TEMPLATE
-            .replace('{servicio}',  selectedService.name)
+        return MSG_TEMPLATE
+            .replace('[conejo]', '\uD83D\uDC30')
+            .replace('[bunny]',  '\uD83D\uDC30')
+            .replace('{servicio}',  selectedService ? selectedService.name : '')
             .replace('{fecha}',     formatDate(date))
-            .replace('{bloque}',    selectedBlock)
+            .replace('{bloque}',    selectedBlock || '')
             .replace('{nombre}',    name)
             .replace('{telefono}',  phone);
+    }
 
+    function openWhatsApp() {
         const url = 'https://wa.me/' + WHATSAPP_NUMBER +
-            '?text=' + encodeURIComponent(msg);
+            '?text=' + encodeURIComponent(buildMsg());
         window.open(url, '_blank');
     }
 

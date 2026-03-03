@@ -52,7 +52,7 @@ public class AppSettingsService {
 
     public String getBookingMessageTemplate() {
         return get("booking.message.template",
-                "Hola Bunny Cure! \nMe gustaría reservar una cita:\n• Servicio: {servicio}\n• Fecha: {fecha}\n• Bloque: {bloque}\n• Nombre: {nombre}\n• Teléfono: {telefono}\n¿Tienen disponibilidad?");
+                "Hola Bunny Cure! [conejo]\nMe gustaría reservar una cita:\n• Servicio: {servicio}\n• Fecha: {fecha}\n• Bloque: {bloque}\n• Nombre: {nombre}\n• Teléfono: {telefono}\n¿Tienen disponibilidad?");
     }
 
     public String getMorningBlock() {
