@@ -133,6 +133,8 @@ NOTES.md
 *.sh
 !mvnw.cmd
 !mvnw
+# Permitir el script de configuración de Heroku (opcional, comentar si quieres incluirlo)
+# !configurar-heroku.cmd
 
 ##############################################################
 # Heroku
