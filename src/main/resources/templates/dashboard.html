@@ -8,22 +8,30 @@
 <section th:fragment="content">
 
     <!-- Encabezado -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h4 class="fw-bold mb-0">Dashboard</h4>
-            <p class="text-muted small mb-0"
-               th:text="${todayFormatted}">
-                Hoy
-            </p>
+            <p class="text-muted small mb-0" th:text="${todayFormatted}">Hoy</p>
         </div>
-        <a th:href="@{/appointments/new}" class="btn btn-bc">
-            <i class="bi bi-plus-lg me-1"></i> Nueva Cita
-        </a>
+        <div class="d-flex gap-2 flex-wrap">
+            <!-- Botón crear desde mensaje WhatsApp -->
+            <button class="btn btn-outline-success"
+                    data-bs-toggle="modal" data-bs-target="#whatsappModal">
+                <i class="bi bi-whatsapp me-1"></i>
+                <span class="d-none d-sm-inline">Crear desde mensaje</span>
+                <span class="d-sm-none">WhatsApp</span>
+            </button>
+            <a th:href="@{/appointments/new}" class="btn btn-bc">
+                <i class="bi bi-plus-lg me-1"></i>
+                <span class="d-none d-sm-inline">Nueva Cita</span>
+                <span class="d-sm-none">Nueva</span>
+            </a>
+        </div>
     </div>
 
     <!-- Tarjetas estadísticas -->
     <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-3">
+        <div class="col-6 col-xl-3">
             <div class="card stat-card p-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -36,7 +44,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
+        <div class="col-6 col-xl-3">
             <div class="card stat-card p-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -49,7 +57,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
+        <div class="col-6 col-xl-3">
             <div class="card stat-card p-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -62,7 +70,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
+        <div class="col-6 col-xl-3">
             <div class="card stat-card p-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -77,20 +85,92 @@
         </div>
     </div>
 
-    <!-- Citas del día -->
+    <!-- ══════════════════════════════════════════════════════════════
+         SOLICITUDES PENDIENTES — solo visible si hay pendientes
+         ══════════════════════════════════════════════════════════════ -->
+    <div th:if="${pendingRequestsCount > 0}"
+         class="card table-card mb-4"
+         style="border-left: 4px solid #F59E0B;">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-inbox me-2 text-warning"></i>
+                Solicitudes de reserva
+                <span class="badge rounded-pill ms-1"
+                      style="background:#FEF3C7;color:#92400E;font-size:.7rem;"
+                      th:text="${pendingRequestsCount} + ' pendientes'">
+                </span>
+            </h6>
+            <a th:href="@{/admin/booking-requests}"
+               class="btn btn-sm btn-outline-secondary">Ver todas</a>
+        </div>
+        <div class="card-body p-0">
+
+            <!-- Fila desktop -->
+            <div th:each="r : ${pendingRequests}"
+                 class="d-none d-md-flex justify-content-between align-items-center px-3 py-2"
+                 style="border-bottom:1px solid #F3F4F6;">
+                <div>
+                    <span class="fw-semibold" th:text="${r.fullName}"></span>
+                    <span class="text-muted ms-2 small" th:text="${r.phone}"></span>
+                </div>
+                <div class="text-muted small">
+                    <span th:text="${r.service.name}"></span>
+                    <span class="mx-1">·</span>
+                    <span th:text="${#temporals.format(r.preferredDate,'EEE dd/MM')}"></span>
+                    <span class="mx-1">·</span>
+                    <span th:text="${r.preferredBlock}"></span>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="text-muted" style="font-size:.75rem;"
+                          th:text="${#temporals.format(r.createdAt,'HH:mm')}">
+                    </span>
+                    <a th:href="@{/admin/booking-requests/{id}(id=${r.id})}"
+                       class="btn btn-sm btn-bc">Revisar</a>
+                </div>
+            </div>
+
+            <!-- Card móvil -->
+            <div th:each="r : ${pendingRequests}"
+                 class="d-md-none px-3 py-2"
+                 style="border-bottom:1px solid #F3F4F6;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="fw-semibold small" th:text="${r.fullName}"></div>
+                        <div class="text-muted" style="font-size:.78rem;"
+                             th:text="${r.service.name} + ' · ' +
+                                       ${#temporals.format(r.preferredDate,'dd/MM')} +
+                                       ' · ' + ${r.preferredBlock}">
+                        </div>
+                    </div>
+                    <a th:href="@{/admin/booking-requests/{id}(id=${r.id})}"
+                       class="btn btn-sm btn-bc ms-2 flex-shrink-0">Revisar</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         CITAS DE HOY
+         ══════════════════════════════════════════════════════════════ -->
     <div class="card table-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-            <h6 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2"></i>Citas de Hoy</h6>
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-calendar3 me-2"></i>Citas de Hoy
+            </h6>
             <a th:href="@{/appointments}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
         </div>
         <div class="card-body p-0">
+
             <div th:if="${#lists.isEmpty(todayAppointments)}"
                  class="text-center text-muted py-5">
                 <i class="bi bi-calendar-x" style="font-size:2rem;"></i>
                 <p class="mt-2 mb-0">No hay citas programadas para hoy.</p>
             </div>
+
+            <!-- Tabla desktop -->
             <table th:unless="${#lists.isEmpty(todayAppointments)}"
-                   class="table table-hover mb-0">
+                   class="table table-hover mb-0 d-none d-md-table">
                 <thead>
                 <tr>
                     <th>Hora</th>
@@ -104,16 +184,14 @@
                 <tr th:each="apt : ${todayAppointments}">
                     <td class="fw-semibold"
                         th:text="${#temporals.format(apt.appointmentTime, 'HH:mm')}">
-                        10:00
                     </td>
-                    <td th:text="${apt.customer.fullName}">Cliente</td>
-                    <td th:text="${apt.service.name}">Servicio</td>
+                    <td th:text="${apt.customer.fullName}"></td>
+                    <td th:text="${apt.service.name}"></td>
                     <td>
                             <span class="badge rounded-pill px-3 py-1"
                                   th:classappend="${apt.status.name() == 'PENDING'}   ? 'badge-pending'   :
                                                   (${apt.status.name() == 'COMPLETED'} ? 'badge-completed' : 'badge-cancelled')"
                                   th:text="${apt.status.displayName}">
-                                Estado
                             </span>
                     </td>
                     <td>
@@ -125,8 +203,202 @@
                 </tr>
                 </tbody>
             </table>
+
+            <!-- Cards móvil -->
+            <div th:unless="${#lists.isEmpty(todayAppointments)}"
+                 class="d-md-none d-flex flex-column gap-2 p-3">
+                <div th:each="apt : ${todayAppointments}"
+                     class="d-flex justify-content-between align-items-center p-2 rounded"
+                     style="background:#F9FAFB;">
+                    <div>
+                        <div class="fw-semibold"
+                             th:text="${#temporals.format(apt.appointmentTime,'HH:mm')} + ' – ' + ${apt.customer.fullName}">
+                        </div>
+                        <small class="text-muted" th:text="${apt.service.name}"></small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge rounded-pill"
+                              th:classappend="${apt.status.name() == 'PENDING'}   ? 'badge-pending'   :
+                                              (${apt.status.name() == 'COMPLETED'} ? 'badge-completed' : 'badge-cancelled')"
+                              th:text="${apt.status.displayName}">
+                        </span>
+                        <a th:href="@{/appointments/{id}(id=${apt.id})}"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         MODAL: Crear cita desde mensaje WhatsApp
+         ══════════════════════════════════════════════════════════════ -->
+    <div class="modal fade" id="whatsappModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <div>
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-whatsapp text-success me-2"></i>
+                            Crear cita desde mensaje
+                        </h5>
+                        <p class="text-muted small mb-0">
+                            Pega el mensaje de WhatsApp y se extraerán los datos automáticamente.
+                        </p>
+                    </div>
+                    <button type="button" class="btn-close ms-3"
+                            data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <!-- Pegar mensaje -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-uppercase text-muted">
+                                Mensaje recibido
+                            </label>
+                            <textarea id="waMessage" class="form-control font-monospace"
+                                      rows="10"
+                                      placeholder="Pega aquí el mensaje de WhatsApp...
+
+Ejemplo:
+Hola Bunny Cure! 🐰
+Me gustaría reservar una cita:
+• Servicio: Manicure + Brillo
+• Fecha: miércoles, 4 de marzo de 2026
+• Bloque: Mañana (09:00 – 13:00)
+• Nombre: Alfredo Stuardo
+• Teléfono: 56983692046
+¿Tienen disponibilidad?"></textarea>
+                            <button class="btn btn-bc w-100 mt-2" onclick="parseMessage()">
+                                <i class="bi bi-magic me-1"></i> Extraer datos
+                            </button>
+                        </div>
+                        <!-- Datos extraídos -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-uppercase text-muted">
+                                Datos extraídos
+                            </label>
+                            <div id="parseResult" class="d-none">
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="p-3 rounded" style="background:#F9FAFB;border-left:3px solid #8B5CF6;">
+                                        <small class="text-muted d-block">👤 Nombre</small>
+                                        <strong id="resName" class="text-dark">—</strong>
+                                    </div>
+                                    <div class="p-3 rounded" style="background:#F9FAFB;border-left:3px solid #8B5CF6;">
+                                        <small class="text-muted d-block">📱 Teléfono</small>
+                                        <strong id="resPhone" class="text-dark">—</strong>
+                                    </div>
+                                    <div class="p-3 rounded" style="background:#F9FAFB;border-left:3px solid #8B5CF6;">
+                                        <small class="text-muted d-block">💅 Servicio</small>
+                                        <strong id="resService" class="text-dark">—</strong>
+                                    </div>
+                                    <div class="p-3 rounded" style="background:#F9FAFB;border-left:3px solid #8B5CF6;">
+                                        <small class="text-muted d-block">📅 Fecha</small>
+                                        <strong id="resDate" class="text-dark">—</strong>
+                                    </div>
+                                    <div class="p-3 rounded" style="background:#F9FAFB;border-left:3px solid #8B5CF6;">
+                                        <small class="text-muted d-block">⏰ Bloque</small>
+                                        <strong id="resBlock" class="text-dark">—</strong>
+                                    </div>
+                                </div>
+                                <div id="parseWarning" class="alert alert-warning small mt-2 d-none">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    <span id="parseWarningText"></span>
+                                </div>
+                            </div>
+                            <div id="parseEmpty" class="text-center text-muted py-4">
+                                <i class="bi bi-chat-dots" style="font-size:2.5rem;opacity:.3;"></i>
+                                <p class="mt-2 small">Pega el mensaje y presiona<br>"Extraer datos"</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">Cancelar</button>
+                    <button id="btnConfirm" class="btn btn-bc d-none" onclick="goToForm()">
+                        <i class="bi bi-arrow-right me-1"></i> Continuar con estos datos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const MESES = {
+            'enero':1,'febrero':2,'marzo':3,'abril':4,'mayo':5,'junio':6,
+            'julio':7,'agosto':8,'septiembre':9,'octubre':10,'noviembre':11,'diciembre':12
+        };
+        let parsedData = {};
+
+        function parseMessage() {
+            const text = document.getElementById('waMessage').value.trim();
+            if (!text) return;
+            parsedData = {};
+            const missing = [];
+
+            const nameMatch = text.match(/[•\-*]?\s*Nombre[:\s]+(.+)/i);
+            if (nameMatch) parsedData.name = nameMatch[1].trim();
+            else missing.push('Nombre');
+
+            const phoneMatch = text.match(/[•\-*]?\s*Tel[eé]fono[:\s]+(\+?[\d\s]+)/i);
+            if (phoneMatch) parsedData.phone = phoneMatch[1].replace(/\s/g,'').trim();
+            else missing.push('Teléfono');
+
+            const serviceMatch = text.match(/[•\-*]?\s*Servicio[:\s]+(.+)/i);
+            if (serviceMatch) parsedData.service = serviceMatch[1].trim();
+            else missing.push('Servicio');
+
+            const dateMatch = text.match(/[•\-*]?\s*Fecha[:\s]+(?:[a-záéíóúñ]+,\s*)?(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+de\s+(\d{4})/i);
+            if (dateMatch) {
+                const day   = parseInt(dateMatch[1]);
+                const month = MESES[dateMatch[2].toLowerCase()];
+                const year  = parseInt(dateMatch[3]);
+                if (month) {
+                    parsedData.date = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                    parsedData.dateDisplay = `${day} de ${dateMatch[2]} de ${year}`;
+                }
+            }
+            if (!parsedData.date) missing.push('Fecha');
+
+            const blockMatch = text.match(/[•\-*]?\s*Bloque[:\s]+(.+)/i);
+            if (blockMatch) parsedData.block = blockMatch[1].trim();
+            else missing.push('Bloque');
+
+            document.getElementById('parseEmpty').classList.add('d-none');
+            document.getElementById('parseResult').classList.remove('d-none');
+            document.getElementById('resName').textContent    = parsedData.name    || '—';
+            document.getElementById('resPhone').textContent   = parsedData.phone   || '—';
+            document.getElementById('resService').textContent = parsedData.service || '—';
+            document.getElementById('resDate').textContent    = parsedData.dateDisplay || parsedData.date || '—';
+            document.getElementById('resBlock').textContent   = parsedData.block   || '—';
+
+            const warning = document.getElementById('parseWarning');
+            if (missing.length > 0) {
+                warning.classList.remove('d-none');
+                document.getElementById('parseWarningText').textContent =
+                    'No se encontraron: ' + missing.join(', ') + '. Puedes completarlos manualmente.';
+            } else {
+                warning.classList.add('d-none');
+            }
+            document.getElementById('btnConfirm').classList.remove('d-none');
+        }
+
+        function goToForm() {
+            const params = new URLSearchParams();
+            if (parsedData.name)    params.set('name',    parsedData.name);
+            if (parsedData.phone)   params.set('phone',   parsedData.phone);
+            if (parsedData.service) params.set('service', parsedData.service);
+            if (parsedData.date)    params.set('date',    parsedData.date);
+            if (parsedData.block)   params.set('block',   parsedData.block);
+            window.location.href = '/appointments/new-from-wa?' + params.toString();
+        }
+        /*]]>*/
+    </script>
 
 </section>
 </body>

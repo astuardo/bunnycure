@@ -55,10 +55,13 @@ public class AppointmentService {
         var customer = customerService.findById(dto.getCustomerId());
         var service  = serviceCatalogService.findById(dto.getServiceId()); // ✅
 
-        var appointment = new Appointment(customer, service,
-                dto.getAppointmentDate(),
-                dto.getAppointmentTime());
-        appointment.setObservations(dto.getObservations());
+        var appointment = Appointment.builder()
+                .customer(customer)
+                .service(service)
+                .appointmentDate(dto.getAppointmentDate())
+                .appointmentTime(dto.getAppointmentTime())
+                .observations(dto.getObservations())
+                .build();
         var saved = appointmentRepository.save(appointment);
 
         notificationService.sendConfirmation(saved);

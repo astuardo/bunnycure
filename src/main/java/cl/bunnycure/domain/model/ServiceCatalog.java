@@ -37,6 +37,10 @@ public class ServiceCatalog {
     @Builder.Default
     private Integer displayOrder = 0;
 
+    public boolean isActive() {
+        return Boolean.TRUE.equals(active);
+    }
+
     @Transient
     public String getDurationFormatted() {
         int h = durationMinutes / 60;

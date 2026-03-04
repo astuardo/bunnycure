@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head><title>Aprobar Solicitud – Bunny Cure</title></head>
+<body>
+<section th:fragment="content">
+
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a th:href="@{/admin/booking-requests}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h4 class="fw-bold mb-0">Revisar Solicitud</h4>
+      <p class="text-muted small mb-0"
+         th:text="'Recibida el ' + ${#temporals.format(request.createdAt, 'dd/MM/yyyy HH:mm')}">
+      </p>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- Columna izquierda: datos de la solicitud -->
+    <div class="col-md-5">
+      <div class="card table-card p-3 h-100">
+        <h6 class="fw-bold mb-3">
+          <i class="bi bi-person me-1"></i> Datos de la solicitud
+        </h6>
+
+        <div class="d-flex flex-column gap-3">
+          <div>
+            <small class="text-muted d-block">👤 Nombre</small>
+            <strong th:text="${request.fullName}"></strong>
+          </div>
+          <div>
+            <small class="text-muted d-block">📱 WhatsApp</small>
+            <a th:href="'https://wa.me/' + ${request.phone.replaceAll('[^0-9]','')}"
+               class="fw-semibold text-decoration-none"
+               target="_blank"
+               th:text="${request.phone}">
+            </a>
+          </div>
+          <div th:if="${request.email}">
+            <small class="text-muted d-block">✉️ Email</small>
+            <span th:text="${request.email}"></span>
+          </div>
+          <div>
+            <small class="text-muted d-block">💅 Servicio solicitado</small>
+            <strong th:text="${request.service.name}"></strong>
+            <span class="badge ms-1 rounded-pill"
+                  style="background:#EDE9FE;color:#8B5CF6;"
+                  th:text="${request.service.durationFormatted}">
+                        </span>
+          </div>
+          <div>
+            <small class="text-muted d-block">📅 Fecha preferida</small>
+            <strong th:text="${#temporals.format(request.preferredDate, 'EEEE dd/MM/yyyy')}"></strong>
+          </div>
+          <div>
+            <small class="text-muted d-block">⏰ Bloque horario</small>
+            <strong th:text="${request.preferredBlock}"></strong>
+          </div>
+          <div th:if="${request.notes}"
+               class="p-2 rounded" style="background:#FFFBEB;">
+            <small class="text-muted d-block">📝 Notas de la clienta</small>
+            <span class="small" th:text="${request.notes}"></span>
+          </div>
+        </div>
+
+        <!-- Acceso rápido WhatsApp -->
+        <a th:href="'https://wa.me/' + ${request.phone.replaceAll('[^0-9]','')}"
+           class="btn btn-sm btn-success w-100 mt-4" target="_blank">
+          <i class="bi bi-whatsapp me-1"></i>
+          Abrir chat con la clienta
+        </a>
+      </div>
+    </div>
+
+    <!-- Columna derecha: formulario de aprobación -->
+    <div class="col-md-7">
+      <div class="card table-card p-3"
+           th:if="${request.status.name() == 'PENDING'}">
+        <h6 class="fw-bold mb-3">
+          <i class="bi bi-check-circle me-1 text-success"></i> Aprobar cita
+        </h6>
+        <p class="text-muted small mb-3">
+          Confirma la hora exacta y el servicio final. Se creará la cita
+          y se notificará a la clienta por email y WhatsApp.
+        </p>
+
+        <form th:action="@{/admin/booking-requests/{id}/approve(id=${request.id})}"
+              th:object="${approval}"
+              method="post" novalidate>
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+          <div class="row g-3">
+            <!-- Hora exacta -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">
+                Hora de la cita <span class="text-danger">*</span>
+              </label>
+              <input type="time"
+                     th:field="*{appointmentTime}"
+                     th:classappend="${#fields.hasErrors('appointmentTime')} ? 'is-invalid'"
+                     class="form-control"/>
+              <div class="form-text text-muted">
+                Bloque solicitado: <strong th:text="${request.preferredBlock}"></strong>
+              </div>
+              <div class="invalid-feedback" th:errors="*{appointmentTime}"></div>
+            </div>
+
+            <!-- Servicio (puede ajustarse) -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Servicio final</label>
+              <select th:field="*{serviceId}" class="form-select">
+                <option value="">
+                  Mismo que solicitó (<span th:text="${request.service.name}"></span>)
+                </option>
+                <option th:each="s : ${services}"
+                        th:value="${s.id}"
+                        th:text="${s.name}"
+                        th:selected="${s.id == request.service.id}">
+                </option>
+              </select>
+            </div>
+
+            <!-- Notas del admin -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">
+                Notas internas <span class="text-muted">(opcional)</span>
+              </label>
+              <textarea th:field="*{adminNotes}"
+                        class="form-control" rows="2"
+                        placeholder="Observaciones para el registro de la cita...">
+                            </textarea>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-bc flex-fill">
+              <i class="bi bi-check-lg me-1"></i> Aprobar y crear cita
+            </button>
+          </div>
+        </form>
+
+        <hr class="my-3"/>
+
+        <!-- Rechazar desde el mismo formulario -->
+        <p class="text-muted small mb-2">
+          ¿No puedes atender esta solicitud?
+        </p>
+        <button type="button" class="btn btn-outline-danger btn-sm w-100"
+                data-bs-toggle="collapse"
+                data-bs-target="#rejectSection">
+          <i class="bi bi-x-lg me-1"></i> Rechazar esta solicitud
+        </button>
+
+        <div class="collapse mt-3" id="rejectSection">
+          <form th:action="@{/admin/booking-requests/{id}/reject(id=${request.id})}"
+                method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <label class="form-label small fw-semibold">Motivo del rechazo (opcional)</label>
+            <textarea name="reason" class="form-control form-control-sm" rows="2"
+                      placeholder="Ej: No tenemos disponibilidad para ese día..."></textarea>
+            <button type="submit" class="btn btn-danger btn-sm w-100 mt-2">
+              Confirmar rechazo
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Ya procesada -->
+      <div class="card table-card p-3"
+           th:unless="${request.status.name() == 'PENDING'}">
+        <div class="text-center py-3">
+          <div th:if="${request.status.name() == 'APPROVED'}">
+            <i class="bi bi-check-circle-fill text-success" style="font-size:2.5rem;"></i>
+            <h6 class="fw-bold mt-2">Solicitud aprobada</h6>
+            <p class="text-muted small">
+              Cita #<strong th:text="${request.appointment?.id}"></strong>
+              creada el
+              <span th:text="${#temporals.format(request.resolvedAt, 'dd/MM/yyyy HH:mm')}"></span>
+            </p>
+            <a th:if="${request.appointment != null}"
+               th:href="@{/appointments/{id}(id=${request.appointment.id})}"
+               class="btn btn-bc btn-sm">
+              Ver cita
+            </a>
+          </div>
+          <div th:if="${request.status.name() == 'REJECTED'}">
+            <i class="bi bi-x-circle-fill text-danger" style="font-size:2.5rem;"></i>
+            <h6 class="fw-bold mt-2">Solicitud rechazada</h6>
+            <p class="text-muted small" th:if="${request.rejectionReason}"
+               th:text="'Motivo: ' + ${request.rejectionReason}"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+</body>
+</html>

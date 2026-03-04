@@ -13,19 +13,21 @@ import java.time.LocalTime;
 @Table(name = "appointments")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class Appointment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
     // ✅ Reemplaza el enum ServiceType
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "service_catalog_id", nullable = false)
     private ServiceCatalog service;
 
@@ -37,12 +39,14 @@ public class Appointment {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Builder.Default
     private AppointmentStatus status = AppointmentStatus.PENDING;
 
     @Column(length = 500)
     private String observations;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean notificationSent = false;
 
     @CreationTimestamp

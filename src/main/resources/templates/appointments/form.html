@@ -17,6 +17,19 @@
         </div>
     </div>
 
+    <!-- Alerta con datos parseados de WhatsApp -->
+    <div th:if="${waName != null || waPhone != null}" class="alert alert-info mb-3" role="alert">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Datos extraídos de WhatsApp:</strong>
+        <ul class="small mb-0 mt-2">
+            <li th:if="${waName != null}">👤 Nombre: <strong th:text="${waName}"></strong></li>
+            <li th:if="${waPhone != null}">📱 Teléfono: <strong th:text="${waPhone}"></strong></li>
+            <li th:if="${waService != null}">💅 Servicio: <strong th:text="${waService}"></strong></li>
+            <li th:if="${waBlock != null}">⏰ Bloque: <strong th:text="${waBlock}"></strong></li>
+        </ul>
+        <p class="small text-muted mt-2 mb-0">Completa y ajusta los datos según sea necesario.</p>
+    </div>
+
     <div class="card table-card">
         <div class="card-body p-4">
             <form th:action="${isNew} ? @{/appointments} : @{/appointments/{id}/edit(id=${appointment.id})}"

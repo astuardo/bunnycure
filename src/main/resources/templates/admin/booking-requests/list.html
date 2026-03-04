@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head><title>Solicitudes – Bunny Cure</title></head>
+<body>
+<section th:fragment="content">
+
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">
+        Solicitudes de Reserva
+        <span th:if="${pendingCount > 0}"
+              class="badge rounded-pill ms-2"
+              style="background:#FEF3C7;color:#92400E;font-size:.7rem;"
+              th:text="${pendingCount} + ' pendientes'">
+                </span>
+      </h4>
+      <p class="text-muted small mb-0">Solicitudes recibidas desde el portal público</p>
+    </div>
+  </div>
+
+  <!-- Alertas flash -->
+  <div th:if="${successMsg}" class="alert alert-success alert-dismissible fade show">
+    <i class="bi bi-check-circle me-2"></i>
+    <span th:text="${successMsg}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${errorMsg}" class="alert alert-danger alert-dismissible fade show">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <span th:text="${errorMsg}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <!-- ── Pendientes ─────────────────────────────────────────────────── -->
+  <h6 class="fw-semibold text-uppercase text-muted small mb-2 mt-1">
+    <i class="bi bi-clock me-1"></i> Pendientes de revisión
+  </h6>
+
+  <div th:if="${#lists.isEmpty(pending)}"
+       class="card table-card p-4 text-center text-muted mb-4">
+    <i class="bi bi-inbox" style="font-size:2rem;opacity:.4;"></i>
+    <p class="mt-2 mb-0 small">No hay solicitudes pendientes.</p>
+  </div>
+
+  <div th:unless="${#lists.isEmpty(pending)}"
+       class="d-flex flex-column gap-3 mb-4">
+    <div th:each="r : ${pending}"
+         class="card table-card p-3 border-start border-warning border-3">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <div class="fw-bold" th:text="${r.fullName}"></div>
+          <div class="text-muted small">
+            <i class="bi bi-telephone me-1"></i>
+            <span th:text="${r.phone}"></span>
+            <span th:if="${r.email}" class="ms-2">
+                            <i class="bi bi-envelope me-1"></i>
+                            <span th:text="${r.email}"></span>
+                        </span>
+          </div>
+        </div>
+        <div class="text-end">
+          <div class="fw-semibold" th:text="${r.service.name}"></div>
+          <div class="text-muted small">
+            <span th:text="${#temporals.format(r.preferredDate, 'EEE dd/MM/yyyy')}"></span>
+            · <span th:text="${r.preferredBlock}"></span>
+          </div>
+          <div class="text-muted" style="font-size:.75rem;"
+               th:text="'Solicitado ' + ${#temporals.format(r.createdAt, 'dd/MM HH:mm')}">
+          </div>
+        </div>
+      </div>
+
+      <div th:if="${r.notes}" class="mt-2 p-2 rounded" style="background:#FFFBEB;">
+        <small class="text-muted"><i class="bi bi-chat-left-text me-1"></i>
+          <span th:text="${r.notes}"></span>
+        </small>
+      </div>
+
+      <div class="d-flex gap-2 mt-3 flex-wrap">
+        <a th:href="@{/admin/booking-requests/{id}(id=${r.id})}"
+           class="btn btn-bc btn-sm px-3">
+          <i class="bi bi-check-lg me-1"></i> Revisar y aprobar
+        </a>
+        <button type="button"
+                class="btn btn-sm btn-outline-danger"
+                data-bs-toggle="modal"
+                data-bs-target="#rejectModal"
+                th:data-id="${r.id}"
+                th:data-name="${r.fullName}"
+                onclick="setReject(this)">
+          <i class="bi bi-x-lg me-1"></i> Rechazar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Historial ──────────────────────────────────────────────────── -->
+  <h6 class="fw-semibold text-uppercase text-muted small mb-2">
+    <i class="bi bi-clock-history me-1"></i> Historial
+  </h6>
+  <div class="card table-card">
+    <div class="card-body p-0">
+      <div th:if="${#lists.isEmpty(all)}"
+           class="text-center text-muted py-4">
+        <p class="mb-0 small">Sin historial aún.</p>
+      </div>
+      <table th:unless="${#lists.isEmpty(all)}"
+             class="table table-hover mb-0 small">
+        <thead>
+        <tr>
+          <th>Solicitante</th>
+          <th class="d-none d-md-table-cell">Servicio</th>
+          <th class="d-none d-md-table-cell">Fecha preferida</th>
+          <th>Estado</th>
+          <th class="d-none d-md-table-cell">Recibida</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${all}">
+          <td>
+            <div class="fw-semibold" th:text="${r.fullName}"></div>
+            <small class="text-muted" th:text="${r.phone}"></small>
+          </td>
+          <td class="d-none d-md-table-cell"
+              th:text="${r.service.name}"></td>
+          <td class="d-none d-md-table-cell">
+            <span th:text="${#temporals.format(r.preferredDate,'dd/MM/yyyy')}"></span>
+            <small class="text-muted ms-1" th:text="${r.preferredBlock}"></small>
+          </td>
+          <td>
+                            <span class="badge rounded-pill px-2"
+                                  th:classappend="${r.status.name() == 'PENDING'}   ? 'badge-pending'   :
+                                                  (${r.status.name() == 'APPROVED'} ? 'badge-completed' : 'badge-cancelled')"
+                                  th:text="${r.status.displayName}">
+                            </span>
+          </td>
+          <td class="d-none d-md-table-cell text-muted"
+              th:text="${#temporals.format(r.createdAt, 'dd/MM HH:mm')}"></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal rechazo -->
+  <div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h6 class="modal-title fw-bold">Rechazar solicitud</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body pt-1">
+          <p class="text-muted small mb-2">
+            Rechazarás la solicitud de <strong id="rejectName"></strong>.
+            Si tiene email, recibirá una notificación.
+          </p>
+          <form id="rejectForm" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <label class="form-label small fw-semibold">Motivo (opcional)</label>
+            <textarea name="reason" class="form-control form-control-sm" rows="2"
+                      placeholder="Ej: No tenemos disponibilidad para esa fecha..."></textarea>
+            <div class="d-flex gap-2 mt-3">
+              <button type="button" class="btn btn-sm btn-outline-secondary flex-fill"
+                      data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-sm btn-danger flex-fill">
+                Rechazar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setReject(btn) {
+      document.getElementById('rejectName').textContent = btn.dataset.name;
+      document.getElementById('rejectForm').action =
+              '/admin/booking-requests/' + btn.dataset.id + '/reject';
+    }
+  </script>
+
+</section>
+</body>
+</html>

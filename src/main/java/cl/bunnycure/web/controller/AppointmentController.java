@@ -49,6 +49,38 @@ public class AppointmentController extends BaseController {
         return "appointments/list";
     }
 
+    @GetMapping("/new-from-wa")
+    public String newFromWhatsApp(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) String service,
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String block,
+            Model model) {
+        var dto = AppointmentDto.builder()
+                .appointmentDate(LocalDate.now().plusDays(1))
+                .build();
+
+        // Intentar parsear la fecha si viene
+        if (date != null && !date.isBlank()) {
+            try {
+                dto.setAppointmentDate(LocalDate.parse(date));
+            } catch (Exception e) {
+                // Si falla, usar fecha por defecto
+            }
+        }
+
+        model.addAttribute("appointment", dto);
+        model.addAttribute("customers", customerService.findAll());
+        model.addAttribute("serviceTypes", serviceCatalogService.findAllActive());
+        model.addAttribute("isNew", true);
+        model.addAttribute("waName", name);
+        model.addAttribute("waPhone", phone);
+        model.addAttribute("waService", service);
+        model.addAttribute("waBlock", block);
+        return "appointments/form";
+    }
+
     @GetMapping("/new")
     public String newForm(@RequestParam(required = false) Long customerId, Model model) {
         var dto = AppointmentDto.builder()

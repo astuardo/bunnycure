@@ -1,46 +1,99 @@
 package cl.bunnycure.web.controller;
 
 import cl.bunnycure.service.AppSettingsService;
+import cl.bunnycure.service.BookingRequestService;
 import cl.bunnycure.service.ServiceCatalogService;
-import lombok.RequiredArgsConstructor;
+import cl.bunnycure.web.dto.BookingRequestDto;
+import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Controller
-@RequestMapping("/reservar")
-@RequiredArgsConstructor
 public class BookingController {
 
-    private final AppSettingsService settingsService;
     private final ServiceCatalogService serviceCatalogService;
+    private final AppSettingsService    appSettingsService;
+    private final BookingRequestService bookingRequestService;
 
-    @GetMapping
+    public BookingController(ServiceCatalogService serviceCatalogService,
+                             AppSettingsService appSettingsService,
+                             BookingRequestService bookingRequestService) {
+        this.serviceCatalogService = serviceCatalogService;
+        this.appSettingsService    = appSettingsService;
+        this.bookingRequestService = bookingRequestService;
+    }
+
+    // ── GET /reservar ────────────────────────────────────────────────────────
+    @GetMapping("/reservar")
     public String index(Model model) {
-        boolean enabled = settingsService.isBookingEnabled();
-        model.addAttribute("bookingEnabled", enabled);
+        boolean bookingEnabled = Boolean.parseBoolean(
+                appSettingsService.get("booking.enabled", "true"));
 
-        if (enabled) {
-            model.addAttribute("services", serviceCatalogService.findAllActive());
-            model.addAttribute("whatsappNumber", settingsService.getWhatsappNumber());
-            model.addAttribute("messageTemplate", settingsService.getBookingMessageTemplate());
-
-            // Bloques habilitados
-            Map<String, String> blocks = new LinkedHashMap<>();
-            if (settingsService.isMorningEnabled())
-                blocks.put("Mañana", settingsService.getMorningBlock());
-            if (settingsService.isAfternoonEnabled())
-                blocks.put("Tarde", settingsService.getAfternoonBlock());
-            if (settingsService.isNightEnabled())
-                blocks.put("Noche", settingsService.getNightBlock());
-
-            model.addAttribute("blocks", blocks);
-        }
+        model.addAttribute("bookingEnabled",  bookingEnabled);
+        model.addAttribute("whatsappNumber",
+                appSettingsService.get("whatsapp.number", "56964499995"));
+        model.addAttribute("bookingRequest",  new BookingRequestDto());
+        model.addAttribute("services",
+                serviceCatalogService.findAll().stream()
+                        .filter(s -> s.isActive()).toList());
+        model.addAttribute("timeBlocks",      buildTimeBlocks());
+        model.addAttribute("submitted",       false);
 
         return "reservar/index";
+    }
+
+    // ── POST /reservar/submit ────────────────────────────────────────────────
+    @PostMapping("/reservar/submit")
+    public String submit(@Valid @ModelAttribute("bookingRequest") BookingRequestDto dto,
+                         BindingResult result,
+                         Model model,
+                         RedirectAttributes flash) {
+        if (result.hasErrors()) {
+            // Volvemos al form con errores
+            model.addAttribute("bookingEnabled",  true);
+            model.addAttribute("whatsappNumber",
+                    appSettingsService.get("whatsapp.number", "56964499995"));
+            model.addAttribute("services",
+                    serviceCatalogService.findAll().stream()
+                            .filter(s -> s.isActive()).toList());
+            model.addAttribute("timeBlocks", buildTimeBlocks());
+            model.addAttribute("submitted",  false);
+            return "reservar/index";
+        }
+
+        try {
+            bookingRequestService.create(dto);
+        } catch (Exception e) {
+            flash.addFlashAttribute("errorMsg",
+                    "Hubo un error al enviar tu solicitud. Por favor intenta de nuevo.");
+            return "redirect:/reservar";
+        }
+
+        // Mostramos el paso 5 (confirmación) recargando la página
+        model.addAttribute("bookingEnabled",  true);
+        model.addAttribute("whatsappNumber",
+                appSettingsService.get("whatsapp.number", "56964499995"));
+        model.addAttribute("services",
+                serviceCatalogService.findAll().stream()
+                        .filter(s -> s.isActive()).toList());
+        model.addAttribute("timeBlocks", buildTimeBlocks());
+        model.addAttribute("submitted",  true);  // ← activa el paso 5
+
+        return "reservar/index";
+    }
+
+    // ── Bloques horarios configurables ───────────────────────────────────────
+    private Map<String, String> buildTimeBlocks() {
+        Map<String, String> blocks = new LinkedHashMap<>();
+        blocks.put("Mañana", appSettingsService.get("booking.block.morning", "09:00 – 13:00"));
+        blocks.put("Tarde",  appSettingsService.get("booking.block.afternoon","14:00 – 18:00"));
+        blocks.put("Noche",  appSettingsService.get("booking.block.night",    "18:00 – 21:00"));
+        return blocks;
     }
 }

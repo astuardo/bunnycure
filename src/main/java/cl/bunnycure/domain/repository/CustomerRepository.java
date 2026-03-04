@@ -8,7 +8,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
+
     Optional<Customer> findByEmail(String email);
+
+    // Nuevo: búsqueda por teléfono para matching desde solicitudes de reserva
+    Optional<Customer> findByPhone(String phone);
 
     List<Customer> findByFullNameContainingIgnoreCase(String name);
 
@@ -26,7 +30,6 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     """)
     List<Object[]> findAllWithAppointmentCount();
 
-    // CustomerRepository.java
     @Query("SELECT COUNT(a) FROM Appointment a WHERE a.customer.id = :customerId")
     long countAppointmentsByCustomerId(Long customerId);
 }

@@ -43,7 +43,8 @@ public class SecurityConfig {
 		http.authorizeHttpRequests(auth -> {
 			auth.requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll();
 			auth.requestMatchers("/login", "/login/**").permitAll();
-			auth.requestMatchers("/", "/reservar/**").permitAll();
+			// Portal público: GET y POST de reservas
+			auth.requestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit").permitAll();
 
 			if (isLocal) {
 				auth.requestMatchers("/h2-console/**").permitAll();
@@ -74,7 +75,6 @@ public class SecurityConfig {
 
 		// ── Headers según perfil ──────────────────────────────────────────────
 		if (isLocal) {
-			// H2 Console necesita iframes y POST sin CSRF token
 			http.csrf(csrf -> csrf
 					.ignoringRequestMatchers("/h2-console/**")
 			);
@@ -82,7 +82,6 @@ public class SecurityConfig {
 					.frameOptions(frame -> frame.sameOrigin())
 			);
 		} else {
-			// Producción: headers estrictos
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.deny())
 					.httpStrictTransportSecurity(hsts -> hsts
@@ -96,7 +95,6 @@ public class SecurityConfig {
 	}
 
 	// ── UserDetails ───────────────────────────────────────────────────────────
-	// ⚠️ PRODUCCIÓN: migrar a UserDetailsService con tabla de base de datos
 	@Bean
 	public InMemoryUserDetailsManager userDetailsManager(PasswordEncoder encoder) {
 		log.info(">>> Configurando usuario administrador: '{}'", adminUsername);
