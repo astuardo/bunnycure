@@ -1,8 +1,3 @@
-// DEPRECATED: This file is in the wrong location and should be DELETED.
-// The correct file is now located at:
-// src/main/java/cl/bunnycure/web/controller/BookingRequestController.java
-// This file was moved due to package structure requirements.
-
 package cl.bunnycure.web.controller;
 
 import cl.bunnycure.service.BookingRequestService;

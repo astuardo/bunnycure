@@ -45,7 +45,7 @@
                             Cliente <span class="text-danger">*</span>
                         </label>
                         <select th:field="*{customerId}"
-                                th:classappend="${#fields.hasErrors('customerId')} ? 'is-invalid'"
+                                th:classappend="${#fields.hasErrors('customerId')} ? 'is-invalid' : ''"
                                 class="form-select">
                             <option value="">Selecciona un cliente...</option>
                             <option th:each="c : ${customers}"
@@ -62,7 +62,7 @@
                             Servicio <span class="text-danger">*</span>
                         </label>
                         <select name="serviceId" class="form-select"
-                                th:classappend="${#fields.hasErrors('serviceId')} ? 'is-invalid'">
+                                th:classappend="${#fields.hasErrors('serviceId')} ? 'is-invalid' : ''">
                             <option value="">Selecciona un servicio...</option>
                             <option th:each="s : ${serviceTypes}"
                                     th:value="${s.id}"
@@ -81,7 +81,7 @@
                         <input type="date"
                                id="appointmentDate"
                                name="appointmentDate"
-                               th:classappend="${#fields.hasErrors('appointmentDate')} ? 'is-invalid'"
+                               th:classappend="${#fields.hasErrors('appointmentDate')} ? 'is-invalid' : ''"
                                class="form-control"
                                th:value="${isNew} ? ${appointment.appointmentDate} : ${dateValue}"/>
                         <div class="invalid-feedback" th:errors="*{appointmentDate}"></div>
@@ -95,7 +95,7 @@
                         <input type="time"
                                id="appointmentTime"
                                name="appointmentTime"
-                               th:classappend="${#fields.hasErrors('appointmentTime')} ? 'is-invalid'"
+                               th:classappend="${#fields.hasErrors('appointmentTime')} ? 'is-invalid' : ''"
                                class="form-control"
                                th:value="${isNew} ? ${appointment.appointmentTime} : ${timeValue}"/>
                         <div class="invalid-feedback" th:errors="*{appointmentTime}"></div>
