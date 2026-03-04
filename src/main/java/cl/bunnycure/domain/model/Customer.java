@@ -45,4 +45,16 @@ public class Customer {
         this.phone    = phone;
         this.email    = email;
     }
+
+    /**
+     * Extrae el primer nombre del nombre completo
+     * @return el primer nombre o el nombre completo si no hay espacios
+     */
+    public String getFirstName() {
+        if (fullName == null || fullName.isBlank()) {
+            return "";
+        }
+        int spaceIndex = fullName.indexOf(' ');
+        return spaceIndex > 0 ? fullName.substring(0, spaceIndex) : fullName;
+    }
 }

@@ -93,7 +93,8 @@
                             <td>
                                     <span class="badge rounded-pill px-2"
                                           th:classappend="${apt.status.name() == 'PENDING'}   ? 'badge-pending'   :
-                                                          (${apt.status.name() == 'COMPLETED'} ? 'badge-completed' : 'badge-cancelled')"
+                                                          (${apt.status.name() == 'CONFIRMED'} ? 'badge-confirmed' :
+                                                          (${apt.status.name() == 'COMPLETED'} ? 'badge-completed' : 'badge-cancelled'))"
                                           th:text="${apt.status.displayName}">
                                     </span>
                             </td>

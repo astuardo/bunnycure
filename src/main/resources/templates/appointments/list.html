@@ -99,7 +99,8 @@
     <span class="badge rounded-pill px-3 py-1 dropdown-toggle"
           style="cursor:pointer;"
           th:classappend="${apt.status.name() == 'PENDING'}   ? 'badge-pending'   :
-                          (${apt.status.name() == 'COMPLETED'} ? 'badge-completed' : 'badge-cancelled')"
+                          (${apt.status.name() == 'CONFIRMED'} ? 'badge-confirmed' :
+                          (${apt.status.name() == 'COMPLETED'} ? 'badge-completed' : 'badge-cancelled'))"
           data-bs-toggle="dropdown"
           data-bs-auto-close="true"
           aria-expanded="false"

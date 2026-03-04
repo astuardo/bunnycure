@@ -63,4 +63,27 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             @Param("status") AppointmentStatus status,
             @Param("date") LocalDate date
     );
+
+    @Query("""
+        SELECT a FROM Appointment a
+        JOIN FETCH a.customer
+        JOIN FETCH a.service
+        WHERE a.status = :status
+        AND a.reminderSent = false
+        AND a.appointmentDate = :date
+        ORDER BY a.appointmentTime ASC
+    """)
+    List<Appointment> findPendingRemindersForDate(
+            @Param("status") AppointmentStatus status,
+            @Param("date") LocalDate date
+    );
+
+    @Query("""
+        SELECT a FROM Appointment a
+        JOIN FETCH a.customer
+        JOIN FETCH a.service
+        WHERE a.status = :status
+        ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
+    """)
+    List<Appointment> findByStatus(@Param("status") AppointmentStatus status);
 }

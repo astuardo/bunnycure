@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recordatorio Urgente - Cita Próxima - Bunny Cure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #FF6347 0%, #DC143C 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.95; }
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .urgent-box {
+            background-color: #FFE4E1;
+            border-left: 4px solid #FF6347;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .urgent-box h3 {
+            color: #FF6347;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .info-item strong {
+            min-width: 120px;
+            color: #333;
+        }
+        .emoji {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+        .action-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #FF6347 0%, #DC143C 100%);
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            margin-top: 20px;
+            font-weight: bold;
+            transition: opacity 0.3s ease;
+        }
+        .action-button:hover {
+            opacity: 0.9;
+        }
+        .countdown {
+            background-color: #FFF8DC;
+            border-left: 4px solid #FF8C00;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #333;
+            text-align: center;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h1>⏰ ¡Tu cita es HOY!</h1>
+        <p>Recordatorio Urgente - Bunny Cure</p>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <p class="greeting">
+            Hola <strong th:text="${appointment.customer.name}">Cliente</strong>,
+        </p>
+
+        <p>¡No olvides tu cita! Tienes una sesión programada <strong>EN LAS PRÓXIMAS HORAS</strong>. 
+        ¡Prepárate para verte hermosa!</p>
+
+        <!-- Urgent Box -->
+        <div class="urgent-box">
+            <h3>🚨 Detalles de tu cita (PRÓXIMAS HORAS)</h3>
+            
+            <div class="info-item">
+                <span class="emoji">📅</span>
+                <strong>Fecha:</strong>
+                <span th:text="${#temporals.format(appointment.appointmentDate, 'dd/MM/yyyy')}">Fecha</span>
+            </div>
+            
+            <div class="info-item">
+                <span class="emoji">⏰</span>
+                <strong>Hora:</strong>
+                <span th:text="${#temporals.format(appointment.appointmentTime, 'HH:mm')}">Hora</span>
+            </div>
+            
+            <div class="info-item">
+                <span class="emoji">💅</span>
+                <strong>Servicio:</strong>
+                <span th:text="${appointment.serviceCatalog.name}">Servicio</span>
+            </div>
+            
+            <div class="info-item">
+                <span class="emoji">👩‍💼</span>
+                <strong>Profesional:</strong>
+                <span th:text="${appointment.professional != null ? appointment.professional : 'A asignar'}">Profesional</span>
+            </div>
+        </div>
+
+        <!-- Countdown -->
+        <div class="countdown">
+            ⏳ Tu cita es pronto. ¡No te lo pierdas!
+        </div>
+
+        <!-- Call to Action -->
+        <p style="text-align: center; margin: 30px 0;">
+            Si no puedes asistir, avísanos ahora mismo
+        </p>
+        <p style="text-align: center;">
+            <a href="https://bunnycure.cl" class="action-button">Ir a Bunny Cure</a>
+        </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p><strong>Bunny Cure</strong> - Salón de Belleza</p>
+        <p>📞 +56 9 6449 9995</p>
+        <p>📧 contacto@bunnycure.cl</p>
+        <p style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
+            Este es un email automático. Por favor no responder a este mensaje.
+        </p>
+    </div>
+</div>
+</body>
+</html>

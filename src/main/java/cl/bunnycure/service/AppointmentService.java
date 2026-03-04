@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -85,6 +86,15 @@ public class AppointmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con ID: " + id));
     }
 
+    // Alias para consistencia
+    public Optional<Appointment> getAppointmentById(Long id) {
+        return appointmentRepository.findByIdWithDetails(id);
+    }
+
+    public Appointment saveAppointment(Appointment appointment) {
+        return appointmentRepository.save(appointment);
+    }
+
     public List<Appointment> findByDateRange(LocalDate start, LocalDate end) {
         return appointmentRepository.findByDateRangeWithCustomer(start, end); // ← nombre actualizado
     }
@@ -105,5 +115,61 @@ public class AppointmentService {
         notificationService.sendConfirmation(appointment);
         appointment.setNotificationSent(true);
         appointmentRepository.save(appointment);
+    }
+
+    /**
+     * Envía recordatorios para citas programadas para mañana
+     */
+    @Transactional
+    public void sendRemindersForUpcomingAppointments() {
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        List<Appointment> appointments = findByStatus(AppointmentStatus.CONFIRMED);
+        
+        appointments.stream()
+                .filter(a -> a.getAppointmentDate().equals(tomorrow))
+                .forEach(appointment -> {
+                    try {
+                        notificationService.sendReminderNotification(appointment, "tomorrow");
+                        appointment.setReminderSent(true);
+                        appointmentRepository.save(appointment);
+                    } catch (Exception e) {
+                        // Log error but continue processing other appointments
+                    }
+                });
+    }
+
+    /**
+     * Envía recordatorios para citas en las próximas 2 horas
+     */
+    @Transactional
+    public void sendRemindersForAppointmentsIn2Hours() {
+        LocalDate today = LocalDate.now();
+        List<Appointment> appointments = findByStatus(AppointmentStatus.CONFIRMED);
+        
+        appointments.stream()
+                .filter(a -> a.getAppointmentDate().equals(today))
+                .forEach(appointment -> {
+                    try {
+                        notificationService.sendReminderNotification(appointment, "2hours");
+                        appointmentRepository.save(appointment);
+                    } catch (Exception e) {
+                        // Log error but continue processing other appointments
+                    }
+                });
+    }
+
+    /**
+     * Encuentra todas las citas con un estado específico
+     */
+    public List<Appointment> findByStatus(AppointmentStatus status) {
+        return appointmentRepository.findByStatus(status);
+    }
+
+    /**
+     * Guarda una cita
+     */
+    @Transactional
+    public Appointment save(Appointment appointment) {
+        return appointmentRepository.save(appointment);
     }
 }

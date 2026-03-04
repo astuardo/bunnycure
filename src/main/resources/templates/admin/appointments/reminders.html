@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recordatorios de Citas - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF69B4;
+            --secondary: #FF1493;
+            --light: #FFF0F5;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 30px 20px;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-weight: bold;
+        }
+        
+        .section-title {
+            color: var(--secondary);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            font-weight: bold;
+        }
+        
+        .alert-custom {
+            border-left: 4px solid;
+        }
+        
+        .card {
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            background-color: var(--light);
+            border-bottom: 2px solid var(--primary);
+            padding: 15px 20px;
+        }
+        
+        .btn-action {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 13px;
+            margin: 5px;
+            transition: opacity 0.3s ease;
+        }
+        
+        .btn-action:hover {
+            opacity: 0.9;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .badge-tomorrow {
+            background-color: #4CAF50;
+        }
+        
+        .badge-2hours {
+            background-color: #FF6347;
+        }
+        
+        .appointment-item {
+            padding: 15px;
+            border-left: 4px solid var(--primary);
+            background-color: #f9f9f9;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        
+        .appointment-time {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--secondary);
+        }
+        
+        .appointment-service {
+            color: #666;
+            margin: 5px 0;
+        }
+        
+        .reminder-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .reminder-status.sent {
+            background-color: #E8F5E9;
+            color: #2E7D32;
+        }
+        
+        .reminder-status.pending {
+            background-color: #FFF3E0;
+            color: #E65100;
+        }
+        
+        .info-box {
+            background-color: #E3F2FD;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .info-box strong {
+            color: #1565C0;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="container">
+        <h1><i class="fas fa-bell"></i> Recordatorios de Citas</h1>
+        <p class="mb-0">Gestiona recordatorios automáticos y manuales para citas</p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Mensajes de Alerta -->
+    <div th:if="${success}" class="alert alert-success alert-custom" role="alert">
+        <i class="fas fa-check-circle"></i> <strong>Éxito:</strong> <span th:text="${success}"></span>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-custom" role="alert">
+        <i class="fas fa-exclamation-circle"></i> <strong>Error:</strong> <span th:text="${error}"></span>
+    </div>
+
+    <!-- Información General -->
+    <div class="info-box">
+        <i class="fas fa-info-circle"></i> <strong>Información:</strong> 
+        Los recordatorios se envían automáticamente diariamente a las 9:00 AM para citas de mañana, 
+        y cada 2 horas para citas en las próximas 2 horas. También puedes enviar recordatorios manualmente aquí.
+    </div>
+
+    <!-- Botones de Acciones en Lote -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-envelope"></i> Acciones Rápidas</h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/admin/appointments/send-reminders-tomorrow}" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-action">
+                    <i class="fas fa-calendar-tomorrow"></i> Enviar Recordatorios para Mañana
+                </button>
+            </form>
+            <form th:action="@{/admin/appointments/send-reminders-2hours}" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-action">
+                    <i class="fas fa-clock"></i> Enviar Recordatorios para Próximas 2 Horas
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Citas Pendientes -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list"></i> Citas Pendientes 
+                <span class="badge badge-pill bg-danger" th:text="${totalPending}"></span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div th:if="${appointments.isEmpty()}" class="empty-state">
+                <i class="fas fa-calendar-check"></i>
+                <p><strong>No hay citas pendientes de recordatorios</strong></p>
+                <p class="text-muted">Todas las citas están al día con sus recordatorios</p>
+            </div>
+
+            <div th:unless="${appointments.isEmpty()}">
+                <div th:each="apt : ${appointments}" class="appointment-item">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="appointment-time" th:text="${#temporals.format(apt.appointmentTime, 'HH:mm')}">
+                                10:30 AM
+                            </div>
+                            <div class="appointment-service">
+                                <strong th:text="${apt.customer.name}"></strong> - 
+                                <span th:text="${apt.serviceCatalog.name}"></span>
+                            </div>
+                            <div class="text-muted" style="font-size: 12px;">
+                                <i class="fas fa-calendar"></i>
+                                <span th:text="${#temporals.format(apt.appointmentDate, 'dd/MM/yyyy')}"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span th:if="${apt.reminderSent}" class="reminder-status sent">
+                                <i class="fas fa-check"></i> Recordatorio Enviado
+                            </span>
+                            <span th:unless="${apt.reminderSent}" class="reminder-status pending">
+                                <i class="fas fa-clock"></i> Pendiente
+                            </span>
+                            <form th:action="@{/admin/appointments/{id}/send-reminder(id=${apt.id})}" 
+                                  method="POST" style="display: inline; margin-top: 10px;">
+                                <button type="submit" class="btn btn-action btn-sm">
+                                    <i class="fas fa-paper-plane"></i> Enviar Ahora
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información sobre Recordatorios Automáticos -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-robot"></i> Recordatorios Automáticos</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Cronograma de Recordatorios Automáticos:</strong></p>
+            <ul>
+                <li><strong>9:00 AM</strong> - Recordatorios para citas de <strong>mañana</strong></li>
+                <li><strong>Cada 2 horas</strong> - Recordatorios urgentes para citas en las <strong>próximas 2 horas</strong></li>
+            </ul>
+            <p class="mt-3 text-muted">
+                <i class="fas fa-info-circle"></i> 
+                Los recordatorios se envían automáticamente. Puedes enviar recordatorios manuales 
+                usando los botones anteriores si es necesario.
+            </p>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mt-4 mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-danger" th:text="${totalPending}">0</h3>
+                    <p class="text-muted mb-0">Citas con Recordatorios Pendientes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-success"><i class="fas fa-check-circle"></i></h3>
+                    <p class="text-muted mb-0">Recordatorios Automáticos Activos</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

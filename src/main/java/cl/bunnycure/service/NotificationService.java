@@ -163,6 +163,10 @@ public class NotificationService {
 
     // ── Helpers privados ─────────────────────────────────────────────────────
 
+    private void sendEmail(String to, String subject, String html) throws Exception {
+        sendHtml(to, subject, html);
+    }
+
     private void send(Appointment appointment, String template, String subject) {
         try {
             String fechaFormateada = appointment.getAppointmentDate()
@@ -185,13 +189,137 @@ public class NotificationService {
     }
 
     private void sendHtml(String to, String subject, String html) throws Exception {
-        MimeMessage msg = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(msg, true, "UTF-8");
-        helper.setFrom(mailFrom, "BunnyCure \uD83D\uDC85");
-        helper.setTo(to);
-        helper.setSubject(subject);
-        helper.setText(html, true);
-        mailSender.send(msg);
-        log.info("[MAIL-OK] {} → {}", subject, to);
+        int maxRetries = 3;
+        int delayMs = 1000;
+        
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                MimeMessage msg = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(msg, true, "UTF-8");
+                helper.setFrom(mailFrom, "BunnyCure 💅");
+                helper.setTo(to);
+                helper.setSubject(subject);
+                helper.setText(html, true);
+                mailSender.send(msg);
+                log.info("[MAIL-OK] {} → {}", subject, to);
+                return; // Success, exit
+            } catch (Exception e) {
+                log.warn("[MAIL-RETRY] Intento {} de {} fallido para {}: {}", 
+                        attempt, maxRetries, to, e.getMessage());
+                
+                if (attempt < maxRetries) {
+                    try {
+                        Thread.sleep(delayMs);
+                        delayMs *= 2; // exponential backoff
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
+                } else {
+                    log.error("[MAIL-FAILED] Todos los intentos fallaron para {}: {}", to, e.getMessage());
+                    throw e; // Re-throw after all retries exhausted
+                }
+            }
+        }
+    }
+
+    // ── Recordatorios de citas ───────────────────────────────────────────────
+
+    @Async
+    public void sendReminder(String email, String firstName, String serviceName, 
+                            String appointmentTime, String appointmentDate,
+                            Appointment appointment) {
+        if (!mailEnabled) {
+            log.info("[MAIL-SKIP] Recordatorio para {} (mail deshabilitado)", email);
+            return;
+        }
+
+        try {
+            Context context = new Context();
+            context.setVariable("firstName", firstName);
+            context.setVariable("serviceName", serviceName);
+            context.setVariable("appointmentTime", appointmentTime);
+            context.setVariable("appointmentDate", appointmentDate);
+            context.setVariable("whatsappNumber", whatsappNumber);
+
+            String html = templateEngine.process("mail/reminder", context);
+            sendEmail(email, "🐰 Recordatorio de tu cita - Bunny Cure", html);
+
+        } catch (Exception e) {
+            log.error("[MAIL-ERROR] Recordatorio → {}: {}", email, e.getMessage());
+        }
+    }
+
+    /**
+     * Envía recordatorios automáticos para citas próximas
+     * @param appointment La cita para la que enviar el recordatorio
+     * @param type El tipo de recordatorio: "tomorrow" (mañana) o "2hours" (en 2 horas)
+     */
+    @Async
+    public void sendReminderNotification(Appointment appointment, String type) {
+        if (appointment == null || appointment.getCustomer() == null) {
+            return;
+        }
+
+        try {
+            String customerName = appointment.getCustomer().getFirstName();
+            String serviceName = appointment.getService().getName();
+            String email = appointment.getCustomer().getEmail();
+            String phone = appointment.getCustomer().getPhone();
+            String appointmentTime = appointment.getAppointmentTime() != null ? 
+                    appointment.getAppointmentTime().toString() : "";
+            String appointmentDate = appointment.getAppointmentDate().toString();
+
+            String subject, templateName;
+            String message;
+
+            if ("tomorrow".equals(type)) {
+                subject = "🐰 Tu cita es mañana - Bunny Cure";
+                templateName = "mail/reminder-tomorrow";
+                message = String.format("Hola %s, tu cita para %s está programada para mañana a las %s", 
+                    customerName, serviceName, appointmentTime);
+            } else if ("2hours".equals(type)) {
+                subject = "⏰ Tu cita es en 2 horas - Bunny Cure";
+                templateName = "mail/reminder-2hours";
+                message = String.format("¡Hola %s! Tu cita para %s es en 2 horas a las %s. ¡No olvides!", 
+                    customerName, serviceName, appointmentTime);
+            } else {
+                return;
+            }
+
+            // Enviar email
+            try {
+                Context context = new Context();
+                context.setVariable("firstName", customerName);
+                context.setVariable("serviceName", serviceName);
+                context.setVariable("appointmentTime", appointmentTime);
+                context.setVariable("appointmentDate", appointmentDate);
+                String html = templateEngine.process(templateName, context);
+                sendEmail(email, subject, html);
+            } catch (Exception e) {
+                log.warn("[MAIL-WARN] No se pudo enviar email recordatorio: {}", e.getMessage());
+            }
+
+            // Enviar WhatsApp (solo si teléfono disponible)
+            if (phone != null && !phone.isEmpty()) {
+                try {
+                    sendWhatsAppMessage(phone, message);
+                } catch (Exception e) {
+                    log.warn("[WHATSAPP-WARN] No se pudo enviar WhatsApp recordatorio: {}", e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("[REMINDER-ERROR] Error al enviar recordatorio para cita ID {}: {}", 
+                appointment.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Envía un mensaje por WhatsApp (placeholder para integración futura)
+     */
+    private void sendWhatsAppMessage(String phoneNumber, String message) {
+        // TODO: Integrar con servicio WhatsApp (Twilio, MessageBird, etc.)
+        log.info("[WHATSAPP] Mensaje a {}: {}", phoneNumber, message);
     }
 }

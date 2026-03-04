@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #d8b4fe 0%, #c084fc 100%); padding: 40px 20px; text-align: center; color: white; }
+        .header h1 { font-size: 28px; margin-bottom: 5px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+        .content { padding: 40px 20px; }
+        .reminder-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .reminder-box p { color: #92400e; margin: 0; font-weight: 500; }
+        .details { background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #6b7280; font-weight: 500; }
+        .detail-value { color: #111827; font-weight: 600; }
+        .action-btn { display: inline-block; background: linear-gradient(135deg, #d8b4fe 0%, #c084fc 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; margin: 10px 5px 10px 0; font-weight: 500; border: none; cursor: pointer; }
+        .action-btn:hover { opacity: 0.9; }
+        .footer { background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; }
+        .divider { height: 2px; background: linear-gradient(90deg, transparent, #d8b4fe, transparent); margin: 30px 0; }
+        .icon { font-size: 24px; margin-right: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🐰 Recordatorio de Cita</h1>
+            <p>Bunny Cure</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <p style="font-size: 16px; color: #111827; margin-bottom: 20px;">
+                ¡Hola <strong th:text="${firstName}">Cliente</strong>! 👋
+            </p>
+
+            <p style="color: #374151; line-height: 1.6; margin-bottom: 25px;">
+                Te recordamos que tienes una cita programada <strong>hoy</strong> en Bunny Cure. 
+                Aquí están los detalles:
+            </p>
+
+            <!-- Reminder Box -->
+            <div class="reminder-box">
+                <p>⏰ <strong>No olvides tu cita de hoy</strong></p>
+                <p style="margin-top: 10px; font-size: 13px;">Por favor, llega 5 minutos antes de la hora programada para que podamos atenderte de la mejor manera.</p>
+            </div>
+
+            <!-- Details -->
+            <div class="details">
+                <div class="detail-row">
+                    <span class="detail-label">🎀 Servicio</span>
+                    <span class="detail-value" th:text="${serviceName}">Servicio</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">📅 Fecha</span>
+                    <span class="detail-value" th:text="${appointmentDate}">Fecha</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">🕐 Hora</span>
+                    <span class="detail-value" th:text="${appointmentTime}">Hora</span>
+                </div>
+            </div>
+
+            <!-- Important Info -->
+            <div style="background: #ede9fe; border-left: 4px solid #7c3aed; padding: 15px; border-radius: 8px; margin-bottom: 30px;">
+                <p style="color: #5b21b6; font-size: 14px; margin: 0;">
+                    <strong>✨ Consejos:</strong> 
+                    Asegúrate de llegar con tiempo, trae tu documentación si es primera vez, 
+                    y comunícate si necesitas reprogramar tu cita.
+                </p>
+            </div>
+
+            <!-- Contact Section -->
+            <p style="color: #6b7280; text-align: center; margin: 30px 0; font-size: 14px;">
+                ¿Necesitas ayuda o quieres reprogramar?
+            </p>
+
+            <div style="text-align: center;">
+                <a th:href="'https://wa.me/' + ${whatsappNumber} + '?text=Hola!%20Tengo%20una%20pregunta%20sobre%20mi%20cita%20de%20hoy.'" 
+                   class="action-btn">
+                    💬 Contactar por WhatsApp
+                </a>
+            </div>
+
+            <div class="divider"></div>
+
+            <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin-top: 20px;">
+                Estamos emocionadas de verte hoy en Bunny Cure. Tu comodidad y satisfacción 
+                son nuestras prioridades. 🐇✨
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>🐰 <strong>Bunny Cure</strong> | Servicios de belleza</p>
+            <p style="margin-top: 10px;">Si no solicitaste este recordatorio, ignora este email.</p>
+        </div>
+    </div>
+</body>
+</html>

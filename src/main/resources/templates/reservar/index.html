@@ -187,11 +187,17 @@
     <div class="row g-3 mb-4">
         <div class="col-md-6">
             <input type="text" id="clientName" class="form-control"
-                   placeholder="Tu nombre *" maxlength="100"/>
+                   placeholder="Tu nombre *" maxlength="100" required/>
         </div>
         <div class="col-md-6">
-            <input type="tel" id="clientPhone" class="form-control"
-                   placeholder="Tu teléfono * (+569...)" maxlength="20"/>
+            <div class="input-group">
+                <span class="input-group-text" style="border-radius:10px 0 0 10px;">+56</span>
+                <input type="tel" id="clientPhone" class="form-control"
+                       placeholder="9 dígitos *" maxlength="9" minlength="9" required
+                       pattern="[0-9]{9}" inputmode="numeric"
+                       style="border-radius:0 10px 10px 0;"/>
+            </div>
+            <small class="text-muted d-block mt-1">Ingresa solo los 9 dígitos sin el +56</small>
         </div>
         <div class="col-12">
             <input type="email" id="clientEmail" class="form-control"
@@ -283,8 +289,7 @@
     <div class="whatsapp-preview mt-3" id="msgPreview"></div>
 
     <!-- Form oculto para POST -->
-    <form id="bookingForm" th:action="@{/reservar/submit}" method="post" style="display:none;">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <form id="bookingForm" action="/reservar/submit" method="post" style="display:none;">
         <input type="hidden" name="fullName"       id="hFullName"/>
         <input type="hidden" name="phone"          id="hPhone"/>
         <input type="hidden" name="email"          id="hEmail"/>
@@ -345,20 +350,30 @@
     function updatePreview() {
         const name  = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
+        const email = document.getElementById('clientEmail').value.trim();
         const date  = document.getElementById('bookingDate').value;
 
+        // Validar nombre
+        const validName = name.length > 0;
+
+        // Validar teléfono (exactamente 9 dígitos)
+        const validPhone = /^[0-9]{9}$/.test(phone);
+
+        // Validar email (si se proporciona, debe ser válido)
+        const validEmail = email === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
         // Validar domingo
+        let validDate = false;
         if (date) {
             const d = new Date(date + 'T12:00:00');
             const isSunday = d.getDay() === 0;
             document.getElementById('dateError').classList.toggle('d-none', !isSunday);
             validDate = !isSunday;
         } else {
-            validDate = false;
             document.getElementById('dateError').classList.add('d-none');
         }
 
-        const ready = name && phone && selectedService && validDate && selectedBlock;
+        const ready = validName && validPhone && validEmail && selectedService && validDate && selectedBlock;
         document.getElementById('btnSubmit').disabled   = !ready;
         document.getElementById('btnWhatsapp').disabled = !ready;
 
@@ -384,6 +399,9 @@
         const phone = document.getElementById('clientPhone').value.trim();
         const date  = document.getElementById('bookingDate').value;
 
+        // Formatear teléfono con +56
+        const fullPhone = '+56' + phone;
+
         return MSG_TEMPLATE
             .replace('[conejo]', '\uD83D\uDC30')
             .replace('[bunny]',  '\uD83D\uDC30')
@@ -391,7 +409,7 @@
             .replace('{fecha}',     formatDate(date))
             .replace('{bloque}',    selectedBlock || '')
             .replace('{nombre}',    name)
-            .replace('{telefono}',  phone);
+            .replace('{telefono}',  fullPhone);
     }
 
     function submitRequest() {
@@ -401,10 +419,35 @@
         const date  = document.getElementById('bookingDate').value;
         const notes = document.getElementById('clientNotes').value.trim();
 
-        if (!name || !phone || !selectedService || !date || !selectedBlock) return;
+        // Validar nombre
+        if (!name) {
+            alert('Por favor ingresa tu nombre');
+            return;
+        }
+
+        // Validar teléfono (exactamente 9 dígitos)
+        if (!phone || !/^[0-9]{9}$/.test(phone)) {
+            alert('Por favor ingresa un teléfono válido (9 dígitos)');
+            return;
+        }
+
+        // Validar email (si se proporciona)
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            alert('Por favor ingresa un correo válido');
+            return;
+        }
+
+        // Validar servicio, fecha y bloque
+        if (!selectedService || !date || !selectedBlock) {
+            alert('Por favor completa todos los campos requeridos');
+            return;
+        }
+
+        // Pasar el teléfono con +56
+        const fullPhone = '+56' + phone;
 
         document.getElementById('hFullName').value  = name;
-        document.getElementById('hPhone').value     = phone;
+        document.getElementById('hPhone').value     = fullPhone;
         document.getElementById('hEmail').value     = email;
         document.getElementById('hServiceId').value = selectedService.id;
         document.getElementById('hDate').value      = date;

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solicitud No Disponible – Bunny Cure</title>
+  <style>
+    body { margin:0; padding:0; font-family:'Segoe UI',Arial,sans-serif;
+      background:#FDF2F8; color:#333; }
+    .container { max-width:560px; margin:32px auto; background:#fff;
+      border-radius:20px; overflow:hidden;
+      box-shadow:0 4px 24px rgba(236,72,153,.15); }
+    .header { background:linear-gradient(135deg,#FCA5A5,#F87171,#EF4444);
+      padding:40px 24px 32px; text-align:center; color:#fff; }
+    .brand { font-size:2.4rem; margin-bottom:4px; }
+    .header h1 { margin:8px 0 4px; font-size:22px; font-weight:800;
+      letter-spacing:-.3px; }
+    .header p  { margin:6px 0 0; font-size:13px; opacity:.93; }
+    .body { padding:28px 28px 20px; }
+    .greeting { font-size:15px; color:#374151; margin:0 0 20px;
+      line-height:1.6; }
+    .card { background:#FEE2E2; border-radius:12px; padding:16px 20px;
+      margin:0 0 20px; border-left:4px solid #EF4444; }
+    .card-row { display:flex; justify-content:space-between;
+      align-items:center; padding:9px 0;
+      border-bottom:1px solid #FECACA; font-size:14px; }
+    .card-row:last-child { border-bottom:none; padding-bottom:0; }
+    .label { color:#7F1D1D; font-size:13px; font-weight:500; }
+    .value { font-weight:600; color:#991B1B; text-align:right; }
+    .badge-status { display:inline-block;
+      background:#FEE2E2; color:#991B1B; padding:4px 12px;
+      border-radius:20px; font-size:12px; font-weight:700;
+      border:1px solid #FECACA; }
+    .reason-box { background:#FEF2F2; border-radius:12px; padding:16px 18px;
+      margin:20px 0; border-left:4px solid #EF4444;
+      font-size:14px; line-height:1.6; color:#7F1D1D; }
+    .reason-box strong { display:block; margin-bottom:8px;
+      font-size:14px; font-weight:700; color:#991B1B; }
+    .tip { border-radius:12px; padding:14px 18px; margin-bottom:20px;
+      font-size:13px; line-height:1.6; }
+    .tip-info { background:#E0E7FF; color:#3730A3;
+      border:1px solid #C7D2FE; }
+    .tip strong { display:block; margin-bottom:4px;
+      font-size:13px; font-weight:700; }
+    .cta-button { display:inline-block;
+      background:linear-gradient(135deg,#F472B6,#EC4899);
+      color:#fff; padding:12px 28px; border-radius:24px;
+      text-decoration:none; font-weight:600; font-size:14px;
+      text-align:center; margin:20px 0; }
+    .divider { height:1px; background:linear-gradient(90deg,
+    transparent,#FECACA,transparent);
+      margin:20px 0; border:none; }
+    .footer { text-align:center; padding:20px 24px; font-size:12px;
+      color:#9CA3AF; background:#FDF2F8;
+      border-top:1px solid #FCE7F3; line-height:1.8; }
+    .footer strong { color:#EC4899; font-size:13px; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">🐰</div>
+    <h1>Sobre tu solicitud</h1>
+    <p>Hola <strong th:text="${customerName}"></strong>,
+      ¡queremos darte información importante! 📬</p>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <p class="greeting">
+      Revisamos tu solicitud de reserva con mucho cuidado, pero lamentablemente
+      no podemos confirmarla en este momento. A continuación, te explicamos por qué.
+    </p>
+
+    <!-- Detalles de la solicitud -->
+    <div class="card">
+      <div class="card-row">
+        <span class="label">💅 Servicio:</span>
+        <span class="value" th:text="${serviceName}"></span>
+      </div>
+      <div class="card-row">
+        <span class="label">📞 Tu teléfono:</span>
+        <span class="value" th:text="${request.phone}"></span>
+      </div>
+      <div class="card-row">
+        <span class="label">Estado:</span>
+        <span class="badge-status">❌ No disponible</span>
+      </div>
+    </div>
+
+    <!-- Razón del rechazo -->
+    <div class="reason-box" th:if="${rejectionReason != null && rejectionReason != ''}">
+      <strong>💬 Razón:</strong>
+      <span th:text="${rejectionReason}"></span>
+    </div>
+
+    <!-- Tip importante -->
+    <div class="tip tip-info">
+      <strong>✨ ¿Qué puedes hacer?</strong>
+      No te desanimes. Puedes:
+      <ul style="margin:8px 0 0; padding-left:20px;">
+        <li>Intentar reservar otra fecha o horario que sea de tu preferencia</li>
+        <li>Contactarnos por WhatsApp para explorar otras opciones</li>
+        <li>Preguntarnos por promociones o alternativas de servicios</li>
+      </ul>
+    </div>
+
+    <!-- CTA / WhatsApp -->
+    <div style="text-align:center;">
+      <p style="color:#6B7280; font-size:14px; margin-bottom:12px;">
+        📱 Comunícate con nosotras directamente para más información:
+      </p>
+      <a href="https://wa.me/56983692046?text=Hola%20BunnyCure%20Tengo%20una%20consulta%20sobre%20mi%20solicitud"
+         style="display:inline-block; background:linear-gradient(135deg,#10B981,#059669); color:#fff;
+         padding:12px 24px; border-radius:24px; text-decoration:none; font-weight:600; font-size:14px;">
+        💚 Habla con nosotras en WhatsApp
+      </a>
+    </div>
+
+    <!-- Divider -->
+    <hr class="divider"/>
+
+    <!-- Esperanza -->
+    <div class="tip" style="background:#F3E8FF; border:1px solid #E9D5FF; color:#6B21A8;">
+      <strong>✨ Nunca es un "no" definitivo</strong>
+      Estamos siempre buscando la mejor manera de atenderte. ¡Vuelve a intentarlo pronto!
+      Tu belleza es importante para nosotras. 💖
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <strong>Bunny Cure</strong><br/>
+    Tu salón de belleza de confianza 💅<br/>
+    <br/>
+    Este correo se envió a <strong th:text="${request.email}"></strong>.
+  </div>
+
+</div>
+</body>
+</html>

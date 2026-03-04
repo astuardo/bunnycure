@@ -2,6 +2,7 @@ package cl.bunnycure.domain.enums;
 
 public enum AppointmentStatus {
     PENDING("Pendiente"),
+    CONFIRMED("Confirmado"),
     COMPLETED("Completado"),
     CANCELLED("Cancelado");
 

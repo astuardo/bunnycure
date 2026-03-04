@@ -98,9 +98,9 @@ public class DataInitializer implements CommandLineRunner {
         // ── Clientes de prueba ───────────────────────────────────────────────
         if (customerRepository.count() == 0) {
             customerRepository.saveAll(List.of(
-                    new Customer("María González",   "+56912345678", "maria@test.cl"),
-                    new Customer("Valentina López",  "+56987654321", "vale@test.cl"),
-                    new Customer("Javiera Muñoz",    "+56911223344", "javi@test.cl")
+                    new Customer("María González",   "+56912345678", "astuardobonilla@gmail.com"),
+                    new Customer("Valentina López",  "+56987654321", "astuardobonilla@test.com"),
+                    new Customer("Javiera Muñoz",    "+56911223344", "astuardobonilla@test2.com")
             ));
             log.info("✅ Clientes de prueba inicializados");
         }

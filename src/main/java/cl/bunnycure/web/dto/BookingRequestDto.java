@@ -9,7 +9,7 @@ public class BookingRequestDto {
     private String fullName;
 
     @NotBlank(message = "El teléfono es obligatorio")
-    @Pattern(regexp = "^\\+?[0-9]{8,15}$", message = "Formato de teléfono inválido")
+    @Pattern(regexp = "^\\+56[0-9]{9}$", message = "El teléfono debe ser +56 seguido de 9 dígitos")
     private String phone;
 
     @Email(message = "Email inválido")

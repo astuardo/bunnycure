@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,8 +42,14 @@ public class SecurityConfig {
 
 		// ── Autorización ──────────────────────────────────────────────────────
 		http.authorizeHttpRequests(auth -> {
+			// Recursos estáticos y metadatos que no requieren autenticación
 			auth.requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll();
+			auth.requestMatchers("/favicon.ico", "/.well-known/**").permitAll();
+			auth.requestMatchers("/error").permitAll();
+			
+			// Login
 			auth.requestMatchers("/login", "/login/**").permitAll();
+			
 			// Portal público: GET y POST de reservas
 			auth.requestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit").permitAll();
 
@@ -52,6 +59,11 @@ public class SecurityConfig {
 
 			auth.anyRequest().authenticated();
 		});
+
+		// ── Sesiones: crear solo cuando sea necesario ──────────────────────────
+		http.sessionManagement(session -> session
+				.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+		);
 
 		// ── Login ─────────────────────────────────────────────────────────────
 		http.formLogin(form -> form
@@ -76,12 +88,16 @@ public class SecurityConfig {
 		// ── Headers según perfil ──────────────────────────────────────────────
 		if (isLocal) {
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/h2-console/**")
+					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.sameOrigin())
 			);
 		} else {
+			// Disable CSRF for public booking portal to avoid session creation issues
+			http.csrf(csrf -> csrf
+					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit")
+			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.deny())
 					.httpStrictTransportSecurity(hsts -> hsts

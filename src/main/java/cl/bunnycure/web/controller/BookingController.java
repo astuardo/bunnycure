@@ -30,7 +30,7 @@ public class BookingController {
     }
 
     // ── GET /reservar ────────────────────────────────────────────────────────
-    @GetMapping("/reservar")
+    @GetMapping({"/reservar", "/reservar/"})
     public String index(Model model) {
         boolean bookingEnabled = Boolean.parseBoolean(
                 appSettingsService.get("booking.enabled", "true"));
@@ -43,7 +43,11 @@ public class BookingController {
                 serviceCatalogService.findAll().stream()
                         .filter(s -> s.isActive()).toList());
         model.addAttribute("timeBlocks",      buildTimeBlocks());
-        model.addAttribute("submitted",       false);
+        
+        // submitted attribute comes from flash (redirect after form submission)
+        if (!model.containsAttribute("submitted")) {
+            model.addAttribute("submitted", false);
+        }
 
         return "reservar/index";
     }
@@ -52,19 +56,10 @@ public class BookingController {
     @PostMapping("/reservar/submit")
     public String submit(@Valid @ModelAttribute("bookingRequest") BookingRequestDto dto,
                          BindingResult result,
-                         Model model,
                          RedirectAttributes flash) {
         if (result.hasErrors()) {
-            // Volvemos al form con errores
-            model.addAttribute("bookingEnabled",  true);
-            model.addAttribute("whatsappNumber",
-                    appSettingsService.get("whatsapp.number", "56964499995"));
-            model.addAttribute("services",
-                    serviceCatalogService.findAll().stream()
-                            .filter(s -> s.isActive()).toList());
-            model.addAttribute("timeBlocks", buildTimeBlocks());
-            model.addAttribute("submitted",  false);
-            return "reservar/index";
+            // Return to form with errors
+            return "redirect:/reservar?error";
         }
 
         try {
@@ -75,17 +70,9 @@ public class BookingController {
             return "redirect:/reservar";
         }
 
-        // Mostramos el paso 5 (confirmación) recargando la página
-        model.addAttribute("bookingEnabled",  true);
-        model.addAttribute("whatsappNumber",
-                appSettingsService.get("whatsapp.number", "56964499995"));
-        model.addAttribute("services",
-                serviceCatalogService.findAll().stream()
-                        .filter(s -> s.isActive()).toList());
-        model.addAttribute("timeBlocks", buildTimeBlocks());
-        model.addAttribute("submitted",  true);  // ← activa el paso 5
-
-        return "reservar/index";
+        // Redirect to /reservar with success flag
+        flash.addFlashAttribute("submitted", true);
+        return "redirect:/reservar";
     }
 
     // ── Bloques horarios configurables ───────────────────────────────────────

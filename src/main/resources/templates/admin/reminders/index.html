@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head>
+    <title>Recordatorios – Bunny Cure</title>
+</head>
+<body>
+<section th:fragment="content">
+
+  <!-- Encabezado -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">
+        <i class="bi bi-bell-fill"></i> Recordatorios de Citas
+      </h4>
+      <p class="text-muted small mb-0">Envía recordatorios a clientes sobre sus citas pendientes</p>
+    </div>
+    <form method="post" action="/admin/reminders/send-today" style="display: inline;">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="btn btn-bc btn-lg">
+        <i class="bi bi-send-fill"></i> Enviar Recordatorios Hoy
+      </button>
+    </form>
+  </div>
+
+  <!-- Mensajes -->
+  <div th:if="${successMsg}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle"></i> <span th:text="${successMsg}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${errorMsg}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> <span th:text="${errorMsg}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <!-- Estadísticas -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card stat-card">
+        <div class="row g-0 align-items-center">
+          <div class="col-auto">
+            <div class="icon-box" style="background:#FEF3C7;">
+              <i class="bi bi-clock" style="color:#92400E;font-size:1.8rem;"></i>
+            </div>
+          </div>
+          <div class="col ps-3">
+            <div style="font-size:2rem;font-weight:700;color:#1F2937;" th:text="${totalCount}">0</div>
+            <div class="text-muted small">Citas pendientes hoy sin recordatorio</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card stat-card">
+        <div class="row g-0 align-items-center">
+          <div class="col-auto">
+            <div class="icon-box" style="background:#DBEAFE;">
+              <i class="bi bi-calendar3" style="color:#1E40AF;font-size:1.8rem;"></i>
+            </div>
+          </div>
+          <div class="col ps-3">
+            <div style="font-size:1.2rem;font-weight:600;color:#1F2937;" th:text="${#temporals.format(today, 'dd/MM/yyyy')}">--/--/----</div>
+            <div class="text-muted small">Fecha actual</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lista de Recordatorios -->
+  <div class="card table-card">
+    <div class="card-header d-flex align-items-center">
+      <i class="bi bi-list-check me-2"></i>
+      <h6 class="mb-0 fw-semibold">Citas pendientes de hoy</h6>
+    </div>
+    <div class="card-body">
+      <div th:if="${#lists.isEmpty(pendingReminders)}" class="text-center py-5 text-muted">
+        <i class="bi bi-check-circle" style="font-size:3rem;opacity:.3;"></i>
+        <p class="mt-3 mb-0">No hay citas pendientes para hoy</p>
+      </div>
+
+      <div th:if="${not #lists.isEmpty(pendingReminders)}">
+        <div th:each="reminder : ${pendingReminders}" class="d-flex justify-content-between align-items-center p-3 border-bottom">
+          <div class="d-flex align-items-center gap-3 flex-grow-1">
+            <div style="min-width:80px;">
+              <span class="badge bg-warning text-dark">
+                <i class="bi bi-clock"></i>
+                <span th:text="${#temporals.format(reminder.appointmentTime, 'HH:mm')}">--:--</span>
+              </span>
+            </div>
+            <div class="flex-grow-1">
+              <div class="fw-semibold" th:text="${reminder.customer.fullName}">Cliente</div>
+              <small class="text-muted">
+                <i class="bi bi-telephone"></i>
+                <span th:text="${reminder.customer.phone}">+56 9 ---- ----</span>
+              </small>
+            </div>
+            <div style="min-width:200px;" class="text-end">
+              <small class="text-muted">
+                <i class="bi bi-scissors"></i>
+                <span th:text="${reminder.service.name}">Servicio</span>
+              </small>
+            </div>
+          </div>
+          <div class="ps-3">
+            <button type="button" class="btn btn-sm btn-outline-primary btn-send-reminder"
+                    th:data-appointment-id="${reminder.id}">
+              <i class="bi bi-send"></i> Enviar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Información -->
+  <div class="alert alert-info mt-4">
+    <div class="fw-semibold mb-2">
+      <i class="bi bi-info-circle"></i> Información importante
+    </div>
+    <ul class="mb-0 small">
+      <li>Los recordatorios se envían automáticamente cada día a las 08:00 AM</li>
+      <li>Se envían por email y WhatsApp (si están disponibles)</li>
+      <li>Puedes enviar recordatorios manuales en cualquier momento</li>
+      <li>Solo se envían a citas pendientes que aún no hayan recibido recordatorio</li>
+    </ul>
+  </div>
+
+  <script>
+    console.log('[REMINDER] Script cargado');
+    
+    // Esperar a que el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('[REMINDER] DOM cargado, configurando event listeners');
+      
+      // Agregar event listeners a todos los botones de enviar
+      const buttons = document.querySelectorAll('.btn-send-reminder');
+      console.log('[REMINDER] Encontrados ' + buttons.length + ' botones');
+      
+      buttons.forEach(function(button) {
+        button.addEventListener('click', function() {
+          const appointmentId = this.getAttribute('data-appointment-id');
+          sendReminder(this, appointmentId);
+        });
+      });
+    });
+    
+    function sendReminder(button, appointmentId) {
+      console.log('[REMINDER] Función llamada con appointmentId:', appointmentId);
+      
+      try {
+        // Obtener token CSRF del formulario existente
+        const csrfInput = document.querySelector('input[name="_csrf"]');
+        const csrfToken = csrfInput ? csrfInput.value : '';
+        
+        console.log('[REMINDER] CSRF Token:', csrfToken ? 'Encontrado' : 'NO ENCONTRADO');
+        
+        button.disabled = true;
+        button.innerHTML = '<i class="bi bi-hourglass-split"></i> Enviando...';
+
+        const headers = {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken
+        };
+
+        console.log('[REMINDER] Enviando POST a /admin/reminders/send/' + appointmentId);
+
+        fetch('/admin/reminders/send/' + appointmentId, {
+          method: 'POST',
+          headers: headers
+        })
+        .then(function(response) {
+          console.log('[REMINDER] Response status:', response.status);
+          if (!response.ok) {
+            throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+          }
+          return response.json();
+        })
+        .then(function(data) {
+          console.log('[REMINDER] Response data:', data);
+          if (data.success) {
+            button.parentElement.innerHTML = '<i class="bi bi-check-circle text-success"></i> Enviado';
+            showAlert('success', data.message);
+          } else {
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-send"></i> Enviar';
+            showAlert('danger', data.message);
+          }
+        })
+        .catch(function(error) {
+          console.error('[REMINDER] Error:', error);
+          button.disabled = false;
+          button.innerHTML = '<i class="bi bi-send"></i> Enviar';
+          showAlert('danger', 'Error: ' + error.message);
+        });
+      } catch (e) {
+        console.error('[REMINDER] Excepción en sendReminder:', e);
+        alert('Error: ' + e.message);
+      }
+    }
+
+    function showAlert(type, message) {
+      try {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-' + type + ' alert-dismissible fade show';
+        alertDiv.innerHTML = 
+          '<i class="bi bi-' + (type === 'success' ? 'check-circle' : 'exclamation-triangle') + '"></i> ' +
+          message +
+          '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+          mainContent.insertBefore(alertDiv, mainContent.firstChild);
+        } else {
+          console.warn('[REMINDER] No se encontró .main-content, agregando al body');
+          document.body.insertBefore(alertDiv, document.body.firstChild);
+        }
+        
+        setTimeout(function() { 
+          if (alertDiv.parentNode) {
+            alertDiv.remove(); 
+          }
+        }, 5000);
+      } catch (e) {
+        console.error('[REMINDER] Error mostrando alerta:', e);
+      }
+    }
+    
+    console.log('[REMINDER] Funciones definidas correctamente');
+  </script>
+
+</section>
+
+</body>
+</html>

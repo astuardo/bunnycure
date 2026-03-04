@@ -151,6 +151,7 @@
 
         /* ── Badge status ── */
         .badge-pending   { background:#FEF3C7; color:#92400E; }
+        .badge-confirmed { background:#DBEAFE; color:#1E40AF; }
         .badge-completed { background:#D1FAE5; color:#065F46; }
         .badge-cancelled { background:#FEE2E2; color:#991B1B; }
 
@@ -212,6 +213,14 @@
                    th:classappend="${activeMenu == 'appointments'} ? 'active'"
                    class="nav-link">
                     <i class="bi bi-calendar3"></i> Citas
+                </a>
+            </li>
+            <!-- Recordatorios de citas -->
+            <li class="nav-item">
+                <a th:href="@{/admin/reminders}"
+                   th:classappend="${activeMenu == 'reminders'} ? 'active'"
+                   class="nav-link">
+                    <i class="bi bi-bell"></i> Recordatorios
                 </a>
             </li>
             <!-- Solicitudes de reserva con badge de pendientes -->
