@@ -107,6 +107,20 @@
             box-shadow: 0 0 0 3px rgba(139,92,246,.1);
         }
 
+        /* Spinner customizado */
+        .spinner-border-sm {
+            --bs-spinner-width: 1rem;
+            --bs-spinner-height: 1rem;
+        }
+        .text-purple {
+            color: var(--bc-purple) !important;
+        }
+
+        /* Badge de cliente encontrado */
+        .input-group .bg-success {
+            border-color: var(--bc-purple);
+        }
+
         /* Separador o */
         .divider-or {
             display: flex; align-items: center; gap: 12px;
@@ -184,24 +198,64 @@
 
     <!-- Paso 1: Datos personales -->
     <div class="step-label"><i class="bi bi-person me-1"></i>Paso 1 — Tus datos</div>
-    <div class="row g-3 mb-4">
-        <div class="col-md-6">
-            <input type="text" id="clientName" class="form-control"
-                   placeholder="Tu nombre *" maxlength="100" required/>
-        </div>
-        <div class="col-md-6">
+    
+    <!-- Búsqueda por teléfono -->
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <label class="form-label fw-semibold">Tu número de teléfono *</label>
             <div class="input-group">
                 <span class="input-group-text" style="border-radius:10px 0 0 10px;">+56</span>
                 <input type="tel" id="clientPhone" class="form-control"
                        placeholder="9 dígitos *" maxlength="9" minlength="9" required
                        pattern="[0-9]{9}" inputmode="numeric"
-                       style="border-radius:0 10px 10px 0;"/>
+                       style="border-radius:0 10px 10px 0;"
+                       data-lookup-needed="false"/>
             </div>
             <small class="text-muted d-block mt-1">Ingresa solo los 9 dígitos sin el +56</small>
+            
+            <!-- Spinner de carga -->
+            <div id="phoneLoadingSpinner" class="d-none mt-2 text-center">
+                <div class="spinner-border spinner-border-sm text-purple me-2" role="status">
+                    <span class="visually-hidden">Buscando...</span>
+                </div>
+                <small class="text-muted">Buscando tu información...</small>
+            </div>
+            
+            <!-- Mensaje de cliente encontrado -->
+            <div id="phoneFoundMessage" class="d-none alert alert-success mt-2 py-2 px-3 mb-0" role="alert">
+                <i class="bi bi-check-circle me-2"></i>
+                <span id="phoneFoundText">Clienta encontrada</span>
+            </div>
+            
+            <!-- Mensaje de error en búsqueda -->
+            <div id="phoneLookupError" class="d-none alert alert-warning mt-2 py-2 px-3 mb-0" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <span id="phoneLookupErrorText">Error al buscar</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Datos personales (se activan después de validar teléfono) -->
+    <div id="personalDataSection" class="row g-3 mb-4" style="opacity: 0.5; pointer-events: none;">
+        <div class="col-12">
+            <label class="form-label fw-semibold">Tu nombre *</label>
+            <div class="input-group">
+                <input type="text" id="clientName" class="form-control"
+                       placeholder="Tu nombre *" maxlength="100" required
+                       data-customer-found="false"/>
+                <span id="customerFoundBadge" class="d-none input-group-text bg-success bg-opacity-10" 
+                      style="border-left: 0; border-radius: 0 10px 10px 0; color: #166534;">
+                    <i class="bi bi-person-check"></i>
+                </span>
+            </div>
+            <small id="nameNote" class="text-muted d-block mt-1"></small>
         </div>
         <div class="col-12">
+            <label class="form-label fw-semibold">Tu email (opcional)</label>
             <input type="email" id="clientEmail" class="form-control"
-                   placeholder="Tu email (opcional, para confirmación por correo)" maxlength="150"/>
+                   placeholder="Tu email (opcional, para confirmación por correo)" maxlength="150"
+                   data-customer-found="false"/>
+            <small id="emailNote" class="text-muted d-block mt-1"></small>
         </div>
     </div>
 
@@ -320,6 +374,9 @@
     let selectedService = null;
     let selectedBlock   = null;
     let validDate       = false;
+    let customerData    = null;          // Datos del cliente encontrado
+    let phoneValidated  = false;         // Teléfono validado y sin errores
+    let lookupTimeout   = null;          // Timeout para debounce de búsqueda
 
     // Fecha mínima = mañana
     (function() {
@@ -347,6 +404,128 @@
         updatePreview();
     }
 
+    /**
+     * Busca una clienta existente por teléfono en la base de datos
+     */
+    function lookupCustomerByPhone(phone) {
+        const phoneInput = document.getElementById('clientPhone');
+        const spinner = document.getElementById('phoneLoadingSpinner');
+        const foundMsg = document.getElementById('phoneFoundMessage');
+        const errorMsg = document.getElementById('phoneLookupError');
+
+        // Limpiar mensajes anteriores
+        foundMsg.classList.add('d-none');
+        errorMsg.classList.add('d-none');
+
+        // Validar formato de teléfono
+        if (!phone || !/^[0-9]{9}$/.test(phone)) {
+            phoneValidated = false;
+            enablePersonalDataSection(false);
+            customerData = null;
+            return;
+        }
+
+        // Mostrar spinner
+        spinner.classList.remove('d-none');
+        phoneValidated = false;
+        customerData = null;
+
+        // Realizar búsqueda en la API
+        const fullPhone = '+56' + phone;
+        
+        fetch(`/api/customers/lookup?phone=${encodeURIComponent(fullPhone)}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Error en búsqueda');
+            return response.json();
+        })
+        .then(data => {
+            // Ocultar spinner
+            spinner.classList.add('d-none');
+
+            if (data.found && data.id) {
+                // Clienta encontrada
+                customerData = data;
+                phoneValidated = true;
+                
+                // Pre-llenar campos con datos de la clienta
+                document.getElementById('clientName').value = data.fullName || '';
+                document.getElementById('clientEmail').value = data.email || '';
+                
+                // Marcar campos como readonly
+                document.getElementById('clientName').setAttribute('readonly', 'readonly');
+                document.getElementById('clientEmail').setAttribute('readonly', 'readonly');
+                document.getElementById('clientName').setAttribute('data-customer-found', 'true');
+                document.getElementById('clientEmail').setAttribute('data-customer-found', 'true');
+                
+                // Mostrar badge de cliente encontrado
+                document.getElementById('customerFoundBadge').classList.remove('d-none');
+                document.getElementById('nameNote').textContent = 'Cliente encontrada en el sistema';
+                document.getElementById('emailNote').textContent = 'Cliente encontrada en el sistema';
+                
+                // Mostrar mensaje de éxito
+                document.getElementById('phoneFoundText').textContent = 'Clienta encontrada! Datos cargados automáticamente.';
+                foundMsg.classList.remove('d-none');
+                
+                // Habilitar sección de datos personales
+                enablePersonalDataSection(true);
+            } else {
+                // Clienta no encontrada
+                customerData = null;
+                phoneValidated = true;
+                
+                // Limpiar y habilitar campos para nueva clienta
+                document.getElementById('clientName').value = '';
+                document.getElementById('clientEmail').value = '';
+                document.getElementById('clientName').removeAttribute('readonly');
+                document.getElementById('clientEmail').removeAttribute('readonly');
+                document.getElementById('clientName').setAttribute('data-customer-found', 'false');
+                document.getElementById('clientEmail').setAttribute('data-customer-found', 'false');
+                
+                // Ocultar badge
+                document.getElementById('customerFoundBadge').classList.add('d-none');
+                document.getElementById('nameNote').textContent = 'Nueva clienta - completa los datos';
+                document.getElementById('emailNote').textContent = 'Nueva clienta - completa los datos (opcional)';
+                
+                // Habilitar sección de datos personales
+                enablePersonalDataSection(true);
+            }
+            
+            updatePreview();
+        })
+        .catch(error => {
+            // Ocultar spinner
+            spinner.classList.add('d-none');
+            
+            // Mostrar error
+            document.getElementById('phoneLookupErrorText').textContent = 
+                'Error al buscar. Por favor intenta nuevamente.';
+            errorMsg.classList.remove('d-none');
+            
+            phoneValidated = false;
+            customerData = null;
+            enablePersonalDataSection(false);
+        });
+    }
+
+    /**
+     * Habilita o deshabilita la sección de datos personales
+     */
+    function enablePersonalDataSection(enable) {
+        const section = document.getElementById('personalDataSection');
+        if (enable) {
+            section.style.opacity = '1';
+            section.style.pointerEvents = 'auto';
+        } else {
+            section.style.opacity = '0.5';
+            section.style.pointerEvents = 'none';
+        }
+    }
+
     function updatePreview() {
         const name  = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
@@ -356,8 +535,8 @@
         // Validar nombre
         const validName = name.length > 0;
 
-        // Validar teléfono (exactamente 9 dígitos)
-        const validPhone = /^[0-9]{9}$/.test(phone);
+        // Validar teléfono (exactamente 9 dígitos y validado contra BD)
+        const validPhone = phoneValidated && /^[0-9]{9}$/.test(phone);
 
         // Validar email (si se proporciona, debe ser válido)
         const validEmail = email === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -425,8 +604,8 @@
             return;
         }
 
-        // Validar teléfono (exactamente 9 dígitos)
-        if (!phone || !/^[0-9]{9}$/.test(phone)) {
+        // Validar teléfono (exactamente 9 dígitos y validado)
+        if (!phone || !/^[0-9]{9}$/.test(phone) || !phoneValidated) {
             alert('Por favor ingresa un teléfono válido (9 dígitos)');
             return;
         }
@@ -463,8 +642,21 @@
         window.open(url, '_blank');
     }
 
-    // Escuchar cambios en inputs de texto
-    ['clientName','clientPhone','clientEmail','bookingDate'].forEach(id => {
+    // ═══ Escuchadores de eventos ═══
+
+    // Búsqueda por teléfono con debounce
+    document.getElementById('clientPhone').addEventListener('change', function() {
+        clearTimeout(lookupTimeout);
+        const phone = this.value.trim();
+        
+        // Debounce: buscar 500ms después de que dejen de escribir
+        lookupTimeout = setTimeout(() => {
+            lookupCustomerByPhone(phone);
+        }, 500);
+    });
+
+    // Actualizar vista previa cuando cambian otros campos
+    ['clientName', 'clientEmail', 'bookingDate'].forEach(id => {
         document.getElementById(id).addEventListener('input', updatePreview);
     });
     /*]]>*/

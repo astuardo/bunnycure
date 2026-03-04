@@ -4,9 +4,11 @@ import cl.bunnycure.domain.model.Customer;
 import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.CustomerDto;
+import cl.bunnycure.web.dto.CustomerSummary;
+import cl.bunnycure.web.dto.CustomerLookupResponseDto;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import cl.bunnycure.web.dto.CustomerSummary;
 
 import java.util.List;
 
@@ -52,6 +54,24 @@ public class CustomerService {
                 .map(c -> new CustomerSummary(c,
                         customerRepository.countAppointmentsByCustomerId(c.getId())))
                 .toList();
+    }
+
+    /**
+     * Busca una clienta existente por teléfono para el formulario de reserva.
+     * Retorna los datos de la clienta si existe, o una respuesta vacía si no.
+     *
+     * @param phone Número de teléfono en formato +56XXXXXXXXX
+     * @return CustomerLookupResponseDto con datos de la clienta (found=true) o vacío (found=false)
+     */
+    public CustomerLookupResponseDto findByPhoneForLookup(String phone) {
+        return customerRepository.findByPhone(phone)
+                .map(customer -> new CustomerLookupResponseDto(
+                        customer.getId(),
+                        customer.getFullName(),
+                        customer.getPhone(),
+                        customer.getEmail()
+                ))
+                .orElseGet(CustomerLookupResponseDto::new);
     }
 
     @Transactional
