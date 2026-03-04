@@ -55,9 +55,29 @@ bin/
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+.env.test
+
+# Archivos de configuración con credenciales
 **/application-local.properties
 **/application-dev.properties
+**/application-test.properties
 application-secrets.properties
+application-local*.properties
+application-dev*.properties
+
+# Archivos de base de datos local
+*.db
+*.mv.db
+*.trace.db
+bunnycure-local.*
+
+# Archivos SQL de pruebas locales
+**/test-data.sql
+**/local-data.sql
+**/cambiar-password*.sql
+**/EJECUTAR_*.sql
 
 ##############################################################
 # Logs
@@ -99,6 +119,30 @@ $RECYCLE.BIN/
 *.orig
 backups/
 backup*/
+*_backup/
+*_backup_*/
+
+# Scripts de diagnóstico y pruebas locales
+diagnosticar*.cmd
+diagnosticar*.ps1
+limpiar*.cmd
+fix-*.cmd
+*-y-limpiar.cmd
+iniciar-limpio.cmd
+clean-build.cmd
+full-build.cmd
+
+# Documentación de pruebas y notas temporales
+**/LEEME_*.txt
+**/INSTRUCCIONES_*.md
+**/EJECUTAR_*.txt
+**/PASOS_*.txt
+**/CAMBIAR_PASSWORD*.txt
+**/CAMBIAR_PASSWORD*.md
+**/*_RAPIDO.txt
+**/*_URGENTES.md
+**/COMIENZA_AQUI.md
+**/INICIO_*.md
 
 ##############################################################
 # Base de datos (archivos locales)

@@ -1,6 +1,6 @@
-# 💅 BunnyCure – Sistema de Gestión de Citas Estéticas
+# 💅 BunnyCure – Sistema de Gestión de Citas de Manicure
 
-> **Sistema integral de reserva y gestión de citas estéticas** con autenticación segura, notificaciones automáticas por email y recordatorios programados. Arquitectura escalable basada en Spring Boot 3.2.11 con soporte para múltiples entornos (local H2 y producción PostgreSQL).
+> **Sistema integral de reserva y gestión de citas manicure** con autenticación segura, notificaciones automáticas por email y recordatorios programados. Arquitectura escalable basada en Spring Boot 3.2.11 con soporte para múltiples entornos (local H2 y producción PostgreSQL).
 
 ---
 
