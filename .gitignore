@@ -97,6 +97,8 @@ $RECYCLE.BIN/
 *.swo
 *~
 *.orig
+backups/
+backup*/
 
 ##############################################################
 # Base de datos (archivos locales)
@@ -107,6 +109,9 @@ $RECYCLE.BIN/
 *.h2.db
 *.mv.db
 *.trace.db
+target/*.mv.db
+target/*.trace.db
+target/bunnycure-local*
 
 ##############################################################
 # Node (si usas frontend con npm)

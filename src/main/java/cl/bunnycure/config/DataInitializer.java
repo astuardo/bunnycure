@@ -3,13 +3,16 @@ package cl.bunnycure.config;
 import cl.bunnycure.domain.model.AppSettings;
 import cl.bunnycure.domain.model.Customer;
 import cl.bunnycure.domain.model.ServiceCatalog;
+import cl.bunnycure.domain.model.User;
 import cl.bunnycure.domain.repository.AppSettingsRepository;
 import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.domain.repository.ServiceCatalogRepository;
+import cl.bunnycure.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -24,9 +27,36 @@ public class DataInitializer implements CommandLineRunner {
     private final CustomerRepository      customerRepository;
     private final ServiceCatalogRepository serviceCatalogRepository;
     private final AppSettingsRepository appSettingsRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String ... args) {
+
+        // ── Usuario Admin ────────────────────────────────────────────────────
+        // Buscar si ya existe el usuario admin
+        User adminUser = userRepository.findByUsername("admin").orElse(null);
+        
+        if (adminUser == null) {
+            // No existe, crear uno nuevo
+            adminUser = User.builder()
+                    .username("admin")
+                    .password(passwordEncoder.encode("changeme"))
+                    .fullName("Administrador")
+                    .email("admin@bunnycure.local")
+                    .enabled(true)
+                    .role("ADMIN")
+                    .build();
+            
+            userRepository.save(adminUser);
+            log.info("✅ Usuario admin creado (username: admin, password: changeme)");
+        } else {
+            // Ya existe, actualizar la contraseña para asegurar que sea "changeme"
+            adminUser.setPassword(passwordEncoder.encode("changeme"));
+            adminUser.setEnabled(true);
+            userRepository.save(adminUser);
+            log.info("✅ Usuario admin actualizado (password: changeme)");
+        }
 
         // ── Servicios ────────────────────────────────────────────────────────
         if (serviceCatalogRepository.count() == 0) {

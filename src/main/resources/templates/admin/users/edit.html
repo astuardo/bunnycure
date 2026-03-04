@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head>
+    <title>Editar Usuario – Bunny Cure</title>
+</head>
+<body>
+<section th:fragment="content">
+
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a th:href="@{/admin/users}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h4 class="fw-bold mb-0">Editar Usuario</h4>
+      <p class="text-muted small mb-0" th:text="${user.username}">username</p>
+    </div>
+  </div>
+
+  <!-- Mensajes -->
+  <div th:if="${successMsg}" class="alert alert-success alert-dismissible fade show">
+    <i class="bi bi-check-circle me-2"></i>
+    <span th:text="${successMsg}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${errorMsg}" class="alert alert-danger alert-dismissible fade show">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <span th:text="${errorMsg}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <div class="row">
+    <!-- Información básica -->
+    <div class="col-md-6">
+      <div class="card table-card mb-3">
+        <div class="card-header">
+          <h6 class="mb-0 fw-semibold">Información Básica</h6>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/admin/users/{id}(id=${user.id})}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Usuario</label>
+              <input type="text" class="form-control" th:value="${user.username}" disabled>
+              <small class="text-muted">El nombre de usuario no se puede cambiar</small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Nombre Completo</label>
+              <input type="text" name="fullName" class="form-control" 
+                     th:value="${user.fullName}" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Email</label>
+              <input type="email" name="email" class="form-control" 
+                     th:value="${user.email}">
+            </div>
+
+            <button type="submit" class="btn btn-bc">
+              <i class="bi bi-check-lg"></i> Actualizar
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cambiar contraseña -->
+    <div class="col-md-6">
+      <div class="card table-card mb-3">
+        <div class="card-header">
+          <h6 class="mb-0 fw-semibold">Cambiar Contraseña</h6>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/admin/users/{id}/change-password(id=${user.id})}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Nueva Contraseña</label>
+              <input type="password" name="newPassword" class="form-control" 
+                     minlength="4" required placeholder="Mínimo 4 caracteres">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Confirmar Contraseña</label>
+              <input type="password" name="confirmPassword" class="form-control" 
+                     minlength="4" required placeholder="Repite la contraseña">
+            </div>
+
+            <button type="submit" class="btn btn-warning">
+              <i class="bi bi-key"></i> Cambiar Contraseña
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+</body>
+</html>

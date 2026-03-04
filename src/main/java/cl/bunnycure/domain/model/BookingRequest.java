@@ -14,11 +14,7 @@ import java.time.LocalDateTime;
 public class BookingRequest {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE,
-            generator = "booking_request_seq")
-    @SequenceGenerator(name = "booking_request_seq",
-            sequenceName = "booking_request_seq",
-            allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     // ── Datos de la solicitante ──────────────────────────────

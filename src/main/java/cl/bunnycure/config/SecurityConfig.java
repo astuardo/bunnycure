@@ -111,18 +111,8 @@ public class SecurityConfig {
 	}
 
 	// ── UserDetails ───────────────────────────────────────────────────────────
-	@Bean
-	public InMemoryUserDetailsManager userDetailsManager(PasswordEncoder encoder) {
-		log.info(">>> Configurando usuario administrador: '{}'", adminUsername);
-
-		var admin = User.builder()
-				.username(adminUsername)
-				.password(encoder.encode(adminPassword))
-				.roles("ADMIN")
-				.build();
-
-		return new InMemoryUserDetailsManager(admin);
-	}
+	// Nota: UserDetailsService se obtiene automáticamente desde UserService
+	// que implementa UserDetailsService y carga usuarios desde BD
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {

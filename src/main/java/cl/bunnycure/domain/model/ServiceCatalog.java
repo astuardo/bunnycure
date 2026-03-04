@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 public class ServiceCatalog {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, length = 100)

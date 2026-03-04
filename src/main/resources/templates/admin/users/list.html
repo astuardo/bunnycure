@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head>
+    <title>Usuarios – Bunny Cure</title>
+</head>
+<body>
+<section th:fragment="content">
+
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">
+        <i class="bi bi-people"></i> Usuarios Administradores
+      </h4>
+      <p class="text-muted small mb-0">Gestiona usuarios con acceso al panel administrativo</p>
+    </div>
+    <a th:href="@{/admin/users/new}" class="btn btn-bc">
+      <i class="bi bi-plus-lg"></i> Nuevo Usuario
+    </a>
+  </div>
+
+  <!-- Mensajes -->
+  <div th:if="${successMsg}" class="alert alert-success alert-dismissible fade show">
+    <i class="bi bi-check-circle me-2"></i>
+    <span th:text="${successMsg}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${errorMsg}" class="alert alert-danger alert-dismissible fade show">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <span th:text="${errorMsg}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <!-- Lista de usuarios -->
+  <div class="card table-card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Nombre Completo</th>
+              <th>Email</th>
+              <th>Estado</th>
+              <th>Creado</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="user : ${users}">
+              <td>
+                <strong th:text="${user.username}">admin</strong>
+              </td>
+              <td th:text="${user.fullName}">Administrador</td>
+              <td th:text="${user.email}">admin@example.com</td>
+              <td>
+                <span th:if="${user.enabled}" class="badge bg-success">Activo</span>
+                <span th:unless="${user.enabled}" class="badge bg-secondary">Inactivo</span>
+              </td>
+              <td th:text="${#temporals.format(user.createdAt, 'dd/MM/yyyy')}">01/01/2026</td>
+              <td class="text-end">
+                <div class="btn-group btn-group-sm">
+                  <a th:href="@{/admin/users/{id}/edit(id=${user.id})}" 
+                     class="btn btn-outline-primary" title="Editar">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  <form th:action="@{/admin/users/{id}/toggle(id=${user.id})}" 
+                        method="post" style="display: inline;">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit" class="btn btn-outline-warning" 
+                            th:title="${user.enabled} ? 'Desactivar' : 'Activar'">
+                      <i th:class="${user.enabled} ? 'bi bi-pause' : 'bi bi-play'"></i>
+                    </button>
+                  </form>
+                  <form th:action="@{/admin/users/{id}/delete(id=${user.id})}" 
+                        method="post" 
+                        onsubmit="return confirm('¿Eliminar usuario?')" 
+                        style="display: inline;">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit" class="btn btn-outline-danger" title="Eliminar">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</section>
+</body>
+</html>

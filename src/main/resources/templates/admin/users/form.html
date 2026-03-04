@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head>
+    <title>Nuevo Usuario – Bunny Cure</title>
+</head>
+<body>
+<section th:fragment="content">
+
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <a th:href="@{/admin/users}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h4 class="fw-bold mb-0">Nuevo Usuario</h4>
+      <p class="text-muted small mb-0">Crea un nuevo usuario administrador</p>
+    </div>
+  </div>
+
+  <!-- Mensajes -->
+  <div th:if="${errorMsg}" class="alert alert-danger alert-dismissible fade show">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <span th:text="${errorMsg}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <div class="card table-card">
+    <div class="card-body p-4">
+      <form th:action="@{/admin/users}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">
+              Usuario <span class="text-danger">*</span>
+            </label>
+            <input type="text" name="username" class="form-control" required
+                   placeholder="Nombre de usuario (sin espacios)">
+            <small class="text-muted">Usado para iniciar sesión</small>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">
+              Nombre Completo <span class="text-danger">*</span>
+            </label>
+            <input type="text" name="fullName" class="form-control" required
+                   placeholder="Nombre y apellido">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">
+              Contraseña <span class="text-danger">*</span>
+            </label>
+            <input type="password" name="password" class="form-control" required
+                   minlength="4" placeholder="Mínimo 4 caracteres">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Email</label>
+            <input type="email" name="email" class="form-control"
+                   placeholder="correo@ejemplo.com">
+          </div>
+        </div>
+
+        <div class="mt-4 d-flex gap-2">
+          <button type="submit" class="btn btn-bc">
+            <i class="bi bi-check-lg"></i> Crear Usuario
+          </button>
+          <a th:href="@{/admin/users}" class="btn btn-outline-secondary">
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</section>
+</body>
+</html>
