@@ -172,7 +172,7 @@ BunnyCure es una solución empresarial de **gestión integral de citas estética
 
 **Credenciales de Administrador:**
 - Username: `admin` (configurable: `bunnycure.admin.username`)
-- Password: `changeme` (configurable: `bunnycure.admin.password`)
+- Password: `` (configurable: `bunnycure.admin.password`)
 - Encoding: BCrypt
 
 ### 6. **Notificaciones Asincrónicas**
@@ -481,7 +481,7 @@ mvnw.cmd spring-boot:run
 
 | Usuario | Contraseña |
 |---------|-----------|
-| admin | changeme |
+| admin |  |
 
 ### 3. **Perfiles de Configuración (Profiles)**
 
@@ -501,7 +501,7 @@ spring.flyway.enabled=true
 
 # Admin local
 bunnycure.admin.username=admin
-bunnycure.admin.password=changeme
+bunnycure.admin.password=
 ```
 
 #### Heroku (application-heroku.properties)
@@ -670,7 +670,7 @@ POST /login
 Content-Type: application/x-www-form-urlencoded
 
 username=admin
-password=changeme
+password=
 ```
 
 **Respuestas:**
@@ -906,7 +906,7 @@ curl -X POST http://localhost:8080/reservar/submit \
 # 1. Admin loguea
 curl -X POST http://localhost:8080/login \
   -d "username=admin" \
-  -d "password=changeme" \
+  -d "password=" \
   -c cookies.txt
 
 # 2. Admin visualiza solicitud
@@ -1129,7 +1129,7 @@ MAIL_FROM=contacto@bunnycure.cl
 | Variable | Descripción | Default |
 |----------|-----------|---|
 | `BUNNYCURE_ADMIN_USERNAME` | Username admin | `admin` |
-| `BUNNYCURE_ADMIN_PASSWORD` | Password admin | `changeme` |
+| `BUNNYCURE_ADMIN_PASSWORD` | Password admin | `` |
 
 ### **Integraciones**
 

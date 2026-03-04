@@ -172,7 +172,7 @@ BunnyCure es una solución empresarial de **gestión integral de citas estética
 
 **Credenciales de Administrador:**
 - Username: `admin` (configurable: `bunnycure.admin.username`)
-- Password: `changeme` (configurable: `bunnycure.admin.password`)
+- Password: `` (configurable: `bunnycure.admin.password`)
 - Encoding: BCrypt
 
 ### 6. **Notificaciones Asincrónicas**
@@ -243,7 +243,7 @@ mvnw.cmd spring-boot:run
 
 **Credenciales:**
 - Username: `admin`
-- Password: `changeme`
+- Password: ``
 
 ### 3. **Perfiles (Profiles)**
 
