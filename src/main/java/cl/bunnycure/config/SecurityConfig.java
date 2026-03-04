@@ -52,6 +52,9 @@ public class SecurityConfig {
 			
 			// Portal público: GET y POST de reservas
 			auth.requestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit").permitAll();
+			
+			// API pública: búsqueda de clientes por teléfono
+			auth.requestMatchers("/api/customers/lookup").permitAll();
 
 			if (isLocal) {
 				auth.requestMatchers("/h2-console/**").permitAll();
@@ -88,7 +91,7 @@ public class SecurityConfig {
 		// ── Headers según perfil ──────────────────────────────────────────────
 		if (isLocal) {
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit")
+					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.sameOrigin())
@@ -96,7 +99,7 @@ public class SecurityConfig {
 		} else {
 			// Disable CSRF for public booking portal to avoid session creation issues
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit")
+					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.deny())
