@@ -19,7 +19,8 @@ import java.time.LocalTime;
 public class Appointment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "appointments_seq_generator")
+    @SequenceGenerator(name = "appointments_seq_generator", sequenceName = "appointments_seq", allocationSize = 1)
     private Long id;
 
     @ManyToOne(fetch = FetchType.EAGER)
