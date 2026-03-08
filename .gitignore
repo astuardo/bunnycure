@@ -168,22 +168,65 @@ package-lock.json
 yarn.lock
 
 ##############################################################
-# Documentación temporal
+# Documentación temporal y de desarrollo
 ##############################################################
 HELP.md
 TODO.md
 NOTES.md
 
+# Documentación de sesiones de desarrollo (NO versionar)
+CAMBIOS_MIGRACIONES.md
+CREDENCIALES_CORREGIDAS.md
+DESARROLLO_LOCAL.md
+DEVTOOLS_ERROR_RESUELTO.md
+DEVTOOLS_FIX_REGEX.md
+DEVTOOLS_SOLUCION_RAPIDA.md
+DEVTOOLS_VISUAL_GUIDE.md
+INTEGRACION_WHATSAPP_COMPLETA.md
+INTELLIJ_DEVTOOLS_CONFIG.md
+PROBLEMA_RESUELTO_WHATSAPP.md
+PRUEBA_FLUJOS_COMPLETOS.md
+QUICKSTART_WHATSAPP.md
+README_TECNICO.md
+REINICIAR_APLICACION.md
+RESUMEN_DEVTOOLS.md
+RESUMEN_SEGURIDAD_WHATSAPP.md
+SESION_COMPLETA_RESUMEN.md
+SOLUCION_FINAL.md
+VERIFICAR_NUMERO_META.md
+WHATSAPP_CHECKLIST.md
+WHATSAPP_CONFIG_FIX.md
+WHATSAPP_DIAGNOSTICO_RAPIDO.md
+WHATSAPP_INTEGRATION.md
+WHATSAPP_MENSAJES_NO_LLEGAN.md
+WHATSAPP_PROBLEMA_RESUELTO.md
+WHATSAPP_RESUMEN.md
+WHATSAPP_SETUP.md
+WHATSAPP_TEST_ENDPOINTS.md
+WHATSAPP_TEST_REQUESTS.md
+
+# Documentación del webhook (mantener solo las esenciales)
+INICIO_WEBHOOK.md
+WEBHOOK_IMPLEMENTADO.md
+WEBHOOK_META_VISUAL_GUIDE.md
+WHATSAPP_WEBHOOK_QUICKSTART.md
+WHATSAPP_WEBHOOK_README.md
+WHATSAPP_WEBHOOK_SETUP.md
+WHATSAPP_WEBHOOK_TEST_PAYLOADS.md
+
 ##############################################################
-# Archivos de despliegue local
+# Scripts de desarrollo local (NO versionar)
 ##############################################################
-*.cmd
-*.bat
-*.sh
+limpiar-h2.bat
+set-env-local.bat
+verificar-devtools.bat
+verificar-webhook.bat
+verificar-whatsapp.bat
+test-webhook.ps1
+
+# Permitir scripts esenciales de Maven
 !mvnw.cmd
 !mvnw
-# Permitir el script de configuración de Heroku (opcional, comentar si quieres incluirlo)
-# !configurar-heroku.cmd
 
 ##############################################################
 # Heroku

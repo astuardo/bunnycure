@@ -1,6 +1,6 @@
 # 💅 BunnyCure – Sistema de Gestión de Citas de Manicure
 
-> **Sistema integral de reserva y gestión de citas manicure** con autenticación segura, notificaciones automáticas por email y recordatorios programados. Arquitectura escalable basada en Spring Boot 3.2.11 con soporte para múltiples entornos (local H2 y producción PostgreSQL).
+> **Sistema integral de reserva y gestión de citas manicure** con autenticación segura, notificaciones automáticas por email, WhatsApp y recordatorios programados. Arquitectura escalable basada en Spring Boot 3.2.11 con soporte para múltiples entornos (local H2 y producción PostgreSQL).
 
 ---
 
@@ -8,13 +8,15 @@
 
 1. [Propósito y Solución de Ingeniería](#propósito-y-solución-de-ingeniería)
 2. [Stack Tecnológico](#stack-tecnológico)
-3. [Arquitectura de Software](#arquitectura-de-software)
-4. [Estructura de Carpetas](#estructura-de-carpetas)
-5. [Configuración y Runtime](#configuración-y-runtime)
-6. [Endpoints y Uso](#endpoints-y-uso)
-7. [Guía de Desarrollo](#guía-de-desarrollo)
-8. [Variables de Entorno](#variables-de-entorno)
-9. [Despliegue](#despliegue)
+3. [Características Principales](#características-principales)
+4. [Arquitectura de Software](#arquitectura-de-software)
+5. [Estructura de Carpetas](#estructura-de-carpetas)
+6. [Configuración y Runtime](#configuración-y-runtime)
+7. [WhatsApp Integration](#whatsapp-integration)
+8. [Endpoints y Uso](#endpoints-y-uso)
+9. [Guía de Desarrollo](#guía-de-desarrollo)
+10. [Variables de Entorno](#variables-de-entorno)
+11. [Despliegue](#despliegue)
 
 ---
 
@@ -25,16 +27,20 @@ BunnyCure es una solución empresarial de **gestión integral de citas estética
 - **Portal Público**: Clientes pueden crear solicitudes de reserva sin autenticación
 - **Panel Administrativo**: Gestión completa de citas, clientes, servicios y configuración
 - **Autenticación Segura**: Spring Security con BCrypt password encoding
-- **Notificaciones**: Envío automático de emails de confirmación, cancelación y recordatorios
+- **Notificaciones Multi-Canal**: 
+  - Email: Confirmaciones, cancelaciones y recordatorios
+  - WhatsApp: Notificaciones instantáneas vía WhatsApp Cloud API
+  - Webhook: Recepción de estados de mensajes en tiempo real
 - **Programación de Tareas**: Recordatorios automáticos mediante Spring Scheduling
 - **Persistencia Multi-Ambiente**: H2 local, PostgreSQL producción
 - **Migraciones Controladas**: Flyway para versionamiento de esquema
 
 **Diferenciadores técnicos:**
-- Arquitectura de capas limpias con separación responsabilidades (Controllers → Services → Repositories)
+- Arquitectura de capas limpias con separación de responsabilidades (Controllers → Services → Repositories)
 - DTOs con validación exhaustiva (Jakarta Validation)
 - Async/Scheduling para operaciones no-bloqueantes
-- Multi-tenancy básica por subdominio (admin.bunnycure.cl vs reservar.bunnycure.cl)
+- Integración completa con WhatsApp Cloud API
+- Sistema de webhooks para notificaciones en tiempo real
 
 ---
 
@@ -243,12 +249,16 @@ mvnw.cmd spring-boot:run
 
 **Credenciales:**
 - Username: `admin`
-- Password: ``
+- Password: `changeme`
+
+> 📖 **Para desarrollo desde IntelliJ IDEA**: Ver **[DESARROLLO_LOCAL.md](DESARROLLO_LOCAL.md)** - Guía completa con Run Configurations, scripts H2 separados, y troubleshooting.
 
 ### 3. **Perfiles (Profiles)**
 
-- **local**: H2 database, H2 console habilitada, Flyway activo
-- **heroku**: PostgreSQL, Mail SMTP Hostinger, Admin dinámico
+- **local**: H2 database (archivo), scripts en `db/migration-h2/`, H2 console habilitada, Flyway activo
+- **heroku**: PostgreSQL, scripts en `db/migration/`, Mail SMTP Hostinger, Admin dinámico
+
+> 💡 **Migraciones separadas por motor de BD**: Ver **[db/README_MIGRATIONS.md](src/main/resources/db/README_MIGRATIONS.md)** para detalles de compatibilidad H2 vs PostgreSQL.
 
 ### 4. **Variables de Entorno**
 
@@ -262,7 +272,67 @@ MAIL_PASSWORD=...
 MAIL_FROM=contacto@bunnycure.cl
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=...
+WHATSAPP_API_TOKEN=...
+WHATSAPP_PHONE_ID=...
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=...
 ```
+
+---
+
+## 📱 WhatsApp Integration
+
+BunnyCure incluye integración completa con **WhatsApp Cloud API** para enviar notificaciones instantáneas y recibir mensajes en tiempo real.
+
+### Características
+
+- ✅ **Envío de Mensajes**: Confirmaciones, cancelaciones y recordatorios por WhatsApp
+- ✅ **Plantillas Aprobadas**: Uso de templates pre-aprobados por Meta
+- ✅ **Webhook**: Recepción de notificaciones en tiempo real
+- ✅ **Estados de Mensajes**: Tracking de enviado, entregado, leído
+- ✅ **Mensajes Entrantes**: Procesamiento de mensajes de clientes
+
+### Configuración Rápida
+
+1. **Variables de Entorno (Heroku):**
+```bash
+heroku config:set WHATSAPP_API_TOKEN=tu_token_de_meta
+heroku config:set WHATSAPP_PHONE_ID=tu_phone_number_id
+heroku config:set WHATSAPP_WEBHOOK_VERIFY_TOKEN=tu_token_secreto
+```
+
+2. **Configurar Webhook en Meta:**
+   - URL: `https://tu-app.herokuapp.com/api/webhooks/whatsapp`
+   - Token: El configurado en `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+   - Eventos: `messages`, `message_status`
+
+### Endpoints de WhatsApp
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/api/webhooks/whatsapp` | GET | Verificación del webhook (Meta) |
+| `/api/webhooks/whatsapp` | POST | Recibir notificaciones |
+| `/api/webhooks/whatsapp/status` | GET | Estado del webhook |
+
+### Uso en Código
+
+```java
+@Autowired
+private WhatsAppService whatsAppService;
+
+// Enviar mensaje de texto
+whatsAppService.sendTextMessage("56912345678", "Tu cita está confirmada");
+
+// Enviar confirmación automática
+whatsAppService.sendAppointmentConfirmation(appointment);
+
+// Enviar recordatorio
+whatsAppService.sendAppointmentReminder(appointment);
+```
+
+### Documentación Detallada
+
+Para configuración paso a paso, troubleshooting y ejemplos completos, ver:
+- 📖 **README_WHATSAPP.md** - Guía completa de integración WhatsApp
 
 ---
 

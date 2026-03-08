@@ -25,6 +25,7 @@ public class NotificationService {
 
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
+    private final WhatsAppService whatsAppService;
 
     @Value("${bunnycure.mail.enabled:false}")
     private boolean mailEnabled;
@@ -35,9 +36,10 @@ public class NotificationService {
     @Value("${bunnycure.whatsapp.number:56964499995}")
     private String whatsappNumber;
 
-    public NotificationService(JavaMailSender mailSender, TemplateEngine templateEngine) {
+    public NotificationService(JavaMailSender mailSender, TemplateEngine templateEngine, WhatsAppService whatsAppService) {
         this.mailSender     = mailSender;
         this.templateEngine = templateEngine;
+        this.whatsAppService = whatsAppService;
     }
 
     // ── Citas ────────────────────────────────────────────────────────────────
@@ -56,18 +58,27 @@ public class NotificationService {
     // Compatibility alias used by booking approval flow.
     @Async
     public void sendAppointmentConfirmation(Appointment appointment) {
+        // Enviar email
         sendConfirmation(appointment);
+        
+        // Enviar WhatsApp
+        log.info("[NOTIFICATION] Enviando confirmación de cita por WhatsApp a {}", 
+                appointment.getCustomer().getPhone());
+        whatsAppService.sendAppointmentConfirmation(appointment);
     }
 
     @Async
     public void sendCancellationNotice(Appointment appointment) {
-        if (!mailEnabled) {
-            log.info("[MAIL-SKIP] Cancelación para {} (mail deshabilitado)",
-                    appointment.getCustomer().getEmail());
-            return;
+        // Enviar email si está configurado
+        if (mailEnabled) {
+            send(appointment, "mail/cancellation",
+                    "Tu cita ha sido cancelada – BunnyCure");
         }
-        send(appointment, "mail/cancellation",
-                "Tu cita ha sido cancelada – BunnyCure");
+        
+        // Enviar WhatsApp
+        log.info("[NOTIFICATION] Enviando notificación de cancelación por WhatsApp a {}", 
+                appointment.getCustomer().getPhone());
+        whatsAppService.sendAppointmentCancellation(appointment);
     }
 
     // ── Solicitudes de reserva ───────────────────────────────────────────────
@@ -77,30 +88,33 @@ public class NotificationService {
      */
     @Async
     public void sendBookingRequestReceived(BookingRequest request) {
-        if (!mailEnabled) {
-            log.info("[MAIL-SKIP] Recepción solicitud para {} (mail deshabilitado)",
-                    request.getEmail());
-            return;
+        // Enviar email si está configurado
+        if (mailEnabled && request.getEmail() != null && !request.getEmail().isBlank()) {
+            try {
+                String fechaFormateada = request.getPreferredDate()
+                        .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
+                                new Locale("es", "CL")));
+
+                Context ctx = new Context(new Locale("es", "CL"));
+                ctx.setVariable("request",          request);
+                ctx.setVariable("customerName",     request.getFullName());
+                ctx.setVariable("serviceName",      request.getService().getName());
+                ctx.setVariable("fechaFormateada",  fechaFormateada);
+                ctx.setVariable("preferredBlock",   request.getPreferredBlock());
+
+                String html = templateEngine.process("mail/booking-received", ctx);
+                sendHtml(request.getEmail(), "🐇 Recibimos tu solicitud – BunnyCure", html);
+
+            } catch (Exception e) {
+                log.error("[MAIL-ERROR] booking-received → {}: {}", request.getEmail(), e.getMessage());
+            }
         }
-        if (request.getEmail() == null || request.getEmail().isBlank()) return;
-
-        try {
-            String fechaFormateada = request.getPreferredDate()
-                    .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
-                            new Locale("es", "CL")));
-
-            Context ctx = new Context(new Locale("es", "CL"));
-            ctx.setVariable("request",          request);
-            ctx.setVariable("customerName",     request.getFullName());
-            ctx.setVariable("serviceName",      request.getService().getName());
-            ctx.setVariable("fechaFormateada",  fechaFormateada);
-            ctx.setVariable("preferredBlock",   request.getPreferredBlock());
-
-            String html = templateEngine.process("mail/booking-received", ctx);
-            sendHtml(request.getEmail(), "🐇 Recibimos tu solicitud – BunnyCure", html);
-
-        } catch (Exception e) {
-            log.error("[MAIL-ERROR] booking-received → {}: {}", request.getEmail(), e.getMessage());
+        
+        // Enviar WhatsApp si tiene teléfono
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            log.info("[NOTIFICATION] Enviando confirmación de recepción por WhatsApp a {}", 
+                    request.getPhone());
+            whatsAppService.sendBookingRequestReceived(request);
         }
     }
 
@@ -109,26 +123,29 @@ public class NotificationService {
      */
     @Async
     public void sendBookingRequestRejected(BookingRequest request) {
-        if (!mailEnabled) {
-            log.info("[MAIL-SKIP] Rechazo solicitud para {} (mail deshabilitado)",
-                    request.getEmail());
-            return;
+        // Enviar email si está configurado
+        if (mailEnabled && request.getEmail() != null && !request.getEmail().isBlank()) {
+            try {
+                Context ctx = new Context(new Locale("es", "CL"));
+                ctx.setVariable("request",          request);
+                ctx.setVariable("customerName",     request.getFullName());
+                ctx.setVariable("serviceName",      request.getService().getName());
+                ctx.setVariable("rejectionReason",  request.getRejectionReason());
+                ctx.setVariable("whatsappNumber",   whatsappNumber);
+
+                String html = templateEngine.process("mail/booking-rejected", ctx);
+                sendHtml(request.getEmail(), "Sobre tu solicitud – BunnyCure", html);
+
+            } catch (Exception e) {
+                log.error("[MAIL-ERROR] booking-rejected → {}: {}", request.getEmail(), e.getMessage());
+            }
         }
-        if (request.getEmail() == null || request.getEmail().isBlank()) return;
-
-        try {
-            Context ctx = new Context(new Locale("es", "CL"));
-            ctx.setVariable("request",          request);
-            ctx.setVariable("customerName",     request.getFullName());
-            ctx.setVariable("serviceName",      request.getService().getName());
-            ctx.setVariable("rejectionReason",  request.getRejectionReason());
-            ctx.setVariable("whatsappNumber",   whatsappNumber);
-
-            String html = templateEngine.process("mail/booking-rejected", ctx);
-            sendHtml(request.getEmail(), "Sobre tu solicitud – BunnyCure", html);
-
-        } catch (Exception e) {
-            log.error("[MAIL-ERROR] booking-rejected → {}: {}", request.getEmail(), e.getMessage());
+        
+        // Enviar WhatsApp si tiene teléfono
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            log.info("[NOTIFICATION] Enviando rechazo de solicitud por WhatsApp a {}", 
+                    request.getPhone());
+            whatsAppService.sendBookingRequestRejected(request);
         }
     }
 

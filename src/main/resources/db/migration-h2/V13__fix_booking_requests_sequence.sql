@@ -1,0 +1,2 @@
+-- H2 version - No se requiere, AUTO_INCREMENT maneja las secuencias
+-- Este script se mantiene vacío para mantener compatibilidad de versiones

@@ -55,6 +55,14 @@ public class SecurityConfig {
 			
 			// API pública: búsqueda de clientes por teléfono
 			auth.requestMatchers("/api/customers/lookup").permitAll();
+			
+			// Webhook de WhatsApp (debe ser público para recibir notificaciones de Meta)
+			auth.requestMatchers("/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**").permitAll();
+			
+			// API de pruebas WhatsApp (solo en local)
+			if (isLocal) {
+				auth.requestMatchers("/api/test/**").permitAll();
+			}
 
 			if (isLocal) {
 				auth.requestMatchers("/h2-console/**").permitAll();
@@ -91,7 +99,7 @@ public class SecurityConfig {
 		// ── Headers según perfil ──────────────────────────────────────────────
 		if (isLocal) {
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup")
+					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup", "/api/test/**", "/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.sameOrigin())
@@ -99,7 +107,7 @@ public class SecurityConfig {
 		} else {
 			// Disable CSRF for public booking portal to avoid session creation issues
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup")
+					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup", "/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.deny())

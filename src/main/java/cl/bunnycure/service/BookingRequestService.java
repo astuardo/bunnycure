@@ -141,9 +141,8 @@ public class BookingRequestService {
         request.setResolvedAt(LocalDateTime.now());
         bookingRequestRepository.save(request);
 
-        // 5. Notificar a la clienta (email + WhatsApp)
+        // 5. Notificar a la clienta
         notificationService.sendAppointmentConfirmation(savedAppointment);
-        notificationService.sendWhatsAppConfirmation(savedAppointment);
 
         return savedAppointment;
     }
