@@ -50,7 +50,8 @@ public class WhatsAppWebhookService {
     }
 
     private void processChange(WhatsAppWebhookDto.Change change) {
-        log.info("[WEBHOOK] 🔄 Procesando cambio en campo: {}", change.getField());
+        String field = change.getField();
+        log.info("[WEBHOOK] 🔄 Procesando cambio en campo: {}", field);
 
         WhatsAppWebhookDto.Value value = change.getValue();
         if (value == null) {
@@ -65,14 +66,62 @@ public class WhatsAppWebhookService {
             log.info("[WEBHOOK] 📞 Display Phone: {}", value.getMetadata().getDisplayPhoneNumber());
         }
 
-        // Procesar mensajes recibidos
-        if (value.getMessages() != null && !value.getMessages().isEmpty()) {
-            processIncomingMessages(value.getMessages(), value.getContacts());
-        }
-
-        // Procesar estados de mensajes (entregado, leído, etc.)
-        if (value.getStatuses() != null && !value.getStatuses().isEmpty()) {
-            processMessageStatuses(value.getStatuses());
+        // Procesar según el tipo de campo de webhook
+        switch (field) {
+            case "messages":
+                // Procesar mensajes recibidos
+                if (value.getMessages() != null && !value.getMessages().isEmpty()) {
+                    processIncomingMessages(value.getMessages(), value.getContacts());
+                }
+                // Procesar estados de mensajes (entregado, leído, etc.)
+                if (value.getStatuses() != null && !value.getStatuses().isEmpty()) {
+                    processMessageStatuses(value.getStatuses());
+                }
+                break;
+                
+            case "message_template_status_update":
+                log.info("[WEBHOOK] 📋 Actualización de estado de plantilla de mensaje");
+                log.debug("[WEBHOOK] Valor: {}", value);
+                // TODO: Implementar lógica para tracking de estado de templates
+                break;
+                
+            case "message_template_quality_update":
+                log.info("[WEBHOOK] ⭐ Actualización de calidad de plantilla");
+                log.debug("[WEBHOOK] Valor: {}", value);
+                // TODO: Implementar lógica para monitoreo de calidad de templates
+                break;
+                
+            case "phone_number_name_update":
+                log.info("[WEBHOOK] 📱 Actualización de nombre del número de teléfono");
+                log.debug("[WEBHOOK] Valor: {}", value);
+                break;
+                
+            case "phone_number_quality_update":
+                log.info("[WEBHOOK] 📊 Actualización de calidad del número de teléfono");
+                log.debug("[WEBHOOK] Valor: {}", value);
+                // TODO: Implementar alertas si la calidad del número baja
+                break;
+                
+            case "account_alerts":
+                log.warn("[WEBHOOK] ⚠️ Alerta de cuenta");
+                log.warn("[WEBHOOK] Valor: {}", value);
+                // TODO: Implementar notificaciones para alertas de cuenta
+                break;
+                
+            case "account_update":
+                log.info("[WEBHOOK] 🔄 Actualización de cuenta");
+                log.debug("[WEBHOOK] Valor: {}", value);
+                break;
+                
+            case "business_capability_update":
+                log.info("[WEBHOOK] 💼 Actualización de capacidades del negocio");
+                log.debug("[WEBHOOK] Valor: {}", value);
+                break;
+                
+            default:
+                log.info("[WEBHOOK] ℹ️ Evento de webhook recibido: {}", field);
+                log.debug("[WEBHOOK] Valor: {}", value);
+                // Otros eventos no manejados específicamente aún
         }
     }
 

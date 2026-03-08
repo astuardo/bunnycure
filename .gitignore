@@ -214,6 +214,9 @@ WHATSAPP_WEBHOOK_README.md
 WHATSAPP_WEBHOOK_SETUP.md
 WHATSAPP_WEBHOOK_TEST_PAYLOADS.md
 
+# Mantener este archivo (lista de eventos disponibles)
+# WHATSAPP_WEBHOOK_EVENTOS.md - NO ignorar
+
 ##############################################################
 # Scripts de desarrollo local (NO versionar)
 ##############################################################
