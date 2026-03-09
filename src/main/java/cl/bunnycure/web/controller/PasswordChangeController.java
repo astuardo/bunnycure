@@ -91,7 +91,8 @@ public class PasswordChangeController {
             // Cambiar contraseña
             userService.changePassword(username, currentPassword, newPassword);
 
-            // Limpiar flag de sesión
+            // Limpiar flag de sesión (guardar antes de remover)
+            boolean wasRequired = Boolean.TRUE.equals(session.getAttribute("mustChangePassword"));
             session.removeAttribute("mustChangePassword");
             session.removeAttribute("changePasswordReason");
 
@@ -100,7 +101,6 @@ public class PasswordChangeController {
             redirectAttributes.addFlashAttribute("success", "Contraseña actualizada exitosamente");
             
             // Si era obligatorio, ir al dashboard. Si no, volver a settings
-            boolean wasRequired = Boolean.TRUE.equals(session.getAttribute("mustChangePassword"));
             return wasRequired ? "redirect:/dashboard" : "redirect:/admin/settings";
 
         } catch (RuntimeException e) {
