@@ -25,7 +25,7 @@ public class WhatsAppConfig {
     private String solicitudRechazadaTemplateName = "solicitud_rechazada";
     
     // Language
-    private String citaConfirmadaLanguageCode = "es";
+    private String citaConfirmadaLanguageCode = "es_CL";
     
     // Behavior
     private boolean useTemplateForConfirmation = true;
