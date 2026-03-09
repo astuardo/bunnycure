@@ -154,22 +154,6 @@ public class WhatsAppConfig {
         this.useTemplateForBookingRejection = useTemplateForBookingRejection;
     }
 
-    public String getCitaConfirmadaLanguageCode() {
-        return citaConfirmadaLanguageCode;
-    }
-
-    public void setCitaConfirmadaLanguageCode(String citaConfirmadaLanguageCode) {
-        this.citaConfirmadaLanguageCode = citaConfirmadaLanguageCode;
-    }
-
-    public boolean isUseTemplateForConfirmation() {
-        return useTemplateForConfirmation;
-    }
-
-    public void setUseTemplateForConfirmation(boolean useTemplateForConfirmation) {
-        this.useTemplateForConfirmation = useTemplateForConfirmation;
-    }
-
     public String getBusinessName() {
         return businessName;
     }

@@ -61,10 +61,12 @@ public class NotificationService {
         // Enviar email
         sendConfirmation(appointment);
         
-        // Enviar WhatsApp
-        log.info("[NOTIFICATION] Enviando confirmación de cita por WhatsApp a {}", 
-                appointment.getCustomer().getPhone());
-        whatsAppService.sendAppointmentConfirmation(appointment);
+        // Enviar WhatsApp con template
+        if (appointment != null && appointment.getCustomer() != null && appointment.getCustomer().getPhone() != null) {
+            log.info("[NOTIFICATION] Enviando confirmación de cita por WhatsApp a {}", 
+                    appointment.getCustomer().getPhone());
+            whatsAppService.sendCitaConfirmadaTemplate(appointment);
+        }
     }
 
     @Async
@@ -76,9 +78,11 @@ public class NotificationService {
         }
         
         // Enviar WhatsApp con template
-        log.info("[NOTIFICATION] Enviando notificación de cancelación por WhatsApp a {}", 
-                appointment.getCustomer().getPhone());
-        whatsAppService.sendCancelacionCitaTemplate(appointment);
+        if (appointment != null && appointment.getCustomer() != null && appointment.getCustomer().getPhone() != null) {
+            log.info("[NOTIFICATION] Enviando notificación de cancelación por WhatsApp a {}", 
+                    appointment.getCustomer().getPhone());
+            whatsAppService.sendCancelacionCitaTemplate(appointment);
+        }
     }
 
     // ── Solicitudes de reserva ───────────────────────────────────────────────
@@ -89,7 +93,7 @@ public class NotificationService {
     @Async
     public void sendBookingRequestReceived(BookingRequest request) {
         // Enviar email si está configurado
-        if (mailEnabled && request.getEmail() != null && !request.getEmail().isBlank()) {
+        if (mailEnabled && request != null && request.getEmail() != null && !request.getEmail().isBlank()) {
             try {
                 String fechaFormateada = request.getPreferredDate()
                         .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
@@ -111,7 +115,7 @@ public class NotificationService {
         }
         
         // Enviar WhatsApp con template
-        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+        if (request != null && request.getPhone() != null && !request.getPhone().isBlank()) {
             log.info("[NOTIFICATION] Enviando confirmación de recepción por WhatsApp a {}", 
                     request.getPhone());
             whatsAppService.sendAgendaEnRevisionTemplate(request);
@@ -124,7 +128,7 @@ public class NotificationService {
     @Async
     public void sendBookingRequestRejected(BookingRequest request) {
         // Enviar email si está configurado
-        if (mailEnabled && request.getEmail() != null && !request.getEmail().isBlank()) {
+        if (mailEnabled && request != null && request.getEmail() != null && !request.getEmail().isBlank()) {
             try {
                 Context ctx = new Context(new Locale("es", "CL"));
                 ctx.setVariable("request",          request);
@@ -142,7 +146,7 @@ public class NotificationService {
         }
         
         // Enviar WhatsApp con template
-        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+        if (request != null && request.getPhone() != null && !request.getPhone().isBlank()) {
             log.info("[NOTIFICATION] Enviando rechazo de solicitud por WhatsApp a {}", 
                     request.getPhone());
             whatsAppService.sendSolicitudRechazadaTemplate(request);
