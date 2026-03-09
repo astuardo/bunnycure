@@ -24,6 +24,7 @@ public class SecurityConfig {
 	private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
 	private final Environment env;
+	private final PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler;
 
 	@Value("${bunnycure.admin.username:admin}")
 	private String adminUsername;
@@ -31,8 +32,9 @@ public class SecurityConfig {
 	@Value("${bunnycure.admin.password:changeme}")
 	private String adminPassword;
 
-	public SecurityConfig(Environment env) {
+	public SecurityConfig(Environment env, PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler) {
 		this.env = env;
+		this.passwordChangeSuccessHandler = passwordChangeSuccessHandler;
 	}
 
 	@Bean
@@ -49,6 +51,9 @@ public class SecurityConfig {
 			
 			// Login
 			auth.requestMatchers("/login", "/login/**").permitAll();
+			
+			// Cambio de contraseña (requiere autenticación pero no puede ser bloqueado)
+			auth.requestMatchers("/admin/change-password").authenticated();
 			
 			// Portal público: GET y POST de reservas
 			auth.requestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit").permitAll();
@@ -80,7 +85,7 @@ public class SecurityConfig {
 		http.formLogin(form -> form
 				.loginPage("/login")
 				.loginProcessingUrl("/login")
-				.defaultSuccessUrl("/dashboard", true)
+				.successHandler(passwordChangeSuccessHandler)
 				.failureUrl("/login?error=true")
 				.usernameParameter("username")
 				.passwordParameter("password")

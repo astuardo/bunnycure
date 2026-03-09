@@ -251,6 +251,8 @@ mvnw.cmd spring-boot:run
 - Username: `admin`
 - Password: `changeme`
 
+> 🔐 **Seguridad Mejorada**: El sistema detecta automáticamente cuando la contraseña es `changeme` y **obliga al admin a cambiarla** al iniciar sesión. Ver [CAMBIO_OBLIGATORIO_PASSWORD.md](CAMBIO_OBLIGATORIO_PASSWORD.md) para detalles.
+
 > 📖 **Para desarrollo desde IntelliJ IDEA**: Ver **[DESARROLLO_LOCAL.md](DESARROLLO_LOCAL.md)** - Guía completa con Run Configurations, scripts H2 separados, y troubleshooting.
 
 ### 3. **Perfiles (Profiles)**
@@ -374,6 +376,22 @@ heroku config:set MAIL_HOST=smtp.hostinger.com
 # ... más variables
 git push heroku main
 ```
+
+### 📋 Variables de Entorno Heroku
+
+Para configurar todas las variables necesarias en Heroku:
+
+**Guías disponibles:**
+- 📖 **INDICE_VARIABLES_HEROKU.md** - Índice maestro y punto de partida
+- ⚡ **GUIA_RAPIDA_VARIABLES_HEROKU.md** - Inicio rápido (3 pasos)
+- 📋 **COMANDOS_HEROKU_COPYPASTE.md** - Comandos listos para usar
+- 🔍 **COMPARACION_VARIABLES_HEROKU.md** - Análisis detallado de tu configuración
+- 📊 **TABLA_VARIABLES_HEROKU.md** - Tabla comparativa visual
+- 📖 **VARIABLES_HEROKU_COMPLETAS.md** - Documentación completa
+
+**Scripts de verificación:**
+- 🛠️ `verificar-valores-heroku.bat` - Verificar valores críticos
+- 🛠️ `comparar-variables-heroku.bat` - Comparar tu config con la requerida
 
 ---
 

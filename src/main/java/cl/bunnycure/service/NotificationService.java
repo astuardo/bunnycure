@@ -75,10 +75,10 @@ public class NotificationService {
                     "Tu cita ha sido cancelada – BunnyCure");
         }
         
-        // Enviar WhatsApp
+        // Enviar WhatsApp con template
         log.info("[NOTIFICATION] Enviando notificación de cancelación por WhatsApp a {}", 
                 appointment.getCustomer().getPhone());
-        whatsAppService.sendAppointmentCancellation(appointment);
+        whatsAppService.sendCancelacionCitaTemplate(appointment);
     }
 
     // ── Solicitudes de reserva ───────────────────────────────────────────────
@@ -110,11 +110,11 @@ public class NotificationService {
             }
         }
         
-        // Enviar WhatsApp si tiene teléfono
+        // Enviar WhatsApp con template
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
             log.info("[NOTIFICATION] Enviando confirmación de recepción por WhatsApp a {}", 
                     request.getPhone());
-            whatsAppService.sendBookingRequestReceived(request);
+            whatsAppService.sendAgendaEnRevisionTemplate(request);
         }
     }
 
@@ -141,11 +141,11 @@ public class NotificationService {
             }
         }
         
-        // Enviar WhatsApp si tiene teléfono
+        // Enviar WhatsApp con template
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
             log.info("[NOTIFICATION] Enviando rechazo de solicitud por WhatsApp a {}", 
                     request.getPhone());
-            whatsAppService.sendBookingRequestRejected(request);
+            whatsAppService.sendSolicitudRechazadaTemplate(request);
         }
     }
 
@@ -317,10 +317,10 @@ public class NotificationService {
                 log.warn("[MAIL-WARN] No se pudo enviar email recordatorio: {}", e.getMessage());
             }
 
-            // Enviar WhatsApp (solo si teléfono disponible)
+            // Enviar WhatsApp con template
             if (phone != null && !phone.isEmpty()) {
                 try {
-                    sendWhatsAppMessage(phone, message);
+                    whatsAppService.sendRecordatorioCitaTemplate(appointment);
                 } catch (Exception e) {
                     log.warn("[WHATSAPP-WARN] No se pudo enviar WhatsApp recordatorio: {}", e.getMessage());
                 }

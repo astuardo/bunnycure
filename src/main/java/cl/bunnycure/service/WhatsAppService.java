@@ -398,8 +398,8 @@ public class WhatsAppService {
     }
 
     /**
-     * Envía el template cita_confirmada con placeholders en orden:
-     * 1) cliente, 2) negocio, 3) servicio, 4) fecha, 5) hora
+     * Envía el template confirmacion_cita con placeholders:
+     * {{1}}=cliente, {{2}}=servicio, {{3}}=fecha, {{4}}=hora
      */
     @Async
     public void sendCitaConfirmadaTemplate(Appointment appointment) {
@@ -416,13 +416,140 @@ public class WhatsAppService {
                 .format(DateTimeFormatter.ofPattern("HH:mm"));
         String servicio = appointment.getService().getName();
         String cliente = appointment.getCustomer().getFullName();
-        String negocio = config.getBusinessName();
 
         sendTemplate(
                 phone,
                 config.getCitaConfirmadaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                Arrays.asList(cliente, negocio, servicio, fecha, hora)
+                Arrays.asList(cliente, servicio, fecha, hora)
+        );
+    }
+
+    /**
+     * Envía el template recordatorio_cita con placeholders:
+     * {{1}}=cliente, {{2}}=servicio, {{3}}=fecha, {{4}}=hora
+     */
+    @Async
+    public void sendRecordatorioCitaTemplate(Appointment appointment) {
+        if (!config.isUseTemplateForReminder()) {
+            log.info("[WHATSAPP-SKIP] Template de recordatorio deshabilitado");
+            return;
+        }
+
+        String phone = appointment.getCustomer().getPhone();
+        if (phone == null || phone.isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Cliente {} no tiene teléfono configurado",
+                    appointment.getCustomer().getFullName());
+            return;
+        }
+
+        String fecha = appointment.getAppointmentDate()
+                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")));
+        String hora = appointment.getAppointmentTime()
+                .format(DateTimeFormatter.ofPattern("HH:mm"));
+        String servicio = appointment.getService().getName();
+        String cliente = appointment.getCustomer().getFullName();
+
+        sendTemplate(
+                phone,
+                config.getRecordatorioCitaTemplateName(),
+                config.getCitaConfirmadaLanguageCode(),
+                Arrays.asList(cliente, servicio, fecha, hora)
+        );
+    }
+
+    /**
+     * Envía el template cancelacion_cita con placeholders:
+     * {{1}}=cliente, {{2}}=servicio, {{3}}=fecha, {{4}}=hora
+     */
+    @Async
+    public void sendCancelacionCitaTemplate(Appointment appointment) {
+        if (!config.isUseTemplateForCancellation()) {
+            log.info("[WHATSAPP-SKIP] Template de cancelación deshabilitado");
+            return;
+        }
+
+        String phone = appointment.getCustomer().getPhone();
+        if (phone == null || phone.isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Cliente {} no tiene teléfono configurado",
+                    appointment.getCustomer().getFullName());
+            return;
+        }
+
+        String fecha = appointment.getAppointmentDate()
+                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")));
+        String hora = appointment.getAppointmentTime()
+                .format(DateTimeFormatter.ofPattern("HH:mm"));
+        String servicio = appointment.getService().getName();
+        String cliente = appointment.getCustomer().getFullName();
+
+        sendTemplate(
+                phone,
+                config.getCancelacionCitaTemplateName(),
+                config.getCitaConfirmadaLanguageCode(),
+                Arrays.asList(cliente, servicio, fecha, hora)
+        );
+    }
+
+    /**
+     * Envía el template agenda_en_revision con placeholders:
+     * {{1}}=cliente, {{2}}=servicio, {{3}}=fecha solicitada, {{4}}=bloque
+     */
+    @Async
+    public void sendAgendaEnRevisionTemplate(BookingRequest request) {
+        if (!config.isUseTemplateForBookingRequest()) {
+            log.info("[WHATSAPP-SKIP] Template de agenda en revisión deshabilitado");
+            return;
+        }
+
+        String phone = request.getPhone();
+        if (phone == null || phone.isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Solicitud {} no tiene teléfono configurado", request.getId());
+            return;
+        }
+
+        String fecha = request.getPreferredDate()
+                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")));
+        String servicio = request.getService().getName();
+        String cliente = request.getFullName();
+        String bloque = request.getPreferredBlock();
+
+        sendTemplate(
+                phone,
+                config.getAgendaEnRevisionTemplateName(),
+                config.getCitaConfirmadaLanguageCode(),
+                Arrays.asList(cliente, servicio, fecha, bloque)
+        );
+    }
+
+    /**
+     * Envía el template solicitud_rechazada con placeholders:
+     * {{1}}=cliente, {{2}}=servicio, {{3}}=fecha solicitada, {{4}}=bloque
+     */
+    @Async
+    public void sendSolicitudRechazadaTemplate(BookingRequest request) {
+        if (!config.isUseTemplateForBookingRejection()) {
+            log.info("[WHATSAPP-SKIP] Template de solicitud rechazada deshabilitado");
+            return;
+        }
+
+        String phone = request.getPhone();
+        if (phone == null || phone.isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Solicitud {} no tiene teléfono configurado", request.getId());
+            return;
+        }
+
+        String fecha = request.getPreferredDate()
+                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")));
+        String servicio = request.getService().getName();
+        String cliente = request.getFullName();
+        String bloque = request.getPreferredBlock();
+
+        sendTemplate(
+                phone,
+                config.getSolicitudRechazadaTemplateName(),
+                config.getCitaConfirmadaLanguageCode(),
+                Arrays.asList(cliente, servicio, fecha, bloque)
         );
     }
 
