@@ -19,6 +19,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -225,7 +228,7 @@ class WhatsAppServiceTest {
     private Appointment createTestAppointment() {
         Customer customer = new Customer();
         customer.setId(1L);
-        customer.setName("María González");
+        customer.setFullName("María González");
         customer.setEmail("maria@example.com");
         customer.setPhone("+56912345678");
 
@@ -234,11 +237,13 @@ class WhatsAppServiceTest {
         service.setName("Manicure Clásica");
         service.setDurationMinutes(60);
 
-        Appointment appointment = new Appointment();
-        appointment.setId(1L);
-        appointment.setCustomer(customer);
-        appointment.setService(service);
-        appointment.setAppointmentDate(LocalDateTime.of(2026, 3, 10, 14, 0));
+        Appointment appointment = Appointment.builder()
+                .id(1L)
+                .customer(customer)
+                .service(service)
+                .appointmentDate(LocalDate.of(2026, 3, 10))
+                .appointmentTime(LocalTime.of(14, 0))
+                .build();
 
         return appointment;
     }
