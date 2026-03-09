@@ -304,7 +304,7 @@ public class WhatsAppService {
      */
     @Async
     public void sendTemplate(String toPhoneNumber, String templateName, String languageCode) {
-        sendTemplate(toPhoneNumber, templateName, languageCode, List.of());
+        sendTemplate(toPhoneNumber, templateName, languageCode, null, List.of());
     }
 
     /**
@@ -312,6 +312,21 @@ public class WhatsAppService {
      */
     @Async
     public void sendTemplate(String toPhoneNumber, String templateName, String languageCode, List<String> bodyParams) {
+        sendTemplate(toPhoneNumber, templateName, languageCode, null, bodyParams);
+    }
+
+    /**
+     * Envía un template pre-aprobado de WhatsApp con parámetros para HEADER y BODY.
+     *
+     * @param headerParam parámetro único para HEADER (si el template tiene HEADER con {{1}})
+     * @param bodyParams parámetros del BODY en orden posicional
+     */
+    @Async
+    public void sendTemplate(String toPhoneNumber,
+                             String templateName,
+                             String languageCode,
+                             String headerParam,
+                             List<String> bodyParams) {
         try {
             if (config.getToken() == null || config.getToken().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Token no configurado");
@@ -341,8 +356,23 @@ public class WhatsAppService {
             language.put("code", languageCode);
             template.put("language", language);
 
+            List<Map<String, Object>> components = new ArrayList<>();
+
+            if (headerParam != null && !headerParam.isBlank()) {
+                Map<String, Object> header = new HashMap<>();
+                header.put("type", "header");
+
+                List<Map<String, String>> headerParameters = new ArrayList<>();
+                Map<String, String> p = new HashMap<>();
+                p.put("type", "text");
+                p.put("text", headerParam);
+                headerParameters.add(p);
+
+                header.put("parameters", headerParameters);
+                components.add(header);
+            }
+
             if (bodyParams != null && !bodyParams.isEmpty()) {
-                List<Map<String, Object>> components = new ArrayList<>();
                 Map<String, Object> body = new HashMap<>();
                 body.put("type", "body");
 
@@ -355,6 +385,9 @@ public class WhatsAppService {
                 }
                 body.put("parameters", parameters);
                 components.add(body);
+            }
+
+            if (!components.isEmpty()) {
                 template.put("components", components);
             }
             
@@ -399,7 +432,7 @@ public class WhatsAppService {
 
     /**
      * Envía el template confirmacion_cita con placeholders:
-     * {{1}}=cliente, {{2}}=servicio, {{3}}=fecha, {{4}}=hora
+     * HEADER {{1}}=cliente, BODY {{1}}=servicio, {{2}}=fecha, {{3}}=hora
      */
     @Async
     public void sendCitaConfirmadaTemplate(Appointment appointment) {
@@ -421,13 +454,14 @@ public class WhatsAppService {
                 phone,
                 config.getCitaConfirmadaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                Arrays.asList(cliente, servicio, fecha, hora)
+                cliente,
+                Arrays.asList(servicio, fecha, hora)
         );
     }
 
     /**
      * Envía el template recordatorio_cita con placeholders:
-     * {{1}}=cliente, {{2}}=servicio, {{3}}=fecha, {{4}}=hora
+     * HEADER {{1}}=cliente, BODY {{1}}=servicio, {{2}}=fecha, {{3}}=hora
      */
     @Async
     public void sendRecordatorioCitaTemplate(Appointment appointment) {
@@ -454,13 +488,14 @@ public class WhatsAppService {
                 phone,
                 config.getRecordatorioCitaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                Arrays.asList(cliente, servicio, fecha, hora)
+                cliente,
+                Arrays.asList(servicio, fecha, hora)
         );
     }
 
     /**
      * Envía el template cancelacion_cita con placeholders:
-     * {{1}}=cliente, {{2}}=servicio, {{3}}=fecha, {{4}}=hora
+     * HEADER {{1}}=cliente, BODY {{1}}=servicio, {{2}}=fecha, {{3}}=hora
      */
     @Async
     public void sendCancelacionCitaTemplate(Appointment appointment) {
@@ -487,13 +522,14 @@ public class WhatsAppService {
                 phone,
                 config.getCancelacionCitaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                Arrays.asList(cliente, servicio, fecha, hora)
+                cliente,
+                Arrays.asList(servicio, fecha, hora)
         );
     }
 
     /**
      * Envía el template agenda_en_revision con placeholders:
-     * {{1}}=cliente, {{2}}=servicio, {{3}}=fecha solicitada, {{4}}=bloque
+     * HEADER {{1}}=cliente, BODY {{1}}=servicio, {{2}}=fecha solicitada, {{3}}=bloque
      */
     @Async
     public void sendAgendaEnRevisionTemplate(BookingRequest request) {
@@ -518,13 +554,14 @@ public class WhatsAppService {
                 phone,
                 config.getAgendaEnRevisionTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                Arrays.asList(cliente, servicio, fecha, bloque)
+                cliente,
+                Arrays.asList(servicio, fecha, bloque)
         );
     }
 
     /**
      * Envía el template solicitud_rechazada con placeholders:
-     * {{1}}=cliente, {{2}}=servicio, {{3}}=fecha solicitada, {{4}}=bloque
+     * HEADER {{1}}=cliente, BODY {{1}}=servicio, {{2}}=fecha solicitada, {{3}}=bloque
      */
     @Async
     public void sendSolicitudRechazadaTemplate(BookingRequest request) {
@@ -549,7 +586,8 @@ public class WhatsAppService {
                 phone,
                 config.getSolicitudRechazadaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                Arrays.asList(cliente, servicio, fecha, bloque)
+                cliente,
+                Arrays.asList(servicio, fecha, bloque)
         );
     }
 

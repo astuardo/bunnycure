@@ -260,7 +260,7 @@ mvnw.cmd spring-boot:run
 - **local**: H2 database (archivo), scripts en `db/migration-h2/`, H2 console habilitada, Flyway activo
 - **heroku**: PostgreSQL, scripts en `db/migration/`, Mail SMTP Hostinger, Admin dinámico
 
-> 💡 **Migraciones separadas por motor de BD**: Ver **[db/README_MIGRATIONS.md](src/main/resources/db/README_MIGRATIONS.md)** para detalles de compatibilidad H2 vs PostgreSQL.
+> 💡 **Migraciones separadas por motor de BD**: Ver **[db/README_MIGRATIONS.md](docs-dev/README_MIGRATIONS.md)** para detalles de compatibilidad H2 vs PostgreSQL.
 
 ### 4. **Variables de Entorno**
 
