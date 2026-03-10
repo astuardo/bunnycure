@@ -38,6 +38,8 @@ public class BookingController {
         model.addAttribute("bookingEnabled",  bookingEnabled);
         model.addAttribute("whatsappNumber",
                 appSettingsService.get("whatsapp.number", "56964499995"));
+        model.addAttribute("messageTemplate",
+                appSettingsService.getBookingMessageTemplate());
         model.addAttribute("bookingRequest",  new BookingRequestDto());
         model.addAttribute("services",
                 serviceCatalogService.findAll().stream()

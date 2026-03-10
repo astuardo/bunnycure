@@ -348,7 +348,7 @@
     </textarea>
 
     <!-- ══ Botón principal: enviar solicitud al sistema ══ -->
-    <button class="btn-bc mb-2" id="btnSubmit" disabled onclick="submitRequest()">
+    <button type="button" class="btn-bc mb-2" id="btnSubmit" disabled onclick="submitRequest()">
         <i class="bi bi-send me-2"></i>Enviar solicitud de reserva
     </button>
     <p class="text-center text-muted small mb-1">
@@ -358,7 +358,7 @@
     <div class="divider-or">o también puedes</div>
 
     <!-- ══ Botón secundario: WhatsApp directo ══ -->
-    <button class="btn-whatsapp mb-2" id="btnWhatsapp" disabled onclick="openWhatsApp()">
+    <button type="button" class="btn-whatsapp mb-2" id="btnWhatsapp" disabled onclick="openWhatsApp()">
         <i class="bi bi-whatsapp me-2"></i>Contactar directo por WhatsApp
     </button>
     <p class="text-center text-muted small">
@@ -618,7 +618,10 @@
         // Formatear teléfono con +56
         const fullPhone = '+56' + phone;
 
-        return MSG_TEMPLATE
+        const fallbackTemplate = 'Hola Bunny Cure! 🐰\nMe gustaría reservar una cita:\n• Servicio: {servicio}\n• Fecha: {fecha}\n• Bloque: {bloque}\n• Nombre: {nombre}\n• Teléfono: {telefono}\n¿Tienen disponibilidad?';
+        const template = (MSG_TEMPLATE && MSG_TEMPLATE.trim().length > 0) ? MSG_TEMPLATE : fallbackTemplate;
+
+        return template
             .replace('[conejo]', '\uD83D\uDC30')
             .replace('[bunny]',  '\uD83D\uDC30')
             .replace('{servicio}',  selectedService ? selectedService.name : '')
@@ -626,6 +629,10 @@
             .replace('{bloque}',    selectedBlock || '')
             .replace('{nombre}',    name)
             .replace('{telefono}',  fullPhone);
+    }
+
+    function normalizeWhatsAppNumber(number) {
+        return String(number || '').replace(/\D/g, '');
     }
 
     function submitRequest() {
@@ -674,9 +681,16 @@
     }
 
     function openWhatsApp() {
-        const url = 'https://wa.me/' + WHATSAPP_NUMBER +
+        const phoneNumber = normalizeWhatsAppNumber(WHATSAPP_NUMBER);
+        if (!phoneNumber) {
+            alert('No se pudo abrir WhatsApp porque el número de contacto no está configurado correctamente.');
+            return;
+        }
+
+        const url = 'https://wa.me/' + phoneNumber +
             '?text=' + encodeURIComponent(buildMsg());
-        window.open(url, '_blank');
+
+        window.location.href = url;
     }
 
     // ═══ Escuchadores de eventos ═══
