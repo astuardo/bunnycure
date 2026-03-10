@@ -31,6 +31,14 @@
         Sesión cerrada correctamente.
     </div>
 
+    <div th:if="${successMsg}"
+         class="alert alert-success alert-sm py-2 small" role="alert"
+         th:text="${successMsg}"></div>
+
+    <div th:if="${errorMsg}"
+         class="alert alert-danger alert-sm py-2 small" role="alert"
+         th:text="${errorMsg}"></div>
+
     <!-- ✅ th:action inyecta CSRF automáticamente con Thymeleaf Security -->
     <form th:action="@{/login}" method="post">
         <div class="mb-3">
@@ -54,6 +62,12 @@
                 style="background: linear-gradient(135deg, #8B5CF6, #EC4899);">
             Ingresar
         </button>
+
+        <div class="text-center mt-3">
+            <a th:href="@{/forgot-password}" class="small text-decoration-none">
+                ¿Olvidaste tu contraseña?
+            </a>
+        </div>
     </form>
 
 </div>

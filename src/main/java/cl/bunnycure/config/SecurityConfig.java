@@ -51,6 +51,7 @@ public class SecurityConfig {
 			
 			// Login
 			auth.requestMatchers("/login", "/login/**").permitAll();
+			auth.requestMatchers("/forgot-password", "/reset-password").permitAll();
 			
 			// Cambio de contraseña (requiere autenticación pero no puede ser bloqueado)
 			auth.requestMatchers("/admin/change-password").authenticated();

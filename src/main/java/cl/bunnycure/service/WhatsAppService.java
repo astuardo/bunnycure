@@ -466,7 +466,8 @@ public class WhatsAppService {
     @Async
     public void sendRecordatorioCitaTemplate(Appointment appointment) {
         if (!config.isUseTemplateForReminder()) {
-            log.info("[WHATSAPP-SKIP] Template de recordatorio deshabilitado");
+            log.info("[WHATSAPP] Template de recordatorio deshabilitado, enviando mensaje de texto");
+            sendAppointmentReminder(appointment);
             return;
         }
 

@@ -10,8 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Service
 @Transactional(readOnly = true)
@@ -129,7 +131,7 @@ public class AppointmentService {
     @Transactional
     public void sendRemindersForUpcomingAppointments() {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
-        List<Appointment> appointments = findByStatus(AppointmentStatus.CONFIRMED);
+        List<Appointment> appointments = findByReminderStatuses();
         
         appointments.stream()
                 .filter(a -> a.getAppointmentDate().equals(tomorrow))
@@ -150,13 +152,18 @@ public class AppointmentService {
     @Transactional
     public void sendRemindersForAppointmentsIn2Hours() {
         LocalDate today = LocalDate.now();
-        List<Appointment> appointments = findByStatus(AppointmentStatus.CONFIRMED);
+        LocalTime now = LocalTime.now();
+        LocalTime inTwoHours = now.plusHours(2);
+        List<Appointment> appointments = findByReminderStatuses();
         
         appointments.stream()
                 .filter(a -> a.getAppointmentDate().equals(today))
+                .filter(a -> a.getAppointmentTime() != null)
+                .filter(a -> !a.getAppointmentTime().isBefore(now) && !a.getAppointmentTime().isAfter(inTwoHours))
                 .forEach(appointment -> {
                     try {
                         notificationService.sendReminderNotification(appointment, "2hours");
+                        appointment.setReminderSent(true);
                         appointmentRepository.save(appointment);
                     } catch (Exception e) {
                         // Log error but continue processing other appointments
@@ -177,5 +184,12 @@ public class AppointmentService {
     @Transactional
     public Appointment save(Appointment appointment) {
         return appointmentRepository.save(appointment);
+    }
+
+    private List<Appointment> findByReminderStatuses() {
+        return Stream.concat(
+                        findByStatus(AppointmentStatus.PENDING).stream(),
+                        findByStatus(AppointmentStatus.CONFIRMED).stream())
+                .toList();
     }
 }

@@ -29,14 +29,12 @@ public class AdminUserInitializer {
                 var adminUser = userRepository.findByUsername("admin");
 
                 if (adminUser.isPresent()) {
-                    // Update admin password to ensure it's correct
+                    // Preserve existing password to avoid resets on each deploy.
                     User user = adminUser.get();
-                    String encodedPassword = passwordEncoder.encode("changeme");
-                    user.setPassword(encodedPassword);
                     user.setEnabled(true);
                     user.setRole("ADMIN");
                     userRepository.save(user);
-                    log.info("[INIT] Admin user password reset successfully");
+                    log.info("[INIT] Admin user already exists; password preserved");
                 } else {
                     // Create admin user if doesn't exist
                     User adminNewUser = User.builder()
