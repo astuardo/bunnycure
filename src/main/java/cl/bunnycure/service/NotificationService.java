@@ -274,7 +274,7 @@ public class NotificationService {
     /**
      * Envía recordatorios automáticos para citas próximas
      * @param appointment La cita para la que enviar el recordatorio
-     * @param type El tipo de recordatorio: "tomorrow" (mañana) o "2hours" (en 2 horas)
+     * @param type El tipo de recordatorio: "tomorrow", "2hours" o manual/custom
      */
     @Async
     public void sendReminderNotification(Appointment appointment, String type) {
@@ -292,20 +292,17 @@ public class NotificationService {
             String appointmentDate = appointment.getAppointmentDate().toString();
 
             String subject, templateName;
-            String message;
 
             if ("tomorrow".equals(type)) {
                 subject = "🐰 Tu cita es mañana - Bunny Cure";
                 templateName = "mail/reminder-tomorrow";
-                message = String.format("Hola %s, tu cita para %s está programada para mañana a las %s", 
-                    customerName, serviceName, appointmentTime);
             } else if ("2hours".equals(type)) {
                 subject = "⏰ Tu cita es en 2 horas - Bunny Cure";
                 templateName = "mail/reminder-2hours";
-                message = String.format("¡Hola %s! Tu cita para %s es en 2 horas a las %s. ¡No olvides!", 
-                    customerName, serviceName, appointmentTime);
             } else {
-                return;
+                // Soporta envío manual desde panel admin.
+                subject = "🐰 Recordatorio de tu cita - Bunny Cure";
+                templateName = "mail/reminder";
             }
 
             // Enviar email

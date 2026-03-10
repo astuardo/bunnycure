@@ -120,7 +120,7 @@ public class AppointmentService {
     @Transactional
     public void sendManualNotification(Long id) {
         var appointment = findById(id);
-        notificationService.sendConfirmation(appointment);
+        notificationService.sendAppointmentConfirmation(appointment);
         appointment.setNotificationSent(true);
         appointmentRepository.save(appointment);
     }

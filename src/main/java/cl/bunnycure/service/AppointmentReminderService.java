@@ -20,13 +20,16 @@ public class AppointmentReminderService {
     private final AppointmentRepository appointmentRepository;
     private final NotificationService notificationService;
     private final AppSettingsService appSettingsService;
+    private final WhatsAppService whatsAppService;
 
     public AppointmentReminderService(AppointmentRepository appointmentRepository,
                                       NotificationService notificationService,
-                                      AppSettingsService appSettingsService) {
+                                      AppSettingsService appSettingsService,
+                                      WhatsAppService whatsAppService) {
         this.appointmentRepository = appointmentRepository;
         this.notificationService = notificationService;
         this.appSettingsService = appSettingsService;
+        this.whatsAppService = whatsAppService;
     }
 
     /**
@@ -85,7 +88,7 @@ public class AppointmentReminderService {
 
         // Enviar recordatorio por WhatsApp
         if (customerPhone != null && !customerPhone.isEmpty()) {
-            sendWhatsAppReminder(appointment, customerPhone, serviceName, appointmentTime);
+            sendWhatsAppReminder(appointment, customerPhone);
         } else {
             log.warn("[REMINDER] Sin teléfono para enviar WhatsApp");
         }
@@ -101,8 +104,7 @@ public class AppointmentReminderService {
     /**
      * Envía recordatorio por WhatsApp
      */
-    private void sendWhatsAppReminder(Appointment appointment, String phone, 
-                                      String serviceName, String time) {
+    private void sendWhatsAppReminder(Appointment appointment, String phone) {
         try {
             boolean whatsappEnabled = Boolean.parseBoolean(
                     appSettingsService.get("whatsapp.enabled", "true"));
@@ -112,23 +114,8 @@ public class AppointmentReminderService {
                 return;
             }
 
-            String message = String.format(
-                    "🐰 *Recordatorio de cita - Bunny Cure*\n\n" +
-                    "¡Hola %s! 👋\n\n" +
-                    "Te recordamos que tienes una cita *hoy* 📅\n\n" +
-                    "*Detalles:*\n" +
-                    "🎀 Servicio: %s\n" +
-                    "🕐 Hora: %s\n\n" +
-                    "⏰ Por favor llega 5 minutos antes.\n\n" +
-                    "Si necesitas reprogramar o tienes dudas, contáctanos 💬",
-                    appointment.getCustomer().getFirstName(),
-                    serviceName,
-                    time
-            );
-
-            // Aquí se integraría con API de WhatsApp o Twilio
-            // Por ahora, solo registramos el intento
-            log.info("[REMINDER-WA] Recordatorio WhatsApp para {}: {}", phone, message);
+            whatsAppService.sendRecordatorioCitaTemplate(appointment);
+            log.info("[REMINDER-WA] ✅ Recordatorio WhatsApp enviado a {}", phone);
 
         } catch (Exception e) {
             log.error("[REMINDER-WA] Error enviando recordatorio WhatsApp", e);
