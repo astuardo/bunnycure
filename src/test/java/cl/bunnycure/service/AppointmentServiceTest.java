@@ -64,4 +64,15 @@ class AppointmentServiceTest {
 
         assertThrows(ResourceNotFoundException.class, () -> appointmentService.deleteAppointment(99L));
     }
+
+    @Test
+    void sendManualNotification_shouldUseAppointmentConfirmationFlow() {
+        Appointment appointment = Appointment.builder().id(40L).notificationSent(false).build();
+        when(appointmentRepository.findByIdWithDetails(40L)).thenReturn(Optional.of(appointment));
+
+        appointmentService.sendManualNotification(40L);
+
+        verify(notificationService).sendAppointmentConfirmation(appointment);
+        verify(appointmentRepository).save(appointment);
+    }
 }

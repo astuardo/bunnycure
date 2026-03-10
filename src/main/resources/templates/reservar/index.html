@@ -121,6 +121,25 @@
             border-color: var(--bc-purple);
         }
 
+        .btn-phone-lookup {
+            border: 2px solid #E9D5FF;
+            border-left: 0;
+            border-radius: 0 10px 10px 0;
+            background: #F9FAFB;
+            color: #6B7280;
+            font-weight: 600;
+        }
+        .btn-phone-lookup:hover,
+        .btn-phone-lookup:focus {
+            background: #F3F4F6;
+            color: #374151;
+            border-color: var(--bc-purple);
+        }
+        .btn-phone-lookup:disabled {
+            color: #9CA3AF;
+            background: #F3F4F6;
+        }
+
         /* Separador o */
         .divider-or {
             display: flex; align-items: center; gap: 12px;
@@ -208,10 +227,17 @@
                 <input type="tel" id="clientPhone" class="form-control"
                        placeholder="9 dígitos *" maxlength="9" minlength="9" required
                        pattern="[0-9]{9}" inputmode="numeric"
-                       style="border-radius:0 10px 10px 0;"
+                       style="border-radius:0;"
                        data-lookup-needed="false"/>
+                <button type="button"
+                        id="phoneLookupBtn"
+                        class="btn btn-phone-lookup"
+                        onclick="triggerPhoneLookup()"
+                        disabled>
+                    Consultar
+                </button>
             </div>
-            <small class="text-muted d-block mt-1">Ingresa solo los 9 dígitos sin el +56</small>
+            <small class="text-muted d-block mt-1">Ingresa los 9 dígitos y presiona "Consultar"</small>
             
             <!-- Spinner de carga -->
             <div id="phoneLoadingSpinner" class="d-none mt-2 text-center">
@@ -409,6 +435,7 @@
      */
     function lookupCustomerByPhone(phone) {
         const phoneInput = document.getElementById('clientPhone');
+        const lookupBtn = document.getElementById('phoneLookupBtn');
         const spinner = document.getElementById('phoneLoadingSpinner');
         const foundMsg = document.getElementById('phoneFoundMessage');
         const errorMsg = document.getElementById('phoneLookupError');
@@ -422,11 +449,13 @@
             phoneValidated = false;
             enablePersonalDataSection(false);
             customerData = null;
+            lookupBtn.disabled = true;
             return;
         }
 
         // Mostrar spinner
         spinner.classList.remove('d-none');
+        lookupBtn.disabled = true;
         phoneValidated = false;
         customerData = null;
 
@@ -446,6 +475,7 @@
         .then(data => {
             // Ocultar spinner
             spinner.classList.add('d-none');
+            lookupBtn.disabled = false;
 
             if (data.found && data.id) {
                 // Clienta encontrada
@@ -500,6 +530,7 @@
         .catch(error => {
             // Ocultar spinner
             spinner.classList.add('d-none');
+            lookupBtn.disabled = false;
             
             // Mostrar error
             document.getElementById('phoneLookupErrorText').textContent = 
@@ -510,6 +541,12 @@
             customerData = null;
             enablePersonalDataSection(false);
         });
+    }
+
+    function triggerPhoneLookup() {
+        clearTimeout(lookupTimeout);
+        const phone = document.getElementById('clientPhone').value.trim();
+        lookupCustomerByPhone(phone);
     }
 
     /**
@@ -644,7 +681,13 @@
 
     // ═══ Escuchadores de eventos ═══
 
-    // Búsqueda por teléfono con debounce
+    // Búsqueda por teléfono con debounce + botón explícito
+    document.getElementById('clientPhone').addEventListener('input', function() {
+        const phone = this.value.trim();
+        const lookupBtn = document.getElementById('phoneLookupBtn');
+        lookupBtn.disabled = !/^[0-9]{9}$/.test(phone);
+    });
+
     document.getElementById('clientPhone').addEventListener('change', function() {
         clearTimeout(lookupTimeout);
         const phone = this.value.trim();
@@ -653,6 +696,13 @@
         lookupTimeout = setTimeout(() => {
             lookupCustomerByPhone(phone);
         }, 500);
+    });
+
+    document.getElementById('clientPhone').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            triggerPhoneLookup();
+        }
     });
 
     // Actualizar vista previa cuando cambian otros campos

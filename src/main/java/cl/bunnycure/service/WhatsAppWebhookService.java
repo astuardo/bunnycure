@@ -179,10 +179,51 @@ public class WhatsAppWebhookService {
                         log.info("[WEBHOOK] 📝 Filename: {}", message.getDocument().getFilename());
                     }
                     break;
+
+                case "button":
+                    processButtonMessage(message);
+                    break;
+
+                case "interactive":
+                    processInteractiveMessage(message);
+                    break;
                 
                 default:
                     log.info("[WEBHOOK] ❓ Tipo de mensaje no manejado: {}", message.getType());
             }
+        }
+    }
+
+    private void processButtonMessage(WhatsAppWebhookDto.Message message) {
+        if (message.getButton() == null) {
+            log.warn("[WEBHOOK] ⚠️ Mensaje tipo button sin contenido button");
+            return;
+        }
+
+        log.info("[WEBHOOK] 🔘 Button text: {}", message.getButton().getText());
+        log.info("[WEBHOOK] 🔘 Button payload: {}", message.getButton().getPayload());
+        // TODO: mapear payload a acciones de negocio (reagendar, confirmar, cancelar, etc.).
+    }
+
+    private void processInteractiveMessage(WhatsAppWebhookDto.Message message) {
+        if (message.getInteractive() == null) {
+            log.warn("[WEBHOOK] ⚠️ Mensaje tipo interactive sin contenido interactive");
+            return;
+        }
+
+        log.info("[WEBHOOK] 🧩 Interactive type: {}", message.getInteractive().getType());
+
+        if (message.getInteractive().getButtonReply() != null) {
+            var reply = message.getInteractive().getButtonReply();
+            log.info("[WEBHOOK] 🔘 Button reply id: {}", reply.getId());
+            log.info("[WEBHOOK] 🔘 Button reply title: {}", reply.getTitle());
+        }
+
+        if (message.getInteractive().getListReply() != null) {
+            var reply = message.getInteractive().getListReply();
+            log.info("[WEBHOOK] 📋 List reply id: {}", reply.getId());
+            log.info("[WEBHOOK] 📋 List reply title: {}", reply.getTitle());
+            log.info("[WEBHOOK] 📋 List reply description: {}", reply.getDescription());
         }
     }
 

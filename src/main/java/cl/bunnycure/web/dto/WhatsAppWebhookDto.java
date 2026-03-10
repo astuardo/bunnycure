@@ -202,6 +202,8 @@ public class WhatsAppWebhookDto {
         private Video video;
         private Document document;
         private Audio audio;
+        private Button button;
+        private Interactive interactive;
 
         public String getFrom() {
             return from;
@@ -273,6 +275,22 @@ public class WhatsAppWebhookDto {
 
         public void setAudio(Audio audio) {
             this.audio = audio;
+        }
+
+        public Button getButton() {
+            return button;
+        }
+
+        public void setButton(Button button) {
+            this.button = button;
+        }
+
+        public Interactive getInteractive() {
+            return interactive;
+        }
+
+        public void setInteractive(Interactive interactive) {
+            this.interactive = interactive;
         }
     }
 
@@ -450,6 +468,116 @@ public class WhatsAppWebhookDto {
 
         public void setSha256(String sha256) {
             this.sha256 = sha256;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Button {
+        private String payload;
+        private String text;
+
+        public String getPayload() {
+            return payload;
+        }
+
+        public void setPayload(String payload) {
+            this.payload = payload;
+        }
+
+        public String getText() {
+            return text;
+        }
+
+        public void setText(String text) {
+            this.text = text;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Interactive {
+        private String type;
+
+        @JsonProperty("button_reply")
+        private ButtonReply buttonReply;
+
+        @JsonProperty("list_reply")
+        private ListReply listReply;
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public ButtonReply getButtonReply() {
+            return buttonReply;
+        }
+
+        public void setButtonReply(ButtonReply buttonReply) {
+            this.buttonReply = buttonReply;
+        }
+
+        public ListReply getListReply() {
+            return listReply;
+        }
+
+        public void setListReply(ListReply listReply) {
+            this.listReply = listReply;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ButtonReply {
+        private String id;
+        private String title;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ListReply {
+        private String id;
+        private String title;
+        private String description;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
         }
     }
 
