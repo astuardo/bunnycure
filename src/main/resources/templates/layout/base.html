@@ -306,7 +306,10 @@
     // En desktop el nav siempre visible; en móvil toggle
     function toggleSidebarNav() {
         const nav = document.getElementById('sidebarNav');
-        nav.classList.toggle('open');
+        const isOpen = nav.classList.toggle('open');
+        if (window.innerWidth < 768) {
+            nav.style.display = isOpen ? 'block' : 'none';
+        }
     }
 
     // En desktop siempre mostrar el nav

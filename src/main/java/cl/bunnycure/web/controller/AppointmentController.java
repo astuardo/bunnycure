@@ -9,6 +9,7 @@ import cl.bunnycure.web.dto.AppointmentDto;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
@@ -172,8 +173,12 @@ public class AppointmentController extends BaseController {
 
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, RedirectAttributes flash) {
-        appointmentService.deleteAppointment(id);
-        flash.addFlashAttribute("successMsg", "Cita eliminada correctamente.");
+        try {
+            appointmentService.deleteAppointment(id);
+            flash.addFlashAttribute("successMsg", "Cita eliminada correctamente.");
+        } catch (DataIntegrityViolationException ex) {
+            flash.addFlashAttribute("errorMsg", "No se puede eliminar la cita porque esta vinculada a una solicitud.");
+        }
         return "redirect:/appointments";
     }
 

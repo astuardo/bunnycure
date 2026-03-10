@@ -3,6 +3,7 @@ package cl.bunnycure.service;
 import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.repository.AppointmentRepository;
+import cl.bunnycure.domain.repository.BookingRequestRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.AppointmentDto;
 import org.springframework.stereotype.Service;
@@ -17,14 +18,17 @@ import java.util.Optional;
 public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
+    private final BookingRequestRepository bookingRequestRepository;
     private final CustomerService customerService;
     private final NotificationService notificationService;
     private final ServiceCatalogService serviceCatalogService;
 
     public AppointmentService(AppointmentRepository appointmentRepository,
+                              BookingRequestRepository bookingRequestRepository,
                               CustomerService customerService,
                               NotificationService notificationService, ServiceCatalogService serviceCatalogService) {
         this.appointmentRepository = appointmentRepository;
+        this.bookingRequestRepository = bookingRequestRepository;
         this.customerService = customerService;
         this.notificationService = notificationService;
         this.serviceCatalogService = serviceCatalogService;
@@ -106,6 +110,8 @@ public class AppointmentService {
     @Transactional
     public void deleteAppointment(Long id) {
         var appointment = findById(id);
+        // Defensive unlink: production DBs with legacy FK definitions may not have ON DELETE SET NULL.
+        bookingRequestRepository.clearAppointmentByAppointmentId(id);
         appointmentRepository.delete(appointment);
     }
 
