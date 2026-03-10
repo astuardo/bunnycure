@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -75,6 +76,45 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     """)
     List<Appointment> findPendingRemindersForDate(
             @Param("status") AppointmentStatus status,
+            @Param("date") LocalDate date
+    );
+
+    @Query("""
+        SELECT a FROM Appointment a
+        JOIN FETCH a.customer
+        JOIN FETCH a.service
+        WHERE a.status IN :statuses
+        AND a.reminderSent = false
+        AND a.appointmentDate = :date
+        ORDER BY a.appointmentTime ASC
+    """)
+    List<Appointment> findPendingRemindersForDateByStatuses(
+            @Param("statuses") Collection<AppointmentStatus> statuses,
+            @Param("date") LocalDate date
+    );
+
+    @Query("""
+        SELECT a FROM Appointment a
+        JOIN FETCH a.customer
+        JOIN FETCH a.service
+        WHERE a.status IN :statuses
+        AND a.reminderSent = false
+        AND a.appointmentDate >= :date
+        ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
+    """)
+    List<Appointment> findPendingRemindersFromDateByStatuses(
+            @Param("statuses") Collection<AppointmentStatus> statuses,
+            @Param("date") LocalDate date
+    );
+
+    @Query("""
+        SELECT COUNT(a) FROM Appointment a
+        WHERE a.status IN :statuses
+        AND a.reminderSent = true
+        AND a.appointmentDate = :date
+    """)
+    long countSentRemindersForDateByStatuses(
+            @Param("statuses") Collection<AppointmentStatus> statuses,
             @Param("date") LocalDate date
     );
 

@@ -45,7 +45,7 @@
           </div>
           <div class="col ps-3">
             <div style="font-size:2rem;font-weight:700;color:#1F2937;" th:text="${totalCount}">0</div>
-            <div class="text-muted small">Citas pendientes hoy sin recordatorio</div>
+            <div class="text-muted small">Citas pendientes desde hoy sin recordatorio</div>
           </div>
         </div>
       </div>
@@ -71,12 +71,12 @@
   <div class="card table-card">
     <div class="card-header d-flex align-items-center">
       <i class="bi bi-list-check me-2"></i>
-      <h6 class="mb-0 fw-semibold">Citas pendientes de hoy</h6>
+      <h6 class="mb-0 fw-semibold">Citas pendientes (hoy y próximas)</h6>
     </div>
     <div class="card-body">
       <div th:if="${#lists.isEmpty(pendingReminders)}" class="text-center py-5 text-muted">
         <i class="bi bi-check-circle" style="font-size:3rem;opacity:.3;"></i>
-        <p class="mt-3 mb-0">No hay citas pendientes para hoy</p>
+        <p class="mt-3 mb-0">No hay citas pendientes para hoy ni próximas fechas</p>
       </div>
 
       <div th:if="${not #lists.isEmpty(pendingReminders)}">

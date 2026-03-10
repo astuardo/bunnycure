@@ -10,8 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -41,8 +39,9 @@ public class AppointmentReminderService {
         log.info("[REMINDER] Iniciando envío de recordatorios diarios...");
 
         LocalDate today = LocalDate.now();
-        List<Appointment> pendingReminders = appointmentRepository.findPendingRemindersForDate(
-                AppointmentStatus.PENDING, today
+        List<Appointment> pendingReminders = appointmentRepository.findPendingRemindersForDateByStatuses(
+                List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
+                today
         );
 
         if (pendingReminders.isEmpty()) {

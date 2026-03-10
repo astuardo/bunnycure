@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,8 +33,9 @@ public class AdminRemindersController {
     @GetMapping
     public String index(Model model) {
         LocalDate today = LocalDate.now();
-        var pendingToday = appointmentRepository.findPendingRemindersForDate(
-                AppointmentStatus.PENDING, today
+        var pendingToday = appointmentRepository.findPendingRemindersFromDateByStatuses(
+                List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
+                today
         );
 
         model.addAttribute("pendingReminders", pendingToday);
@@ -90,15 +92,15 @@ public class AdminRemindersController {
         Map<String, Object> stats = new HashMap<>();
         LocalDate today = LocalDate.now();
         
-        var pendingToday = appointmentRepository.findPendingRemindersForDate(
-                AppointmentStatus.PENDING, today
+        var pendingToday = appointmentRepository.findPendingRemindersForDateByStatuses(
+                List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
+                today
         );
-        
-        var sentToday = appointmentRepository.findByStatusAndNotificationSentFalse(
-                AppointmentStatus.PENDING
-        ).stream()
-         .filter(a -> a.isNotificationSent() && a.getAppointmentDate().equals(today))
-         .count();
+
+        long sentToday = appointmentRepository.countSentRemindersForDateByStatuses(
+                List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
+                today
+        );
 
         stats.put("pendingReminders", pendingToday.size());
         stats.put("sentToday", sentToday);
