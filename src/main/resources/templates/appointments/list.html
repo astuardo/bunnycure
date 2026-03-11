@@ -6,14 +6,35 @@
 <section th:fragment="content">
 
     <!-- Encabezado -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h4 class="fw-bold mb-0">Agenda de Citas</h4>
-            <p class="text-muted small mb-0">Vista semanal</p>
+            <p class="text-muted small mb-0"
+               th:text="${viewMode == 'day'} ? 'Vista diaria' : (${viewMode == 'month'} ? 'Vista mensual' : 'Vista semanal')">
+                Vista semanal
+            </p>
         </div>
         <a th:href="@{/appointments/new}" class="btn btn-bc">
             <i class="bi bi-plus-lg me-1"></i> Nueva Cita
         </a>
+    </div>
+
+    <!-- Selector de vista -->
+    <div class="card table-card mb-3">
+        <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Selector de vista">
+                <a th:href="@{/appointments(view='day',date=${selectedDate})}"
+                   class="btn"
+                   th:classappend="${viewMode == 'day'} ? ' btn-bc' : ' btn-outline-secondary'">Dia</a>
+                <a th:href="@{/appointments(view='week',date=${selectedDate})}"
+                   class="btn"
+                   th:classappend="${viewMode == 'week'} ? ' btn-bc' : ' btn-outline-secondary'">Semana</a>
+                <a th:href="@{/appointments(view='month',date=${selectedDate})}"
+                   class="btn"
+                   th:classappend="${viewMode == 'month'} ? ' btn-bc' : ' btn-outline-secondary'">Mes</a>
+            </div>
+            <small class="text-muted">Puedes navegar al futuro o al pasado con las flechas.</small>
+        </div>
     </div>
 
     <!-- Alerta flash -->
@@ -24,23 +45,21 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <!-- Navegación semana -->
+    <!-- Navegación rango -->
     <div class="card table-card mb-4">
         <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between">
-            <a th:href="@{/appointments(date=${prevWeek})}"
+            <a th:href="@{/appointments(view=${viewMode},date=${prevDate})}"
                class="btn btn-sm btn-outline-secondary">
                 <i class="bi bi-chevron-left"></i>
             </a>
             <span class="fw-semibold">
-                <span th:text="${#temporals.format(weekStart, 'dd MMM')}"></span>
-                –
-                <span th:text="${#temporals.format(weekEnd, 'dd MMM yyyy')}"></span>
+                <span th:text="${rangeLabel}"></span>
             </span>
             <div class="d-flex gap-2">
-                <a th:href="@{/appointments}" class="btn btn-sm btn-outline-secondary">
+                <a th:href="@{/appointments(view=${viewMode},date=${todayDate})}" class="btn btn-sm btn-outline-secondary">
                     Hoy
                 </a>
-                <a th:href="@{/appointments(date=${nextWeek})}"
+                <a th:href="@{/appointments(view=${viewMode},date=${nextDate})}"
                    class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-chevron-right"></i>
                 </a>
@@ -48,13 +67,123 @@
         </div>
     </div>
 
-    <!-- Tabla de citas -->
-    <div class="card table-card" style="overflow: visible;">
+    <!-- Vista mensual -->
+    <div th:if="${viewMode == 'month'}" class="mb-4">
+        <div class="card table-card mb-3">
+            <div class="card-body p-3">
+                <div class="row text-center fw-semibold small text-muted mb-2">
+                    <div class="col" th:each="dayName : ${weekDayNames}" th:text="${dayName}">Lun</div>
+                </div>
+                <div class="row row-cols-7 g-2">
+                    <div class="col" th:each="day : ${calendarDays}">
+                        <a th:href="@{/appointments(view='month',date=${day})}"
+                           class="text-decoration-none">
+                            <div class="border rounded p-2 h-100"
+                                 th:classappend="${day == today} ? ' border-primary' : (${day.monthValue != monthStart.monthValue} ? ' bg-light' : '')">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="small fw-semibold"
+                                          th:classappend="${day == selectedDate} ? ' text-primary' : ''"
+                                          th:text="${day.dayOfMonth}">1</span>
+                                    <span th:if="${appointmentCountByDate[day] > 0}"
+                                          class="badge rounded-pill text-bg-secondary"
+                                          th:text="${appointmentCountByDate[day]}">0</span>
+                                </div>
+                                <div th:if="${appointmentCountByDate[day] > 0}" class="mt-1">
+                                    <span class="small text-success">● citas</span>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card table-card" style="overflow: visible;">
+            <div class="card-body p-0">
+                <div class="px-3 py-2 border-bottom bg-light-subtle">
+                    <span class="fw-semibold">
+                        Citas del dia:
+                        <span th:text="${#temporals.format(selectedDate, 'EEEE dd/MM/yyyy')}"></span>
+                    </span>
+                </div>
+
+                <div th:if="${#lists.isEmpty(selectedDayAppointments)}" class="text-center text-muted py-4">
+                    <i class="bi bi-calendar2-x" style="font-size:1.7rem;"></i>
+                    <p class="mt-2 mb-0">No hay citas para el dia seleccionado.</p>
+                </div>
+
+                <table th:unless="${#lists.isEmpty(selectedDayAppointments)}" class="table table-hover mb-0">
+                    <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Cliente</th>
+                        <th>Servicio</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="apt : ${selectedDayAppointments}" th:classappend="${apt.appointmentDate == today} ? 'table-active'">
+                        <td class="fw-semibold" th:text="${#temporals.format(apt.appointmentTime, 'HH:mm')}"></td>
+                        <td>
+                            <a th:href="@{/customers/{id}(id=${apt.customer.id})}" class="text-decoration-none" th:text="${apt.customer.fullName}"></a>
+                        </td>
+                        <td th:text="${apt.service.name}"></td>
+                        <td>
+                            <div class="dropdown">
+                                <span class="badge rounded-pill px-3 py-1 dropdown-toggle"
+                                      style="cursor:pointer;"
+                                      th:classappend="${apt.status.name() == 'PENDING'}   ? 'badge-pending'   :
+                                                      (${apt.status.name() == 'CONFIRMED'} ? 'badge-confirmed' :
+                                                      (${apt.status.name() == 'COMPLETED'} ? 'badge-completed' : 'badge-cancelled'))"
+                                      data-bs-toggle="dropdown"
+                                      data-bs-auto-close="true"
+                                      aria-expanded="false"
+                                      th:text="${apt.status.displayName}"></span>
+                                <ul class="dropdown-menu shadow border-0 py-1" style="min-width: 140px; z-index: 9999; position: fixed;">
+                                    <li th:each="s : ${T(cl.bunnycure.domain.enums.AppointmentStatus).values()}">
+                                        <form th:action="@{/appointments/{id}/status(id=${apt.id})}" method="post">
+                                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                            <input type="hidden" name="status" th:value="${s.name()}"/>
+                                            <button type="submit" class="dropdown-item small py-2" th:text="${s.displayName}" th:classappend="${s == apt.status} ? 'fw-bold disabled'"></button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <form th:action="@{/appointments/{id}/notify(id=${apt.id})}" method="post" class="d-inline" th:title="${apt.notificationSent} ? 'Reenviar notificación' : 'Enviar notificación'">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <button type="submit" class="btn btn-sm me-1" th:classappend="${apt.notificationSent} ? 'btn-outline-secondary' : 'btn-outline-warning'" th:title="${apt.notificationSent} ? 'Reenviar notificación' : 'Enviar notificación (pendiente)'">
+                                    <i class="bi bi-bell" th:classappend="${apt.notificationSent} ? '' : '-fill'"></i>
+                                </button>
+                            </form>
+
+                            <a th:href="@{/appointments/{id}(id=${apt.id})}" class="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+
+                            <button type="button" class="btn btn-sm btn-outline-danger" title="Eliminar" data-bs-toggle="modal" data-bs-target="#deleteModal" th:data-id="${apt.id}" th:data-name="${apt.customer.fullName}" onclick="confirmDelete(this)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vista diaria / semanal -->
+    <div th:if="${viewMode != 'month'}" class="card table-card" style="overflow: visible;">
         <div class="card-body p-0">
             <div th:if="${#lists.isEmpty(appointments)}"
                  class="text-center text-muted py-5">
                 <i class="bi bi-calendar-x" style="font-size:2rem;"></i>
-                <p class="mt-2 mb-0">No hay citas para esta semana.</p>
+                <p class="mt-2 mb-0"
+                   th:text="${viewMode == 'day'} ? 'No hay citas para este dia.' : 'No hay citas para esta semana.'">
+                    No hay citas para esta semana.
+                </p>
                 <a th:href="@{/appointments/new}" class="btn btn-sm btn-bc mt-3">
                     Agendar una cita
                 </a>

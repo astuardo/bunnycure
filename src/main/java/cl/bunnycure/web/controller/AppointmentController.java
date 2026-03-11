@@ -16,6 +16,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/appointments")
@@ -36,18 +42,89 @@ public class AppointmentController extends BaseController {
     @GetMapping
     public String list(@RequestParam(required = false)
                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                       @RequestParam(required = false, defaultValue = "week") String view,
                        Model model) {
-        LocalDate base      = (date != null) ? date : LocalDate.now();
-        LocalDate weekStart = base.with(java.time.DayOfWeek.MONDAY);
-        LocalDate weekEnd   = weekStart.plusDays(6);
+        LocalDate today = LocalDate.now();
+        LocalDate base = (date != null) ? date : today;
+        String viewMode = normalizeViewMode(view);
 
-        model.addAttribute("appointments", appointmentService.findByDateRange(weekStart, weekEnd));
-        model.addAttribute("weekStart", weekStart);
-        model.addAttribute("weekEnd",   weekEnd);
-        model.addAttribute("prevWeek",  weekStart.minusWeeks(1));
-        model.addAttribute("nextWeek",  weekStart.plusWeeks(1));
-        model.addAttribute("today",     LocalDate.now());
+        LocalDate rangeStart;
+        LocalDate rangeEnd;
+        LocalDate prevDate;
+        LocalDate nextDate;
+        String rangeLabel;
+
+        if ("day".equals(viewMode)) {
+            rangeStart = base;
+            rangeEnd = base;
+            prevDate = base.minusDays(1);
+            nextDate = base.plusDays(1);
+            rangeLabel = base.format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM yyyy", new Locale("es", "CL")));
+        } else if ("month".equals(viewMode)) {
+            rangeStart = base.withDayOfMonth(1);
+            rangeEnd = rangeStart.with(TemporalAdjusters.lastDayOfMonth());
+            prevDate = rangeStart.minusMonths(1);
+            nextDate = rangeStart.plusMonths(1);
+            rangeLabel = rangeStart.format(DateTimeFormatter.ofPattern("MMMM yyyy", new Locale("es", "CL")));
+        } else {
+            rangeStart = base.with(java.time.DayOfWeek.MONDAY);
+            rangeEnd = rangeStart.plusDays(6);
+            prevDate = rangeStart.minusWeeks(1);
+            nextDate = rangeStart.plusWeeks(1);
+            rangeLabel = String.format("%s - %s",
+                    rangeStart.format(DateTimeFormatter.ofPattern("dd MMM", new Locale("es", "CL"))),
+                    rangeEnd.format(DateTimeFormatter.ofPattern("dd MMM yyyy", new Locale("es", "CL"))));
+        }
+
+        List<Appointment> appointments = appointmentService.findByDateRange(rangeStart, rangeEnd);
+        model.addAttribute("appointments", appointments);
+        model.addAttribute("viewMode", viewMode);
+        model.addAttribute("selectedDate", base);
+        model.addAttribute("rangeStart", rangeStart);
+        model.addAttribute("rangeEnd", rangeEnd);
+        model.addAttribute("rangeLabel", rangeLabel);
+        model.addAttribute("prevDate", prevDate);
+        model.addAttribute("nextDate", nextDate);
+        model.addAttribute("today", today);
+        model.addAttribute("todayDate", today);
+
+        if ("month".equals(viewMode)) {
+            LocalDate calendarStart = rangeStart.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+            LocalDate calendarEnd = rangeEnd.with(TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY));
+
+            List<LocalDate> calendarDays = calendarStart.datesUntil(calendarEnd.plusDays(1)).toList();
+            Map<LocalDate, Long> appointmentCountByDate = new LinkedHashMap<>();
+            for (LocalDate day : calendarDays) {
+                appointmentCountByDate.put(day, 0L);
+            }
+            for (Appointment appointment : appointments) {
+                LocalDate appointmentDate = appointment.getAppointmentDate();
+                appointmentCountByDate.computeIfPresent(appointmentDate, (d, count) -> count + 1);
+            }
+
+            List<Appointment> selectedDayAppointments = appointments.stream()
+                    .filter(a -> a.getAppointmentDate() != null && a.getAppointmentDate().equals(base))
+                    .toList();
+
+            model.addAttribute("calendarDays", calendarDays);
+            model.addAttribute("appointmentCountByDate", appointmentCountByDate);
+            model.addAttribute("selectedDayAppointments", selectedDayAppointments);
+            model.addAttribute("weekDayNames", List.of("Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"));
+            model.addAttribute("monthStart", rangeStart);
+        }
+
         return "appointments/list";
+    }
+
+    private String normalizeViewMode(String view) {
+        if (view == null) {
+            return "week";
+        }
+        return switch (view.trim().toLowerCase(Locale.ROOT)) {
+            case "day" -> "day";
+            case "month" -> "month";
+            default -> "week";
+        };
     }
 
     @GetMapping("/new-from-wa")
