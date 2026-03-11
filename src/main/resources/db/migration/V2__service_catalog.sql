@@ -42,27 +42,15 @@ SELECT 10, 'Retiro de Esmalte',             60,   7000, true, 10
 WHERE NOT EXISTS (SELECT 1 FROM service_catalog WHERE id = 10);
 
 -- Modificar tabla appointments
--- Primero agregar la columna como nullable (solo si no existe)
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
-                   WHERE table_name='appointments' AND column_name='service_catalog_id') THEN
-        ALTER TABLE appointments
-            ADD COLUMN service_catalog_id BIGINT REFERENCES service_catalog(id);
-    END IF;
-END $$;
+-- Agregar columna si no existe
+ALTER TABLE appointments
+    ADD COLUMN IF NOT EXISTS service_catalog_id BIGINT REFERENCES service_catalog(id);
 
 -- Migrar datos existentes (si los hay) al primer servicio
 UPDATE appointments SET service_catalog_id = 1 WHERE service_catalog_id IS NULL;
 
--- Ahora hacer la columna NOT NULL (solo si no lo es ya)
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns
-               WHERE table_name='appointments' AND column_name='service_catalog_id' AND is_nullable='YES') THEN
-        ALTER TABLE appointments ALTER COLUMN service_catalog_id SET NOT NULL;
-    END IF;
-END $$;
+-- Ahora hacer la columna NOT NULL
+ALTER TABLE appointments ALTER COLUMN service_catalog_id SET NOT NULL;
 
 -- Eliminar columna vieja
 ALTER TABLE appointments DROP COLUMN IF EXISTS service_type;

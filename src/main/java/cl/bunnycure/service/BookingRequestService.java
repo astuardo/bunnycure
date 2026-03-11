@@ -101,10 +101,13 @@ public class BookingRequestService {
         Customer customer = customerRepository.findByPhone(request.getPhone())
                 .orElseGet(() -> {
                     // Si no existe, la creamos automáticamente
+                    String email = (request.getEmail() != null && !request.getEmail().isBlank())
+                            ? request.getEmail()
+                            : null;
                     var newCustomer = new Customer(
                             request.getFullName(),
                             request.getPhone(),
-                            request.getEmail() != null ? request.getEmail() : ""
+                            email
                     );
                     return customerRepository.save(newCustomer);
                 });

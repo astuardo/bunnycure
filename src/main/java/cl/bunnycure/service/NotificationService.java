@@ -190,6 +190,13 @@ public class NotificationService {
 
     private void send(Appointment appointment, String template, String subject) {
         try {
+            if (appointment.getCustomer() == null
+                    || appointment.getCustomer().getEmail() == null
+                    || appointment.getCustomer().getEmail().isBlank()) {
+                log.info("[MAIL-SKIP] {} (cliente sin email)", subject);
+                return;
+            }
+
             String fechaFormateada = appointment.getAppointmentDate()
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
                             new Locale("es", "CL")));

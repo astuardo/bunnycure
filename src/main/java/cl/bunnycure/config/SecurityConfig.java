@@ -1,18 +1,14 @@
 package cl.bunnycure.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.Arrays;
@@ -21,16 +17,8 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class SecurityConfig {
 
-	private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
-
 	private final Environment env;
 	private final PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler;
-
-	@Value("${bunnycure.admin.username:admin}")
-	private String adminUsername;
-
-	@Value("${bunnycure.admin.password:changeme}")
-	private String adminPassword;
 
 	public SecurityConfig(Environment env, PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler) {
 		this.env = env;
@@ -62,12 +50,14 @@ public class SecurityConfig {
 			// API pública: búsqueda de clientes por teléfono
 			auth.requestMatchers("/api/customers/lookup").permitAll();
 			
-			// Webhook de WhatsApp (debe ser público para recibir notificaciones de Meta)
-			auth.requestMatchers("/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**").permitAll();
+			// Webhook de WhatsApp (solo endpoint oficial público)
+			auth.requestMatchers(HttpMethod.GET, "/api/webhooks/whatsapp").permitAll();
+			auth.requestMatchers(HttpMethod.POST, "/api/webhooks/whatsapp").permitAll();
 			
 			// API de pruebas WhatsApp (solo en local)
 			if (isLocal) {
 				auth.requestMatchers("/api/test/**").permitAll();
+				auth.requestMatchers("/api/webhooks/whatsapp/test", "/api/webhooks/whatsapp/status").permitAll();
 			}
 
 			if (isLocal) {
@@ -105,7 +95,7 @@ public class SecurityConfig {
 		// ── Headers según perfil ──────────────────────────────────────────────
 		if (isLocal) {
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup", "/api/test/**", "/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**")
+					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup", "/api/test/**", "/api/webhooks/whatsapp")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.sameOrigin())
@@ -113,7 +103,7 @@ public class SecurityConfig {
 		} else {
 			// Disable CSRF for public booking portal to avoid session creation issues
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup", "/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**")
+					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup", "/api/webhooks/whatsapp")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.deny())

@@ -4,6 +4,7 @@ import cl.bunnycure.config.WhatsAppConfig;
 import cl.bunnycure.service.WhatsAppService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +28,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/test/whatsapp")
+@Profile("local")
 public class WhatsAppTestController {
 
     private static final Logger log = LoggerFactory.getLogger(WhatsAppTestController.class);

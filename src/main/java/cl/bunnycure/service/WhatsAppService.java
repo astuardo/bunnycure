@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -129,7 +130,7 @@ public class WhatsAppService {
                 return;
             }
 
-            String fechaFormateada = appointment.getAppointmentDate()
+            String fechaFormateada = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime())
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
                             new Locale("es", "CL")));
 
@@ -166,7 +167,7 @@ public class WhatsAppService {
                 return;
             }
 
-            String fechaFormateada = appointment.getAppointmentDate()
+            String fechaFormateada = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime())
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
                             new Locale("es", "CL")));
 
@@ -200,7 +201,7 @@ public class WhatsAppService {
                 return;
             }
 
-            String fechaFormateada = appointment.getAppointmentDate()
+            String fechaFormateada = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime())
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
                             new Locale("es", "CL")));
 

@@ -11,6 +11,7 @@ import cl.bunnycure.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -30,18 +31,24 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${bunnycure.admin.username:admin}")
+    private String adminUsername;
+
+    @Value("${bunnycure.admin.password:changeme-local-only}")
+    private String adminPassword;
+
     @Override
     public void run(String ... args) {
 
         // ── Usuario Admin ────────────────────────────────────────────────────
         // Buscar si ya existe el usuario admin
-        User adminUser = userRepository.findByUsername("admin").orElse(null);
+        User adminUser = userRepository.findByUsername(adminUsername).orElse(null);
         
         if (adminUser == null) {
             // No existe, crear uno nuevo
             adminUser = User.builder()
-                    .username("admin")
-                    .password(passwordEncoder.encode("changeme"))
+                    .username(adminUsername)
+                    .password(passwordEncoder.encode(adminPassword))
                     .fullName("Administrador")
                     .email("admin@bunnycure.local")
                     .enabled(true)
@@ -49,13 +56,12 @@ public class DataInitializer implements CommandLineRunner {
                     .build();
             
             userRepository.save(adminUser);
-            log.info("✅ Usuario admin creado (username: admin, password: changeme)");
+            log.info("✅ Usuario admin local creado (username: {})", adminUsername);
         } else {
-            // Ya existe, actualizar la contraseña para asegurar que sea "changeme"
-            adminUser.setPassword(passwordEncoder.encode("changeme"));
+            // Ya existe, solo asegurar estado habilitado.
             adminUser.setEnabled(true);
             userRepository.save(adminUser);
-            log.info("✅ Usuario admin actualizado (password: changeme)");
+            log.info("✅ Usuario admin local verificado (username: {})", adminUsername);
         }
 
         // ── Servicios ────────────────────────────────────────────────────────

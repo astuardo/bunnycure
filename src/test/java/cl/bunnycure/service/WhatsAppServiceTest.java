@@ -20,9 +20,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -49,10 +46,6 @@ class WhatsAppServiceTest {
     @BeforeEach
     void setUp() {
         whatsAppService = new WhatsAppService(config, restTemplate);
-        
-        // Configurar valores por defecto
-        when(config.getToken()).thenReturn("test-token");
-        when(config.getPhoneId()).thenReturn("123456789");
     }
 
     @Test
@@ -60,6 +53,8 @@ class WhatsAppServiceTest {
         // Arrange
         String phone = "+56912345678";
         String message = "Test message";
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("123456789");
         
         when(restTemplate.exchange(
                 anyString(),
@@ -104,6 +99,7 @@ class WhatsAppServiceTest {
     @Test
     void sendTextMessage_SkipWhenPhoneIdNotConfigured() {
         // Arrange
+        when(config.getToken()).thenReturn("test-token");
         when(config.getPhoneId()).thenReturn("");
 
         // Act
@@ -117,6 +113,9 @@ class WhatsAppServiceTest {
     void sendAppointmentConfirmation_Success() {
         // Arrange
         Appointment appointment = createTestAppointment();
+        when(config.isUseTemplateForConfirmation()).thenReturn(false);
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("123456789");
         
         when(restTemplate.exchange(
                 anyString(),
@@ -153,6 +152,8 @@ class WhatsAppServiceTest {
     @Test
     void normalizePhoneNumber_RemovesSpecialCharacters() {
         // Este método es privado, pero podemos probarlo indirectamente
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("123456789");
         when(restTemplate.exchange(
                 anyString(),
                 eq(HttpMethod.POST),
@@ -177,6 +178,8 @@ class WhatsAppServiceTest {
 
     @Test
     void normalizePhoneNumber_AddsChileCountryCode() {
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("123456789");
         when(restTemplate.exchange(
                 anyString(),
                 eq(HttpMethod.POST),
@@ -203,6 +206,8 @@ class WhatsAppServiceTest {
     void sendBookingRequestReceived_Success() {
         // Arrange
         BookingRequest request = createTestBookingRequest();
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("123456789");
         
         when(restTemplate.exchange(
                 anyString(),

@@ -36,7 +36,7 @@ public class PasswordChangeAuthenticationSuccessHandler implements Authenticatio
     @Value("${bunnycure.admin.username:admin}")
     private String adminUsername;
 
-    @Value("${bunnycure.admin.password:changeme}")
+    @Value("${bunnycure.admin.password:}")
     private String defaultPassword;
 
     public PasswordChangeAuthenticationSuccessHandler(UserRepository userRepository) {
@@ -56,7 +56,9 @@ public class PasswordChangeAuthenticationSuccessHandler implements Authenticatio
         
         if (userOpt.isPresent()) {
             User user = userOpt.get();
-            boolean hasDefaultPassword = passwordEncoder.matches(defaultPassword, user.getPassword());
+            boolean hasDefaultPassword = defaultPassword != null
+                    && !defaultPassword.isBlank()
+                    && passwordEncoder.matches(defaultPassword, user.getPassword());
             
             if (hasDefaultPassword) {
                 log.warn("[SECURITY] Usuario '{}' tiene contraseña por defecto - redirigiendo a cambio obligatorio", username);

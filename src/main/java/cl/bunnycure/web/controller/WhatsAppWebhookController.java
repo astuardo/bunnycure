@@ -5,9 +5,12 @@ import cl.bunnycure.web.dto.WhatsAppWebhookDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Arrays;
 
 /**
  * Controller para recibir notificaciones de webhook de WhatsApp Cloud API
@@ -26,12 +29,14 @@ public class WhatsAppWebhookController {
     private static final Logger log = LoggerFactory.getLogger(WhatsAppWebhookController.class);
 
     private final WhatsAppWebhookService webhookService;
+    private final Environment environment;
 
     @Value("${whatsapp.webhook.verify-token:bunnycure_webhook_token_2024}")
     private String verifyToken;
 
-    public WhatsAppWebhookController(WhatsAppWebhookService webhookService) {
+    public WhatsAppWebhookController(WhatsAppWebhookService webhookService, Environment environment) {
         this.webhookService = webhookService;
+        this.environment = environment;
     }
 
     /**
@@ -76,8 +81,6 @@ public class WhatsAppWebhookController {
         // Verificar que el token coincida
         if (!verifyToken.equals(token)) {
             log.error("[WEBHOOK-VERIFY] ❌ Token no coincide");
-            log.error("[WEBHOOK-VERIFY] Expected: {}", verifyToken);
-            log.error("[WEBHOOK-VERIFY] Received: {}", token);
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Invalid verify token");
         }
@@ -126,6 +129,10 @@ public class WhatsAppWebhookController {
      */
     @PostMapping("/test")
     public ResponseEntity<String> testWebhook(@RequestBody String rawPayload) {
+        if (!isLocalProfile()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not Found");
+        }
+
         log.info("[WEBHOOK-TEST] 🧪 Prueba de webhook recibida");
         log.info("[WEBHOOK-TEST] Payload: {}", rawPayload);
         return ResponseEntity.ok("TEST_RECEIVED");
@@ -136,6 +143,10 @@ public class WhatsAppWebhookController {
      */
     @GetMapping("/status")
     public ResponseEntity<java.util.Map<String, Object>> getWebhookStatus() {
+        if (!isLocalProfile()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
         java.util.Map<String, Object> status = new java.util.HashMap<>();
         status.put("status", "active");
         status.put("endpoint", "/api/webhooks/whatsapp");
@@ -145,5 +156,9 @@ public class WhatsAppWebhookController {
         
         log.info("[WEBHOOK-STATUS] 📊 Estado consultado");
         return ResponseEntity.ok(status);
+    }
+
+    private boolean isLocalProfile() {
+        return Arrays.asList(environment.getActiveProfiles()).contains("local");
     }
 }
