@@ -44,13 +44,12 @@ public class AdminUserInitializer {
                 var adminUser = userRepository.findByUsername(adminUsername);
 
                 if (adminUser.isPresent()) {
-                    // Ensure admin user stays enabled and password rotates from secure env value.
+                    // Preserve existing password; only enforce enabled/admin flags.
                     User user = adminUser.get();
                     user.setEnabled(true);
                     user.setRole("ADMIN");
-                    user.setPassword(passwordEncoder.encode(adminPassword));
                     userRepository.save(user);
-                    log.info("[INIT] Admin user '{}' updated from secure environment config", adminUsername);
+                    log.info("[INIT] Admin user '{}' already exists; password preserved", adminUsername);
                 } else {
                     // Create admin user if doesn't exist
                     User adminNewUser = User.builder()
