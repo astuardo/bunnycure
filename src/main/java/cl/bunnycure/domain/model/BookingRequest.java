@@ -18,12 +18,18 @@ public class BookingRequest {
     @SequenceGenerator(name = "booking_requests_seq_generator", sequenceName = "booking_requests_seq", allocationSize = 1)
     private Long id;
 
-    // ── Datos de la solicitante ──────────────────────────────
+    // ── Datos de la persona solicitante ──────────────────────
     @Column(nullable = false, length = 100)
     private String fullName;
 
     @Column(nullable = false, length = 15)
     private String phone;
+
+    @Column(name = "gender", length = 20)
+    private String gender;
+
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
 
     @Column(length = 150)
     private String email;
@@ -41,6 +47,9 @@ public class BookingRequest {
 
     @Column(length = 500)
     private String notes;
+
+    @Column(name = "emergency_phone", length = 15)
+    private String emergencyPhone;
 
     // ── Estado ───────────────────────────────────────────────
     @Enumerated(EnumType.STRING)

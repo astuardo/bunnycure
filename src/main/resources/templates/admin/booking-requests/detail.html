@@ -39,6 +39,18 @@
                th:text="${request.phone}">
             </a>
           </div>
+          <div th:if="${request.gender}">
+            <small class="text-muted d-block">🧾 Genero registrado</small>
+            <span th:text="${request.gender}"></span>
+          </div>
+          <div th:if="${request.birthDate}">
+            <small class="text-muted d-block">🎂 Fecha de nacimiento</small>
+            <span th:text="${#temporals.format(request.birthDate, 'dd/MM/yyyy')}"></span>
+          </div>
+          <div th:if="${request.emergencyPhone}">
+            <small class="text-muted d-block">📞 Telefono de emergencia</small>
+            <span th:text="${request.emergencyPhone}"></span>
+          </div>
           <div th:if="${request.email}">
             <small class="text-muted d-block">✉️ Email</small>
             <span th:text="${request.email}"></span>
@@ -61,7 +73,7 @@
           </div>
           <div th:if="${request.notes}"
                class="p-2 rounded" style="background:#FFFBEB;">
-            <small class="text-muted d-block">📝 Notas de la clienta</small>
+            <small class="text-muted d-block">📝 Notas de salud</small>
             <span class="small" th:text="${request.notes}"></span>
           </div>
         </div>
@@ -70,7 +82,7 @@
         <a th:href="'https://wa.me/' + ${request.phone.replaceAll('[^0-9]','')}"
            class="btn btn-sm btn-success w-100 mt-4" target="_blank">
           <i class="bi bi-whatsapp me-1"></i>
-          Abrir chat con la clienta
+          Abrir chat con la persona
         </a>
       </div>
     </div>
@@ -84,7 +96,7 @@
         </h6>
         <p class="text-muted small mb-3">
           Confirma la hora exacta y el servicio final. Se creará la cita
-          y se notificará a la clienta por email y WhatsApp.
+          y se notificará por email y WhatsApp.
         </p>
 
         <form th:action="@{/admin/booking-requests/{id}/approve(id=${request.id})}"

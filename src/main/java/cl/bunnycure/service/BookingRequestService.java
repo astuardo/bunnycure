@@ -69,11 +69,14 @@ public class BookingRequestService {
         var request = BookingRequest.builder()
                 .fullName(dto.getFullName())
                 .phone(dto.getPhone())
+                .gender(dto.getGender())
+                .birthDate(dto.getBirthDate())
                 .email(dto.getEmail())
                 .service(service)
                 .preferredDate(dto.getPreferredDate())
                 .preferredBlock(dto.getPreferredBlock())
                 .notes(dto.getNotes())
+                .emergencyPhone(dto.getEmergencyPhone())
                 .status(BookingRequestStatus.PENDING)
                 .build();
 

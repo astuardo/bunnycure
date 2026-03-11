@@ -62,7 +62,7 @@ public class BookingRequestController extends BaseController {
             var appointment = bookingRequestService.approve(id, approval);
             flash.addFlashAttribute("successMsg",
                     "✅ Solicitud aprobada. Cita #" + appointment.getId() +
-                            " creada y confirmación enviada a la clienta.");
+                            " creada y confirmacion enviada.");
         } catch (IllegalStateException e) {
             flash.addFlashAttribute("errorMsg", e.getMessage());
         }
@@ -77,7 +77,7 @@ public class BookingRequestController extends BaseController {
                          RedirectAttributes flash) {
         try {
             bookingRequestService.reject(id, reason);
-            flash.addFlashAttribute("successMsg", "Solicitud rechazada y clienta notificada.");
+            flash.addFlashAttribute("successMsg", "Solicitud rechazada y notificacion enviada.");
         } catch (IllegalStateException e) {
             flash.addFlashAttribute("errorMsg", e.getMessage());
         }

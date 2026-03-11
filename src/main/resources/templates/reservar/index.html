@@ -4,6 +4,7 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Reservar Cita – Bunny Cure</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo.png}" href="/images/logo.png"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
     <style>
@@ -247,10 +248,10 @@
                 <small class="text-muted">Buscando tu información...</small>
             </div>
             
-            <!-- Mensaje de cliente encontrado -->
+            <!-- Mensaje de persona encontrada -->
             <div id="phoneFoundMessage" class="d-none alert alert-success mt-2 py-2 px-3 mb-0" role="alert">
                 <i class="bi bi-check-circle me-2"></i>
-                <span id="phoneFoundText">Clienta encontrada</span>
+                <span id="phoneFoundText">Persona encontrada</span>
             </div>
             
             <!-- Mensaje de error en búsqueda -->
@@ -263,6 +264,21 @@
 
     <!-- Datos personales (se activan después de validar teléfono) -->
     <div id="personalDataSection" class="row g-3 mb-4" style="opacity: 0.5; pointer-events: none;">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Genero *</label>
+            <select id="clientGender" class="form-select" required>
+                <option value="">Selecciona una opcion</option>
+                <option value="FEMENINO">Femenino</option>
+                <option value="MASCULINO">Masculino</option>
+            </select>
+            <small class="text-muted d-block mt-1">Se usa solo para validar la edad minima.</small>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Fecha de nacimiento *</label>
+            <input type="date" id="clientBirthDate" class="form-control" required/>
+            <small id="birthDateAgeError" class="text-danger d-none">Edad no valida para el genero seleccionado.</small>
+            <small class="text-muted d-block mt-1">Minimo: 16 si es masculino, 14 si es femenino.</small>
+        </div>
         <div class="col-12">
             <label class="form-label fw-semibold">Tu nombre *</label>
             <div class="input-group">
@@ -275,6 +291,15 @@
                 </span>
             </div>
             <small id="nameNote" class="text-muted d-block mt-1"></small>
+        </div>
+        <div class="col-12">
+            <label class="form-label fw-semibold">Telefono de emergencia (opcional)</label>
+            <div class="input-group">
+                <span class="input-group-text" style="border-radius:10px 0 0 10px;">+56</span>
+                <input type="tel" id="clientEmergencyPhone" class="form-control"
+                       placeholder="9 digitos" maxlength="9" pattern="[0-9]{9}" inputmode="numeric"
+                       style="border-radius:0 10px 10px 0;"/>
+            </div>
         </div>
         <div class="col-12">
             <label class="form-label fw-semibold">Tu email (opcional)</label>
@@ -342,9 +367,9 @@
     <hr class="my-3" style="border-color:#E9D5FF;">
 
     <!-- Notas adicionales -->
-    <div class="step-label"><i class="bi bi-chat-left-text me-1"></i>Notas (opcional)</div>
+    <div class="step-label"><i class="bi bi-chat-left-text me-1"></i>Notas de salud (opcional)</div>
     <textarea id="clientNotes" class="form-control mb-4" rows="2"
-              placeholder="Alguna indicación especial, alergias, diseño que tienes en mente...">
+              placeholder="Si tienes alguna enfermedad cronica o tomas medicamento a diario, escribelo aqui.">
     </textarea>
 
     <!-- ══ Botón principal: enviar solicitud al sistema ══ -->
@@ -372,11 +397,14 @@
     <form id="bookingForm" action="/reservar/submit" method="post" style="display:none;">
         <input type="hidden" name="fullName"       id="hFullName"/>
         <input type="hidden" name="phone"          id="hPhone"/>
+        <input type="hidden" name="gender"         id="hGender"/>
+        <input type="hidden" name="birthDate"      id="hBirthDate"/>
         <input type="hidden" name="email"          id="hEmail"/>
         <input type="hidden" name="serviceId"      id="hServiceId"/>
         <input type="hidden" name="preferredDate"  id="hDate"/>
         <input type="hidden" name="preferredBlock" id="hBlock"/>
         <input type="hidden" name="notes"          id="hNotes"/>
+        <input type="hidden" name="emergencyPhone" id="hEmergencyPhone"/>
     </form>
 
 </div>
@@ -431,7 +459,7 @@
     }
 
     /**
-     * Busca una clienta existente por teléfono en la base de datos
+     * Busca una persona existente por telefono en la base de datos.
      */
     function lookupCustomerByPhone(phone) {
         const phoneInput = document.getElementById('clientPhone');
@@ -478,11 +506,11 @@
             lookupBtn.disabled = false;
 
             if (data.found && data.id) {
-                // Clienta encontrada
+                // Persona encontrada
                 customerData = data;
                 phoneValidated = true;
                 
-                // Pre-llenar campos con datos de la clienta
+                // Pre-llenar campos con datos de la persona
                 document.getElementById('clientName').value = data.fullName || '';
                 document.getElementById('clientEmail').value = data.email || '';
                 
@@ -494,21 +522,21 @@
                 
                 // Mostrar badge de cliente encontrado
                 document.getElementById('customerFoundBadge').classList.remove('d-none');
-                document.getElementById('nameNote').textContent = 'Cliente encontrada en el sistema';
-                document.getElementById('emailNote').textContent = 'Cliente encontrada en el sistema';
+                document.getElementById('nameNote').textContent = 'Persona encontrada en el sistema';
+                document.getElementById('emailNote').textContent = 'Persona encontrada en el sistema';
                 
                 // Mostrar mensaje de éxito
-                document.getElementById('phoneFoundText').textContent = 'Clienta encontrada! Datos cargados automáticamente.';
+                document.getElementById('phoneFoundText').textContent = 'Persona encontrada. Datos cargados automaticamente.';
                 foundMsg.classList.remove('d-none');
                 
                 // Habilitar sección de datos personales
                 enablePersonalDataSection(true);
             } else {
-                // Clienta no encontrada
+                // Persona no encontrada
                 customerData = null;
                 phoneValidated = true;
                 
-                // Limpiar y habilitar campos para nueva clienta
+                // Limpiar y habilitar campos para nuevo registro
                 document.getElementById('clientName').value = '';
                 document.getElementById('clientEmail').value = '';
                 document.getElementById('clientName').removeAttribute('readonly');
@@ -518,8 +546,8 @@
                 
                 // Ocultar badge
                 document.getElementById('customerFoundBadge').classList.add('d-none');
-                document.getElementById('nameNote').textContent = 'Nueva clienta - completa los datos';
-                document.getElementById('emailNote').textContent = 'Nueva clienta - completa los datos (opcional)';
+                document.getElementById('nameNote').textContent = 'Nuevo registro - completa los datos';
+                document.getElementById('emailNote').textContent = 'Nuevo registro - completa los datos (opcional)';
                 
                 // Habilitar sección de datos personales
                 enablePersonalDataSection(true);
@@ -566,6 +594,9 @@
     function updatePreview() {
         const name  = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
+        const gender = document.getElementById('clientGender').value;
+        const birthDate = document.getElementById('clientBirthDate').value;
+        const emergencyPhone = document.getElementById('clientEmergencyPhone').value.trim();
         const email = document.getElementById('clientEmail').value.trim();
         const date  = document.getElementById('bookingDate').value;
 
@@ -574,6 +605,12 @@
 
         // Validar teléfono (exactamente 9 dígitos y validado contra BD)
         const validPhone = phoneValidated && /^[0-9]{9}$/.test(phone);
+
+        const validGender = gender === 'FEMENINO' || gender === 'MASCULINO';
+        const validBirthDate = validateBirthDateByGender(gender, birthDate);
+        document.getElementById('birthDateAgeError').classList.toggle('d-none', !birthDate || validBirthDate);
+
+        const validEmergencyPhone = emergencyPhone === '' || /^[0-9]{9}$/.test(emergencyPhone);
 
         // Validar email (si se proporciona, debe ser válido)
         const validEmail = email === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -589,7 +626,7 @@
             document.getElementById('dateError').classList.add('d-none');
         }
 
-        const ready = validName && validPhone && validEmail && selectedService && validDate && selectedBlock;
+        const ready = validName && validPhone && validGender && validBirthDate && validEmergencyPhone && validEmail && selectedService && validDate && selectedBlock;
         document.getElementById('btnSubmit').disabled   = !ready;
         document.getElementById('btnWhatsapp').disabled = !ready;
 
@@ -600,6 +637,22 @@
         } else {
             preview.style.display = 'none';
         }
+    }
+
+    function validateBirthDateByGender(gender, birthDate) {
+        if (!gender || !birthDate) return false;
+
+        const today = new Date();
+        const birth = new Date(birthDate + 'T12:00:00');
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
+
+        if (gender === 'MASCULINO') return age >= 16;
+        if (gender === 'FEMENINO') return age >= 14;
+        return false;
     }
 
     function formatDate(val) {
@@ -638,6 +691,9 @@
     function submitRequest() {
         const name  = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
+        const gender = document.getElementById('clientGender').value;
+        const birthDate = document.getElementById('clientBirthDate').value;
+        const emergencyPhone = document.getElementById('clientEmergencyPhone').value.trim();
         const email = document.getElementById('clientEmail').value.trim();
         const date  = document.getElementById('bookingDate').value;
         const notes = document.getElementById('clientNotes').value.trim();
@@ -651,6 +707,21 @@
         // Validar teléfono (exactamente 9 dígitos y validado)
         if (!phone || !/^[0-9]{9}$/.test(phone) || !phoneValidated) {
             alert('Por favor ingresa un teléfono válido (9 dígitos)');
+            return;
+        }
+
+        if (!gender) {
+            alert('Por favor selecciona tu genero');
+            return;
+        }
+
+        if (!birthDate || !validateBirthDateByGender(gender, birthDate)) {
+            alert('La fecha de nacimiento no cumple con la edad minima para el genero seleccionado.');
+            return;
+        }
+
+        if (emergencyPhone && !/^[0-9]{9}$/.test(emergencyPhone)) {
+            alert('El telefono de emergencia debe tener 9 digitos.');
             return;
         }
 
@@ -668,14 +739,18 @@
 
         // Pasar el teléfono con +56
         const fullPhone = '+56' + phone;
+        const fullEmergencyPhone = emergencyPhone ? ('+56' + emergencyPhone) : '';
 
         document.getElementById('hFullName').value  = name;
         document.getElementById('hPhone').value     = fullPhone;
+        document.getElementById('hGender').value    = gender;
+        document.getElementById('hBirthDate').value = birthDate;
         document.getElementById('hEmail').value     = email;
         document.getElementById('hServiceId').value = selectedService.id;
         document.getElementById('hDate').value      = date;
         document.getElementById('hBlock').value     = selectedBlock;
         document.getElementById('hNotes').value     = notes;
+        document.getElementById('hEmergencyPhone').value = fullEmergencyPhone;
 
         document.getElementById('bookingForm').submit();
     }
@@ -720,7 +795,7 @@
     });
 
     // Actualizar vista previa cuando cambian otros campos
-    ['clientName', 'clientEmail', 'bookingDate'].forEach(id => {
+    ['clientName', 'clientEmail', 'bookingDate', 'clientGender', 'clientBirthDate', 'clientEmergencyPhone'].forEach(id => {
         document.getElementById(id).addEventListener('input', updatePreview);
     });
     /*]]>*/
