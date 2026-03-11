@@ -340,11 +340,4 @@ public class NotificationService {
         }
     }
 
-    /**
-     * Envía un mensaje por WhatsApp (placeholder para integración futura)
-     */
-    private void sendWhatsAppMessage(String phoneNumber, String message) {
-        // TODO: Integrar con servicio WhatsApp (Twilio, MessageBird, etc.)
-        log.info("[WHATSAPP] Mensaje a {}: {}", phoneNumber, message);
-    }
 }

@@ -477,6 +477,7 @@
             phoneValidated = false;
             enablePersonalDataSection(false);
             customerData = null;
+            phoneInput.removeAttribute('readonly');
             lookupBtn.disabled = true;
             return;
         }
@@ -517,11 +518,23 @@
                 document.getElementById('clientBirthDate').value = data.birthDate || '';
                 document.getElementById('clientEmergencyPhone').value = data.emergencyPhone ? data.emergencyPhone.replace(/^\+56/, '') : '';
                 document.getElementById('clientNotes').value = data.healthNotes || '';
+
+                const hasGender = !!(data.gender && String(data.gender).trim() !== '');
+                const hasBirthDate = !!(data.birthDate && String(data.birthDate).trim() !== '');
                 
-                // Bloquear solo campos sensibles para personas ya registradas
-                document.getElementById('clientName').setAttribute('readonly', 'readonly');
-                document.getElementById('clientGender').setAttribute('disabled', 'disabled');
-                document.getElementById('clientBirthDate').setAttribute('readonly', 'readonly');
+                // Cliente encontrado: telefono bloqueado; otros campos editables.
+                phoneInput.setAttribute('readonly', 'readonly');
+                document.getElementById('clientName').removeAttribute('readonly');
+                if (hasGender) {
+                    document.getElementById('clientGender').setAttribute('disabled', 'disabled');
+                } else {
+                    document.getElementById('clientGender').removeAttribute('disabled');
+                }
+                if (hasBirthDate) {
+                    document.getElementById('clientBirthDate').setAttribute('readonly', 'readonly');
+                } else {
+                    document.getElementById('clientBirthDate').removeAttribute('readonly');
+                }
                 document.getElementById('clientName').setAttribute('data-customer-found', 'true');
                 document.getElementById('clientEmail').setAttribute('data-customer-found', 'true');
                 
@@ -540,6 +553,7 @@
                 // Persona no encontrada
                 customerData = null;
                 phoneValidated = true;
+                phoneInput.removeAttribute('readonly');
                 
                 // Limpiar y habilitar campos para nuevo registro
                 document.getElementById('clientName').value = '';
@@ -577,6 +591,7 @@
             
             phoneValidated = false;
             customerData = null;
+            phoneInput.removeAttribute('readonly');
             enablePersonalDataSection(false);
         });
     }

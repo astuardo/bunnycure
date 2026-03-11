@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS webhook_operational_events (
+    id BIGSERIAL PRIMARY KEY,
+    event_type VARCHAR(80) NOT NULL,
+    phone_number_id VARCHAR(60),
+    risk_event BOOLEAN NOT NULL,
+    occurrence_count BIGINT NOT NULL,
+    payload_summary VARCHAR(500),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_operational_events_created_at
+    ON webhook_operational_events (created_at);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_operational_events_type
+    ON webhook_operational_events (event_type);

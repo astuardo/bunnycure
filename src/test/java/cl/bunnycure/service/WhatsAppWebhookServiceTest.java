@@ -5,12 +5,20 @@ import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.Customer;
 import cl.bunnycure.domain.model.ServiceCatalog;
 import cl.bunnycure.domain.repository.AppointmentRepository;
+import cl.bunnycure.domain.repository.WebhookOperationalEventRepository;
+import cl.bunnycure.domain.repository.WebhookProcessedEventRepository;
 import cl.bunnycure.web.dto.WhatsAppWebhookDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -18,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,11 +40,22 @@ class WhatsAppWebhookServiceTest {
     @Mock
     private WhatsAppService whatsAppService;
 
+    @Mock
+    private WebhookProcessedEventRepository webhookProcessedEventRepository;
+
+    @Mock
+    private WebhookOperationalEventRepository webhookOperationalEventRepository;
+
     private WhatsAppWebhookService webhookService;
 
     @BeforeEach
     void setUp() {
-        webhookService = new WhatsAppWebhookService(appointmentRepository, whatsAppService);
+        webhookService = new WhatsAppWebhookService(
+                appointmentRepository,
+                webhookOperationalEventRepository,
+                webhookProcessedEventRepository,
+                whatsAppService
+        );
     }
 
     @Test
@@ -67,12 +87,120 @@ class WhatsAppWebhookServiceTest {
         verify(appointmentRepository, never()).save(any());
     }
 
+    @Test
+    void processWebhookNotification_InteractiveConfirm_UpdatesAppointmentStatus() {
+        Appointment appointment = createAppointment(1L, AppointmentStatus.PENDING, "+56912345678");
+        when(appointmentRepository.findByIdWithDetails(1L)).thenReturn(Optional.of(appointment));
+
+        webhookService.processWebhookNotification(
+                webhookWithMessage(interactiveButtonReplyMessage("wamid-4", "56912345678", "confirmar_asistencia:1", "Confirmar asistencia"))
+        );
+
+        verify(appointmentRepository).save(appointment);
+        verify(whatsAppService).sendTextMessage("56912345678", "Perfecto! Tu cita quedó confirmada. Te esperamos en BunnyCure.");
+    }
+
+    @Test
+    void processWebhookNotification_InteractiveUnknown_SendsFallbackReply() {
+        webhookService.processWebhookNotification(
+                webhookWithMessage(interactiveButtonReplyMessage("wamid-5", "56912345678", "menu_principal", "Menu principal"))
+        );
+
+        verify(appointmentRepository, never()).save(any());
+        verify(whatsAppService).sendTextMessage(
+                "56912345678",
+                "Gracias por tu respuesta. Si necesitas ayuda con tu cita, escribe CONFIRMAR ASISTENCIA."
+        );
+    }
+
+    @Test
+    void isSignatureValid_WithBytePayload_ReturnsTrueForValidSignature() throws Exception {
+        byte[] payload = "{\"test\":true}".getBytes(StandardCharsets.UTF_8);
+        String appSecret = "secret123";
+        String signature = "sha256=" + hmacSha256Hex(payload, appSecret);
+
+        boolean valid = webhookService.isSignatureValid(payload, signature, appSecret);
+
+        org.junit.jupiter.api.Assertions.assertTrue(valid);
+    }
+
+    @Test
+    void isSignatureValid_WithBytePayload_ReturnsFalseForInvalidSignature() {
+        byte[] payload = "{\"test\":true}".getBytes(StandardCharsets.UTF_8);
+
+        boolean valid = webhookService.isSignatureValid(payload, "sha256=deadbeef", "secret123");
+
+        org.junit.jupiter.api.Assertions.assertFalse(valid);
+    }
+
+    @Test
+    void processWebhookNotification_DuplicateMessageInDatabase_IsIgnored() {
+        doThrow(new DataIntegrityViolationException("duplicate key"))
+                .when(webhookProcessedEventRepository)
+                .save(any());
+
+        webhookService.processWebhookNotification(webhookWithMessage(textMessage("wamid-dup", "56912345678", "Hola")));
+
+        verify(whatsAppService, never()).sendTextMessage(any(), any());
+        verify(appointmentRepository, never()).save(any());
+    }
+
+    @Test
+    void processWebhookNotification_OperationalRiskEvent_PersistsTrackingAndNotifiesAdmin() {
+        ReflectionTestUtils.setField(webhookService, "alertAdminOnRiskEvents", true);
+        ReflectionTestUtils.setField(webhookService, "adminWhatsAppNumber", "56911111111");
+
+        webhookService.processWebhookNotification(webhookWithOperationalField("account_alerts"));
+
+        verify(webhookOperationalEventRepository).save(any());
+        verify(whatsAppService).sendTextMessage(any(), any());
+    }
+
+    @Test
+    void processWebhookNotification_OperationalPersistError_DoesNotBreakFlow() {
+        doThrow(new RuntimeException("db down"))
+                .when(webhookOperationalEventRepository)
+                .save(any());
+
+        webhookService.processWebhookNotification(webhookWithOperationalField("message_template_status_update"));
+
+        verify(webhookOperationalEventRepository).save(any());
+    }
+
+    private String hmacSha256Hex(byte[] payload, String secret) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        byte[] digest = mac.doFinal(payload);
+        StringBuilder sb = new StringBuilder(digest.length * 2);
+        for (byte b : digest) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
     private WhatsAppWebhookDto webhookWithMessage(WhatsAppWebhookDto.Message message) {
         WhatsAppWebhookDto.Value value = new WhatsAppWebhookDto.Value();
         value.setMessages(List.of(message));
 
+        return webhookWithField("messages", value);
+    }
+
+    private WhatsAppWebhookDto webhookWithOperationalField(String field) {
+        WhatsAppWebhookDto.Metadata metadata = new WhatsAppWebhookDto.Metadata();
+        metadata.setPhoneNumberId("phone-123");
+        metadata.setDisplayPhoneNumber("+56 9 1111 1111");
+
+        WhatsAppWebhookDto.Value value = new WhatsAppWebhookDto.Value();
+        value.setMessagingProduct("whatsapp");
+        value.setMetadata(metadata);
+
+        return webhookWithField(field, value);
+    }
+
+    private WhatsAppWebhookDto webhookWithField(String field, WhatsAppWebhookDto.Value value) {
+
         WhatsAppWebhookDto.Change change = new WhatsAppWebhookDto.Change();
-        change.setField("messages");
+        change.setField(field);
         change.setValue(value);
 
         WhatsAppWebhookDto.Entry entry = new WhatsAppWebhookDto.Entry();
@@ -107,6 +235,23 @@ class WhatsAppWebhookServiceTest {
         message.setFrom(from);
         message.setType("button");
         message.setButton(button);
+        return message;
+    }
+
+    private WhatsAppWebhookDto.Message interactiveButtonReplyMessage(String id, String from, String replyId, String title) {
+        WhatsAppWebhookDto.ButtonReply reply = new WhatsAppWebhookDto.ButtonReply();
+        reply.setId(replyId);
+        reply.setTitle(title);
+
+        WhatsAppWebhookDto.Interactive interactive = new WhatsAppWebhookDto.Interactive();
+        interactive.setType("button_reply");
+        interactive.setButtonReply(reply);
+
+        WhatsAppWebhookDto.Message message = new WhatsAppWebhookDto.Message();
+        message.setId(id);
+        message.setFrom(from);
+        message.setType("interactive");
+        message.setInteractive(interactive);
         return message;
     }
 

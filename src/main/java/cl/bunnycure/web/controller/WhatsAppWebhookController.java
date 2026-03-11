@@ -3,6 +3,7 @@ package cl.bunnycure.web.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cl.bunnycure.service.WhatsAppWebhookService;
 import cl.bunnycure.web.dto.WhatsAppWebhookDto;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -110,13 +111,20 @@ public class WhatsAppWebhookController {
      */
     @PostMapping
     public ResponseEntity<String> receiveNotification(
-            @RequestBody String rawPayload,
+            @RequestBody byte[] rawPayload,
+            HttpServletRequest request,
             @RequestHeader(name = "X-Hub-Signature-256", required = false) String signatureHeader) {
         try {
             log.info("[WEBHOOK] 📥 Notificación recibida de WhatsApp");
 
             if (!webhookService.isSignatureValid(rawPayload, signatureHeader, appSecret)) {
                 log.warn("[WEBHOOK] ❌ Invalid webhook signature");
+                log.warn("[WEBHOOK] Proxy context contentType={}, contentLength={}, xForwardedFor={}, xForwardedProto={}, xForwardedHost={}",
+                        request.getContentType(),
+                        request.getContentLengthLong(),
+                        request.getHeader("X-Forwarded-For"),
+                        request.getHeader("X-Forwarded-Proto"),
+                        request.getHeader("X-Forwarded-Host"));
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid signature");
             }
 
