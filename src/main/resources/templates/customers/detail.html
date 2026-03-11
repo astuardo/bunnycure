@@ -46,6 +46,22 @@
                         <small class="text-muted d-block">✉️ Email</small>
                         <span class="small" th:text="${customer.email}"></span>
                     </div>
+                    <div th:if="${customer.gender}">
+                        <small class="text-muted d-block">🧾 Genero</small>
+                        <span class="small" th:text="${customer.gender}"></span>
+                    </div>
+                    <div th:if="${customer.birthDate}">
+                        <small class="text-muted d-block">🎂 Fecha de nacimiento</small>
+                        <span class="small" th:text="${#temporals.format(customer.birthDate, 'dd/MM/yyyy')}"></span>
+                    </div>
+                    <div th:if="${customer.emergencyPhone}">
+                        <small class="text-muted d-block">📞 Telefono de emergencia</small>
+                        <span class="small" th:text="${customer.emergencyPhone}"></span>
+                    </div>
+                    <div th:if="${customer.healthNotes}">
+                        <small class="text-muted d-block">🩺 Notas de salud</small>
+                        <span class="small" th:text="${customer.healthNotes}"></span>
+                    </div>
                     <div th:if="${customer.notes}">
                         <small class="text-muted d-block">📝 Notas</small>
                         <span class="small" th:text="${customer.notes}"></span>

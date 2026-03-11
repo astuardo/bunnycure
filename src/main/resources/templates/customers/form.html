@@ -84,6 +84,42 @@
                         </div>
                     </div>
 
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Genero</label>
+                        <select th:field="*{gender}" class="form-select"
+                                th:classappend="${#fields.hasErrors('gender')} ? 'is-invalid'">
+                            <option value="">Sin especificar</option>
+                            <option value="FEMENINO">Femenino</option>
+                            <option value="MASCULINO">Masculino</option>
+                        </select>
+                        <div class="invalid-feedback" th:errors="*{gender}"></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Fecha de nacimiento</label>
+                        <input type="date"
+                               th:field="*{birthDate}"
+                               class="form-control"/>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Telefono de emergencia</label>
+                        <input type="text"
+                               th:field="*{emergencyPhone}"
+                               th:classappend="${#fields.hasErrors('emergencyPhone')} ? 'is-invalid'"
+                               class="form-control"
+                               placeholder="+56912345678"/>
+                        <div class="invalid-feedback" th:errors="*{emergencyPhone}"></div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Notas de salud</label>
+                        <textarea th:field="*{healthNotes}"
+                                  class="form-control"
+                                  rows="2"
+                                  placeholder="Enfermedades cronicas o medicamentos diarios..."></textarea>
+                    </div>
+
                     <!-- Notas -->
                     <div class="col-12">
                         <label class="form-label fw-semibold">Notas</label>

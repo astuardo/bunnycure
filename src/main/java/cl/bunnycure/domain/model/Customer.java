@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +29,18 @@ public class Customer {
 
     @Column(nullable = true, unique = true, length = 150)
     private String email;
+
+    @Column(length = 20)
+    private String gender;
+
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
+    @Column(name = "emergency_phone", length = 15)
+    private String emergencyPhone;
+
+    @Column(name = "health_notes", length = 500)
+    private String healthNotes;
 
     @Column(length = 500)
     private String notes;

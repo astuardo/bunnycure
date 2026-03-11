@@ -10,17 +10,32 @@ public class CustomerLookupResponseDto {
     private String fullName;
     private String phone;
     private String email;
+    private String gender;
+    private java.time.LocalDate birthDate;
+    private String emergencyPhone;
+    private String healthNotes;
     private boolean found;
 
     public CustomerLookupResponseDto() {
         this.found = false;
     }
 
-    public CustomerLookupResponseDto(Long id, String fullName, String phone, String email) {
+    public CustomerLookupResponseDto(Long id,
+                                     String fullName,
+                                     String phone,
+                                     String email,
+                                     String gender,
+                                     java.time.LocalDate birthDate,
+                                     String emergencyPhone,
+                                     String healthNotes) {
         this.id = id;
         this.fullName = fullName;
         this.phone = phone;
         this.email = email;
+        this.gender = gender;
+        this.birthDate = birthDate;
+        this.emergencyPhone = emergencyPhone;
+        this.healthNotes = healthNotes;
         this.found = true;
     }
 
@@ -55,6 +70,38 @@ public class CustomerLookupResponseDto {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public java.time.LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    public void setBirthDate(java.time.LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
+
+    public String getEmergencyPhone() {
+        return emergencyPhone;
+    }
+
+    public void setEmergencyPhone(String emergencyPhone) {
+        this.emergencyPhone = emergencyPhone;
+    }
+
+    public String getHealthNotes() {
+        return healthNotes;
+    }
+
+    public void setHealthNotes(String healthNotes) {
+        this.healthNotes = healthNotes;
     }
 
     public boolean isFound() {

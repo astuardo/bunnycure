@@ -3,6 +3,8 @@ package cl.bunnycure.web.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.time.LocalDate;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,6 +25,17 @@ public class CustomerDto {
     @NotBlank(message = "El email es obligatorio")
     @Email(message = "Email inválido")
     private String email;
+
+    @Pattern(regexp = "^$|^(?i)(MASCULINO|FEMENINO)$", message = "El género debe ser Masculino o Femenino")
+    private String gender;
+
+    private LocalDate birthDate;
+
+    @Pattern(regexp = "^$|^\\+56[0-9]{9}$", message = "El teléfono de emergencia debe ser +56 seguido de 9 dígitos")
+    private String emergencyPhone;
+
+    @Size(max = 500)
+    private String healthNotes;
 
     @Size(max = 500)
     private String notes;

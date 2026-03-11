@@ -69,7 +69,11 @@ public class CustomerService {
                         customer.getId(),
                         customer.getFullName(),
                         customer.getPhone(),
-                        customer.getEmail()
+                        customer.getEmail(),
+                        customer.getGender(),
+                        customer.getBirthDate(),
+                        customer.getEmergencyPhone(),
+                        customer.getHealthNotes()
                 ))
                 .orElseGet(CustomerLookupResponseDto::new);
     }
@@ -103,6 +107,10 @@ public class CustomerService {
             throw new IllegalArgumentException("Ya existe un cliente con el email: " + dto.getEmail());
         }
         var customer = new Customer(dto.getFullName(), dto.getPhone(), dto.getEmail());
+        customer.setGender(normalizeNullable(dto.getGender()));
+        customer.setBirthDate(dto.getBirthDate());
+        customer.setEmergencyPhone(normalizeNullable(dto.getEmergencyPhone()));
+        customer.setHealthNotes(normalizeNullable(dto.getHealthNotes()));
         customer.setNotes(dto.getNotes());
         return customerRepository.save(customer);
     }
@@ -112,9 +120,20 @@ public class CustomerService {
         var customer = findById(id);
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());
+        customer.setGender(normalizeNullable(dto.getGender()));
+        customer.setBirthDate(dto.getBirthDate());
+        customer.setEmergencyPhone(normalizeNullable(dto.getEmergencyPhone()));
+        customer.setHealthNotes(normalizeNullable(dto.getHealthNotes()));
         customer.setNotes(dto.getNotes());
         // Email no se actualiza para evitar duplicados silenciosos
         return customerRepository.save(customer);
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     @Transactional

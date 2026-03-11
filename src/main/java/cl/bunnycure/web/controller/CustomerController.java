@@ -70,6 +70,10 @@ public class CustomerController extends BaseController {
         dto.setFullName(customer.getFullName());
         dto.setPhone(customer.getPhone());
         dto.setEmail(customer.getEmail());
+        dto.setGender(customer.getGender());
+        dto.setBirthDate(customer.getBirthDate());
+        dto.setEmergencyPhone(customer.getEmergencyPhone());
+        dto.setHealthNotes(customer.getHealthNotes());
         dto.setNotes(customer.getNotes());
 
         model.addAttribute("customer", dto);

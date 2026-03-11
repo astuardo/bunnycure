@@ -66,6 +66,12 @@ public class BookingRequestService {
         var service = serviceCatalogRepository.findById(dto.getServiceId())
                 .orElseThrow(() -> new ResourceNotFoundException("Servicio no encontrado"));
 
+        // Guarda o actualiza ficha del cliente desde el primer registro de reserva.
+        Customer customer = customerRepository.findByPhone(dto.getPhone())
+                .orElseGet(() -> customerRepository.save(new Customer(dto.getFullName(), dto.getPhone(), dto.getEmail())));
+        syncCustomerFromRequest(customer, dto);
+        customerRepository.save(customer);
+
         var request = BookingRequest.builder()
                 .fullName(dto.getFullName())
                 .phone(dto.getPhone())
@@ -114,6 +120,9 @@ public class BookingRequestService {
                     );
                     return customerRepository.save(newCustomer);
                 });
+
+        syncCustomerFromRequest(customer, request);
+        customerRepository.save(customer);
 
         // Actualizar email si no lo tenía
         if ((customer.getEmail() == null || customer.getEmail().isBlank())
@@ -172,5 +181,42 @@ public class BookingRequestService {
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             notificationService.sendBookingRequestRejected(request);
         }
+    }
+
+    private void syncCustomerFromRequest(Customer customer, BookingRequest request) {
+        if (customer.getEmail() == null || customer.getEmail().isBlank()) {
+            customer.setEmail(normalizeNullable(request.getEmail()));
+        }
+        customer.setFullName(request.getFullName());
+        customer.setGender(normalizeNullable(request.getGender()));
+        customer.setBirthDate(request.getBirthDate());
+        customer.setEmergencyPhone(normalizeNullable(request.getEmergencyPhone()));
+
+        String requestNotes = normalizeNullable(request.getNotes());
+        if (requestNotes != null) {
+            customer.setHealthNotes(requestNotes);
+        }
+    }
+
+    private void syncCustomerFromRequest(Customer customer, BookingRequestDto dto) {
+        if (customer.getEmail() == null || customer.getEmail().isBlank()) {
+            customer.setEmail(normalizeNullable(dto.getEmail()));
+        }
+        customer.setFullName(dto.getFullName());
+        customer.setGender(normalizeNullable(dto.getGender()));
+        customer.setBirthDate(dto.getBirthDate());
+        customer.setEmergencyPhone(normalizeNullable(dto.getEmergencyPhone()));
+
+        String requestNotes = normalizeNullable(dto.getNotes());
+        if (requestNotes != null) {
+            customer.setHealthNotes(requestNotes);
+        }
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

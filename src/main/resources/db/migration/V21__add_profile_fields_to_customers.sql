@@ -1,0 +1,11 @@
+ALTER TABLE customers
+    ADD COLUMN IF NOT EXISTS gender VARCHAR(20);
+
+ALTER TABLE customers
+    ADD COLUMN IF NOT EXISTS birth_date DATE;
+
+ALTER TABLE customers
+    ADD COLUMN IF NOT EXISTS emergency_phone VARCHAR(15);
+
+ALTER TABLE customers
+    ADD COLUMN IF NOT EXISTS health_notes VARCHAR(500);

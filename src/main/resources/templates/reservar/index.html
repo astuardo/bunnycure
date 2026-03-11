@@ -513,10 +513,15 @@
                 // Pre-llenar campos con datos de la persona
                 document.getElementById('clientName').value = data.fullName || '';
                 document.getElementById('clientEmail').value = data.email || '';
+                document.getElementById('clientGender').value = data.gender || '';
+                document.getElementById('clientBirthDate').value = data.birthDate || '';
+                document.getElementById('clientEmergencyPhone').value = data.emergencyPhone ? data.emergencyPhone.replace(/^\+56/, '') : '';
+                document.getElementById('clientNotes').value = data.healthNotes || '';
                 
-                // Marcar campos como readonly
+                // Bloquear solo campos sensibles para personas ya registradas
                 document.getElementById('clientName').setAttribute('readonly', 'readonly');
-                document.getElementById('clientEmail').setAttribute('readonly', 'readonly');
+                document.getElementById('clientGender').setAttribute('disabled', 'disabled');
+                document.getElementById('clientBirthDate').setAttribute('readonly', 'readonly');
                 document.getElementById('clientName').setAttribute('data-customer-found', 'true');
                 document.getElementById('clientEmail').setAttribute('data-customer-found', 'true');
                 
@@ -539,8 +544,13 @@
                 // Limpiar y habilitar campos para nuevo registro
                 document.getElementById('clientName').value = '';
                 document.getElementById('clientEmail').value = '';
+                document.getElementById('clientGender').value = '';
+                document.getElementById('clientBirthDate').value = '';
+                document.getElementById('clientEmergencyPhone').value = '';
+                document.getElementById('clientNotes').value = '';
                 document.getElementById('clientName').removeAttribute('readonly');
-                document.getElementById('clientEmail').removeAttribute('readonly');
+                document.getElementById('clientGender').removeAttribute('disabled');
+                document.getElementById('clientBirthDate').removeAttribute('readonly');
                 document.getElementById('clientName').setAttribute('data-customer-found', 'false');
                 document.getElementById('clientEmail').setAttribute('data-customer-found', 'false');
                 
