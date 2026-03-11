@@ -5,6 +5,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Servicio para procesar las notificaciones de webhook de WhatsApp
  */
@@ -12,6 +19,33 @@ import org.springframework.stereotype.Service;
 public class WhatsAppWebhookService {
 
     private static final Logger log = LoggerFactory.getLogger(WhatsAppWebhookService.class);
+    private static final long DEDUPE_TTL_MILLIS = 10 * 60 * 1000L;
+
+    private final Map<String, Long> processedEventIds = new ConcurrentHashMap<>();
+
+    public boolean isSignatureValid(String rawPayload, String signatureHeader, String appSecret) {
+        if (appSecret == null || appSecret.isBlank()) {
+            // Signature verification can be disabled explicitly in non-production environments.
+            return true;
+        }
+
+        if (signatureHeader == null || !signatureHeader.startsWith("sha256=")) {
+            log.warn("[WEBHOOK] ⚠️ Missing or invalid X-Hub-Signature-256 header");
+            return false;
+        }
+
+        try {
+            String expected = signatureHeader.substring("sha256=".length()).trim().toLowerCase();
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(appSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] digest = mac.doFinal(rawPayload.getBytes(StandardCharsets.UTF_8));
+            String actual = toHex(digest);
+            return MessageDigest.isEqual(actual.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            log.error("[WEBHOOK] ❌ Error validating webhook signature", e);
+            return false;
+        }
+    }
 
     /**
      * Procesa la notificación recibida del webhook
@@ -132,6 +166,11 @@ public class WhatsAppWebhookService {
         log.info("[WEBHOOK] 💬 Procesando {} mensaje(s) entrante(s)", messages.size());
 
         for (WhatsAppWebhookDto.Message message : messages) {
+            if (isDuplicateEvent("msg:" + message.getId())) {
+                log.info("[WEBHOOK] ♻️ Message already processed, skipping id={}", message.getId());
+                continue;
+            }
+
             String contactName = "Unknown";
             if (contacts != null && !contacts.isEmpty()) {
                 WhatsAppWebhookDto.Contact contact = contacts.get(0);
@@ -231,6 +270,11 @@ public class WhatsAppWebhookService {
         log.info("[WEBHOOK] 📊 Procesando {} estado(s) de mensaje(s)", statuses.size());
 
         for (WhatsAppWebhookDto.Status status : statuses) {
+            if (isDuplicateEvent("status:" + status.getId())) {
+                log.info("[WEBHOOK] ♻️ Status already processed, skipping id={}", status.getId());
+                continue;
+            }
+
             log.info("[WEBHOOK] 📬 Estado de mensaje");
             log.info("[WEBHOOK] 🆔 Message ID: {}", status.getId());
             log.info("[WEBHOOK] 📱 Recipient ID: {}", status.getRecipientId());
@@ -268,5 +312,31 @@ public class WhatsAppWebhookService {
                 log.info("[WEBHOOK] 💰 Category: {}", status.getPricing().getCategory());
             }
         }
+    }
+
+    private boolean isDuplicateEvent(String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            return false;
+        }
+
+        long now = System.currentTimeMillis();
+        Long previous = processedEventIds.putIfAbsent(eventId, now);
+        cleanupOldEvents(now);
+        return previous != null && (now - previous) < DEDUPE_TTL_MILLIS;
+    }
+
+    private void cleanupOldEvents(long now) {
+        if (processedEventIds.size() < 5000) {
+            return;
+        }
+        processedEventIds.entrySet().removeIf(entry -> (now - entry.getValue()) > DEDUPE_TTL_MILLIS);
+    }
+
+    private String toHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 }

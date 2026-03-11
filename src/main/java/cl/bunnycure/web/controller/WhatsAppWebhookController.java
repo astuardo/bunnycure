@@ -1,5 +1,6 @@
 package cl.bunnycure.web.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import cl.bunnycure.service.WhatsAppWebhookService;
 import cl.bunnycure.web.dto.WhatsAppWebhookDto;
 import org.slf4j.Logger;
@@ -30,13 +31,18 @@ public class WhatsAppWebhookController {
 
     private final WhatsAppWebhookService webhookService;
     private final Environment environment;
+    private final ObjectMapper objectMapper;
 
     @Value("${whatsapp.webhook.verify-token:bunnycure_webhook_token_2024}")
     private String verifyToken;
 
-    public WhatsAppWebhookController(WhatsAppWebhookService webhookService, Environment environment) {
+    @Value("${whatsapp.webhook.app-secret:}")
+    private String appSecret;
+
+    public WhatsAppWebhookController(WhatsAppWebhookService webhookService, Environment environment, ObjectMapper objectMapper) {
         this.webhookService = webhookService;
         this.environment = environment;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -103,9 +109,18 @@ public class WhatsAppWebhookController {
      * El procesamiento pesado debe hacerse de forma asíncrona
      */
     @PostMapping
-    public ResponseEntity<String> receiveNotification(@RequestBody WhatsAppWebhookDto webhook) {
+    public ResponseEntity<String> receiveNotification(
+            @RequestBody String rawPayload,
+            @RequestHeader(name = "X-Hub-Signature-256", required = false) String signatureHeader) {
         try {
             log.info("[WEBHOOK] 📥 Notificación recibida de WhatsApp");
+
+            if (!webhookService.isSignatureValid(rawPayload, signatureHeader, appSecret)) {
+                log.warn("[WEBHOOK] ❌ Invalid webhook signature");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid signature");
+            }
+
+            WhatsAppWebhookDto webhook = objectMapper.readValue(rawPayload, WhatsAppWebhookDto.class);
             log.debug("[WEBHOOK] Payload completo: {}", webhook);
 
             // Procesar la notificación de forma asíncrona (opcional pero recomendado)

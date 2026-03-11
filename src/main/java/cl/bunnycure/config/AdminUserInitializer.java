@@ -11,6 +11,8 @@ import cl.bunnycure.domain.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
+
 /**
  * Inicializador de usuarios por defecto en Heroku
  * Asegura que el usuario admin existe con la contraseña correcta
@@ -21,6 +23,7 @@ import org.slf4j.LoggerFactory;
 public class AdminUserInitializer {
 
     private static final Logger log = LoggerFactory.getLogger(AdminUserInitializer.class);
+    private static final Set<String> LEGACY_DEFAULT_PASSWORDS = Set.of("changeme", "changeme-local-only");
 
     @Value("${bunnycure.admin.username:}")
     private String adminUsername;
@@ -44,12 +47,22 @@ public class AdminUserInitializer {
                 var adminUser = userRepository.findByUsername(adminUsername);
 
                 if (adminUser.isPresent()) {
-                    // Preserve existing password; only enforce enabled/admin flags.
+                    // Preserve existing password unless the account still uses a legacy insecure password.
                     User user = adminUser.get();
                     user.setEnabled(true);
                     user.setRole("ADMIN");
+
+                    boolean hasLegacyDefaultPassword = LEGACY_DEFAULT_PASSWORDS.stream()
+                            .anyMatch(legacyPassword -> passwordEncoder.matches(legacyPassword, user.getPassword()));
+
+                    if (hasLegacyDefaultPassword) {
+                        user.setPassword(passwordEncoder.encode(adminPassword));
+                        log.warn("[INIT] Admin user '{}' had legacy insecure password and was rotated from environment config", adminUsername);
+                    } else {
+                        log.info("[INIT] Admin user '{}' already exists; password preserved", adminUsername);
+                    }
+
                     userRepository.save(user);
-                    log.info("[INIT] Admin user '{}' already exists; password preserved", adminUsername);
                 } else {
                     // Create admin user if doesn't exist
                     User adminNewUser = User.builder()
