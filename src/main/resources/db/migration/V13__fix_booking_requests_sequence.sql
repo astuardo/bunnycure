@@ -7,7 +7,7 @@
 CREATE SEQUENCE IF NOT EXISTS booking_requests_seq START WITH 1 INCREMENT BY 1;
 
 -- Si la secuencia ya existe con increment diferente, recrearla
-DROP SEQUENCE IF EXISTS booking_requests_seq CASCADE;
+DROP SEQUENCE IF EXISTS booking_requests_seq;
 CREATE SEQUENCE booking_requests_seq START WITH 1 INCREMENT BY 1;
 
 -- Alterar tabla para usar la secuencia

@@ -74,6 +74,29 @@ public class CustomerService {
                 .orElseGet(CustomerLookupResponseDto::new);
     }
 
+    /**
+     * Finds a customer by phone number, trying multiple normalized formats.
+     * Handles exact match, with/without '+' prefix, and Chilean local numbers (9 digits).
+     * Used by WhatsApp webhook to match incoming messages to existing customers.
+     */
+    public java.util.Optional<Customer> findByPhone(String phone) {
+        if (phone == null || phone.isBlank()) return java.util.Optional.empty();
+        String digits = phone.replaceAll("[^0-9]", "");
+
+        java.util.Optional<Customer> result = customerRepository.findByPhone(digits);
+        if (result.isPresent()) return result;
+
+        result = customerRepository.findByPhone("+" + digits);
+        if (result.isPresent()) return result;
+
+        if (digits.length() > 9) {
+            String local = digits.substring(digits.length() - 9);
+            result = customerRepository.findByPhone(local);
+            if (result.isPresent()) return result;
+        }
+        return java.util.Optional.empty();
+    }
+
     @Transactional
     public Customer create(CustomerDto dto) {
         if (customerRepository.existsByEmail(dto.getEmail())) {

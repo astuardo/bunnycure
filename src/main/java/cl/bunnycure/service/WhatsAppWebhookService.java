@@ -1,5 +1,8 @@
 package cl.bunnycure.service;
 
+import cl.bunnycure.domain.enums.AppointmentStatus;
+import cl.bunnycure.domain.model.Appointment;
+import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.web.dto.WhatsAppWebhookDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,8 +12,13 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.LocalDate;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Servicio para procesar las notificaciones de webhook de WhatsApp
@@ -20,8 +28,16 @@ public class WhatsAppWebhookService {
 
     private static final Logger log = LoggerFactory.getLogger(WhatsAppWebhookService.class);
     private static final long DEDUPE_TTL_MILLIS = 10 * 60 * 1000L;
+    private static final Pattern APPOINTMENT_ID_PATTERN = Pattern.compile("(?:^|[:#_\\-])(\\d+)$");
 
     private final Map<String, Long> processedEventIds = new ConcurrentHashMap<>();
+    private final AppointmentRepository appointmentRepository;
+    private final WhatsAppService whatsAppService;
+
+    public WhatsAppWebhookService(AppointmentRepository appointmentRepository, WhatsAppService whatsAppService) {
+        this.appointmentRepository = appointmentRepository;
+        this.whatsAppService = whatsAppService;
+    }
 
     public boolean isSignatureValid(String rawPayload, String signatureHeader, String appSecret) {
         if (appSecret == null || appSecret.isBlank()) {
@@ -162,7 +178,7 @@ public class WhatsAppWebhookService {
     private void processIncomingMessages(
             java.util.List<WhatsAppWebhookDto.Message> messages,
             java.util.List<WhatsAppWebhookDto.Contact> contacts) {
-        
+
         log.info("[WEBHOOK] 💬 Procesando {} mensaje(s) entrante(s)", messages.size());
 
         for (WhatsAppWebhookDto.Message message : messages) {
@@ -187,12 +203,9 @@ public class WhatsAppWebhookService {
             // Procesar según el tipo de mensaje
             switch (message.getType()) {
                 case "text":
-                    if (message.getText() != null) {
-                        log.info("[WEBHOOK] 💬 Texto: {}", message.getText().getBody());
-                        // TODO: Implementar lógica de respuesta automática o procesamiento de comandos
-                    }
+                    processTextMessage(message);
                     break;
-                
+
                 case "image":
                     if (message.getImage() != null) {
                         log.info("[WEBHOOK] 🖼️ Imagen recibida - ID: {}", message.getImage().getId());
@@ -233,37 +246,126 @@ public class WhatsAppWebhookService {
         }
     }
 
+    private void processTextMessage(WhatsAppWebhookDto.Message message) {
+        if (message.getText() == null || message.getText().getBody() == null) {
+            return;
+        }
+
+        String text = message.getText().getBody().trim();
+        log.info("[WEBHOOK] 💬 Texto: {}", text);
+        if (text.isEmpty() || message.getFrom() == null || message.getFrom().isBlank()) {
+            return;
+        }
+
+        whatsAppService.sendTextMessage(
+                message.getFrom(),
+                "Hola! Gracias por escribir a BunnyCure. " +
+                        "Si quieres confirmar una cita, responde con el boton de confirmacion del mensaje que te enviamos."
+        );
+    }
+
     private void processButtonMessage(WhatsAppWebhookDto.Message message) {
         if (message.getButton() == null) {
             log.warn("[WEBHOOK] ⚠️ Mensaje tipo button sin contenido button");
             return;
         }
 
-        log.info("[WEBHOOK] 🔘 Button text: {}", message.getButton().getText());
-        log.info("[WEBHOOK] 🔘 Button payload: {}", message.getButton().getPayload());
-        // TODO: mapear payload a acciones de negocio (reagendar, confirmar, cancelar, etc.).
-    }
+        String text = message.getButton().getText();
+        String payload = message.getButton().getPayload();
+        log.info("[WEBHOOK] 🔘 Button text: {}", text);
+        log.info("[WEBHOOK] 🔘 Button payload: {}", payload);
 
-    private void processInteractiveMessage(WhatsAppWebhookDto.Message message) {
-        if (message.getInteractive() == null) {
-            log.warn("[WEBHOOK] ⚠️ Mensaje tipo interactive sin contenido interactive");
+        if (isConfirmPayload(text, payload)) {
+            handleConfirmAttendance(message);
             return;
         }
 
-        log.info("[WEBHOOK] 🧩 Interactive type: {}", message.getInteractive().getType());
+        log.info("[WEBHOOK] ℹ️ Payload de button no mapeado: {}", payload);
+    }
 
-        if (message.getInteractive().getButtonReply() != null) {
-            var reply = message.getInteractive().getButtonReply();
-            log.info("[WEBHOOK] 🔘 Button reply id: {}", reply.getId());
-            log.info("[WEBHOOK] 🔘 Button reply title: {}", reply.getTitle());
+    private boolean isConfirmPayload(String text, String payload) {
+        String normalizedPayload = normalizeKey(payload);
+        String normalizedText = normalizeKey(text);
+        return normalizedPayload.contains("confirmar")
+                || normalizedPayload.contains("confirmacion")
+                || normalizedPayload.contains("confirmar_asistencia")
+                || normalizedText.contains("confirmar");
+    }
+
+    private void handleConfirmAttendance(WhatsAppWebhookDto.Message message) {
+        String from = message.getFrom();
+        if (from == null || from.isBlank()) {
+            log.warn("[WEBHOOK] ⚠️ No se puede confirmar asistencia: campo from vacío");
+            return;
         }
 
-        if (message.getInteractive().getListReply() != null) {
-            var reply = message.getInteractive().getListReply();
-            log.info("[WEBHOOK] 📋 List reply id: {}", reply.getId());
-            log.info("[WEBHOOK] 📋 List reply title: {}", reply.getTitle());
-            log.info("[WEBHOOK] 📋 List reply description: {}", reply.getDescription());
+        Optional<Appointment> appointment = findAppointmentToConfirm(message);
+        if (appointment.isEmpty()) {
+            log.warn("[WEBHOOK] ⚠️ No se encontró cita pendiente para confirmar. from={}", from);
+            whatsAppService.sendTextMessage(from, "No encontré una cita pendiente asociada a este numero.");
+            return;
         }
+
+        Appointment target = appointment.get();
+        if (target.getStatus() == AppointmentStatus.CONFIRMED) {
+            whatsAppService.sendTextMessage(from, "Tu cita ya estaba confirmada. Te esperamos en BunnyCure.");
+            return;
+        }
+
+        target.setStatus(AppointmentStatus.CONFIRMED);
+        appointmentRepository.save(target);
+        log.info("[WEBHOOK] ✅ Cita confirmada desde button. appointmentId={}", target.getId());
+        whatsAppService.sendTextMessage(from, "Perfecto! Tu cita quedó confirmada. Te esperamos en BunnyCure.");
+    }
+
+    private Optional<Appointment> findAppointmentToConfirm(WhatsAppWebhookDto.Message message) {
+        Optional<Long> payloadAppointmentId = extractAppointmentId(message);
+        if (payloadAppointmentId.isPresent()) {
+            return appointmentRepository.findByIdWithDetails(payloadAppointmentId.get())
+                    .filter(a -> a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.CONFIRMED);
+        }
+
+        String normalizedFrom = normalizePhone(message.getFrom());
+        LocalDate today = LocalDate.now();
+
+        return appointmentRepository.findByStatus(AppointmentStatus.PENDING).stream()
+                .filter(a -> a.getAppointmentDate() != null && !a.getAppointmentDate().isBefore(today))
+                .filter(a -> a.getCustomer() != null)
+                .filter(a -> normalizePhone(a.getCustomer().getPhone()).equals(normalizedFrom))
+                .findFirst();
+    }
+
+    private Optional<Long> extractAppointmentId(WhatsAppWebhookDto.Message message) {
+        if (message.getButton() == null || message.getButton().getPayload() == null) {
+            return Optional.empty();
+        }
+
+        String payload = message.getButton().getPayload().trim();
+        Matcher matcher = APPOINTMENT_ID_PATTERN.matcher(payload);
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+
+        try {
+            return Optional.of(Long.parseLong(matcher.group(1)));
+        } catch (NumberFormatException ex) {
+            log.warn("[WEBHOOK] ⚠️ No se pudo parsear appointment id desde payload={}", payload);
+            return Optional.empty();
+        }
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null) {
+            return "";
+        }
+        return phone.replaceAll("\\D", "");
+    }
+
+    private String normalizeKey(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().toLowerCase(Locale.ROOT);
     }
 
     private void processMessageStatuses(java.util.List<WhatsAppWebhookDto.Status> statuses) {
@@ -338,5 +440,27 @@ public class WhatsAppWebhookService {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
+    }
+
+    private void processInteractiveMessage(WhatsAppWebhookDto.Message message) {
+        if (message.getInteractive() == null) {
+            log.warn("[WEBHOOK] ⚠️ Mensaje tipo interactive sin contenido interactive");
+            return;
+        }
+
+        log.info("[WEBHOOK] 🧩 Interactive type: {}", message.getInteractive().getType());
+
+        if (message.getInteractive().getButtonReply() != null) {
+            var reply = message.getInteractive().getButtonReply();
+            log.info("[WEBHOOK] 🔘 Button reply id: {}", reply.getId());
+            log.info("[WEBHOOK] 🔘 Button reply title: {}", reply.getTitle());
+        }
+
+        if (message.getInteractive().getListReply() != null) {
+            var reply = message.getInteractive().getListReply();
+            log.info("[WEBHOOK] 📋 List reply id: {}", reply.getId());
+            log.info("[WEBHOOK] 📋 List reply title: {}", reply.getTitle());
+            log.info("[WEBHOOK] 📋 List reply description: {}", reply.getDescription());
+        }
     }
 }

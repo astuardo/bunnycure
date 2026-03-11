@@ -6,7 +6,7 @@
 CREATE SEQUENCE IF NOT EXISTS appointments_seq START WITH 1 INCREMENT BY 1;
 
 -- Si la secuencia ya existe con increment diferente, recrearla
-DROP SEQUENCE IF EXISTS appointments_seq CASCADE;
+DROP SEQUENCE IF EXISTS appointments_seq;
 CREATE SEQUENCE appointments_seq START WITH 1 INCREMENT BY 1;
 
 -- Alterar tabla para usar la secuencia

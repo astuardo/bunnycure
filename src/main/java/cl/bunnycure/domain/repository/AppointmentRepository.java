@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import cl.bunnycure.domain.model.Customer;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
