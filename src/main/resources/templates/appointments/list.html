@@ -77,6 +77,13 @@
             font-weight: 700;
             letter-spacing: .05rem;
         }
+        .month-day-mini-label {
+            margin-top: .2rem;
+            font-size: .63rem;
+            line-height: 1.1;
+            color: #6b7280;
+            font-weight: 600;
+        }
     </style>
 
     <!-- Encabezado -->
@@ -167,6 +174,11 @@
                                     <span class="month-day-dot-fallback"
                                           th:if="${dotCount == 1}"
                                           aria-hidden="true">•</span>
+                                </div>
+                                <div class="month-day-mini-label"
+                                     th:if="${appointmentCountByDate[day] != null and appointmentCountByDate[day] > 0}"
+                                     th:text="${appointmentCountByDate[day] == 1} ? '1 cita' : (${appointmentCountByDate[day]} + ' citas')">
+                                    1 cita
                                 </div>
                             </div>
                         </a>
