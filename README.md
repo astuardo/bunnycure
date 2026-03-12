@@ -1,421 +1,331 @@
-# 💅 BunnyCure – Sistema de Gestión de Citas de Manicure
+# 💅 BunnyCure
 
-> **Sistema integral de reserva y gestión de citas manicure** con autenticación segura, notificaciones automáticas por email, WhatsApp y recordatorios programados. Arquitectura escalable basada en Spring Boot 3.2.11 con soporte para múltiples entornos (local H2 y producción PostgreSQL).
+Sistema web para gestión de reservas, agenda y seguimiento de clientas de un centro estético, construido con Spring Boot 3.2.11, Thymeleaf, JPA/Flyway y soporte de notificaciones por email y WhatsApp.
 
----
-
-## 📋 Tabla de Contenidos
-
-1. [Propósito y Solución de Ingeniería](#propósito-y-solución-de-ingeniería)
-2. [Stack Tecnológico](#stack-tecnológico)
-3. [Características Principales](#características-principales)
-4. [Arquitectura de Software](#arquitectura-de-software)
-5. [Estructura de Carpetas](#estructura-de-carpetas)
-6. [Configuración y Runtime](#configuración-y-runtime)
-7. [WhatsApp Integration](#whatsapp-integration)
-8. [Endpoints y Uso](#endpoints-y-uso)
-9. [Guía de Desarrollo](#guía-de-desarrollo)
-10. [Variables de Entorno](#variables-de-entorno)
-11. [Despliegue](#despliegue)
+> Documento actualizado al **12 de marzo de 2026**. Este README evita publicar credenciales, secretos o contraseñas de ningún entorno.
 
 ---
 
-## 🎯 Propósito y Solución de Ingeniería
+## ✅ Estado actual del proyecto
 
-BunnyCure es una solución empresarial de **gestión integral de citas estéticas** diseñada para salones y centros de belleza. El sistema proporciona:
+Actualmente BunnyCure incluye:
 
-- **Portal Público**: Clientes pueden crear solicitudes de reserva sin autenticación
-- **Panel Administrativo**: Gestión completa de citas, clientes, servicios y configuración
-- **Autenticación Segura**: Spring Security con BCrypt password encoding
-- **Notificaciones Multi-Canal**: 
-  - Email: Confirmaciones, cancelaciones y recordatorios
-  - WhatsApp: Notificaciones instantáneas vía WhatsApp Cloud API
-  - Webhook: Recepción de estados de mensajes en tiempo real
-- **Programación de Tareas**: Recordatorios automáticos mediante Spring Scheduling
-- **Persistencia Multi-Ambiente**: H2 local, PostgreSQL producción
-- **Migraciones Controladas**: Flyway para versionamiento de esquema
-
-**Diferenciadores técnicos:**
-- Arquitectura de capas limpias con separación de responsabilidades (Controllers → Services → Repositories)
-- DTOs con validación exhaustiva (Jakarta Validation)
-- Async/Scheduling para operaciones no-bloqueantes
-- Integración completa con WhatsApp Cloud API
-- Sistema de webhooks para notificaciones en tiempo real
+- **Portal público de reservas** en `/reservar`
+- **Panel administrativo** con dashboard, agenda, clientes, servicios, usuarios y settings
+- **Autenticación con Spring Security** y contraseñas con BCrypt
+- **Cambio obligatorio de contraseña** cuando el admin inicia con una clave legacy/insegura
+- **Recuperación de contraseña por email** (`/forgot-password` y `/reset-password`)
+- **Notificaciones asíncronas** por email y WhatsApp
+- **Recordatorios automáticos** programados por scheduler
+- **Integración con WhatsApp Cloud API** para envío y recepción de eventos
+- **Webhook de WhatsApp** con validación de firma HMAC cuando se configura `WHATSAPP_WEBHOOK_APP_SECRET`
+- **Derivación a atención humana por WhatsApp** configurable desde admin settings
+- **Persistencia por perfiles**: H2 local y PostgreSQL para despliegue tipo Heroku
+- **Migraciones Flyway sincronizadas** entre `db/migration` y `db/migration-h2`
 
 ---
 
-## 📦 Stack Tecnológico
+## 🧩 Módulos funcionales principales
 
-| Componente | Versión | Propósito |
-|---|---|---|
-| **Java** | 17 LTS | JVM target |
-| **Spring Boot** | 3.2.11 | Framework principal |
-| **Spring Data JPA** | 3.2.11 | ORM y acceso a datos |
-| **Spring Security** | 3.2.11 | Autenticación y autorización |
-| **Spring Mail** | 3.2.11 | Envío de emails |
-| **Spring Web** | 3.2.11 | MVC y controllers |
-| **Spring Actuator** | 3.2.11 | Health checks y métricas |
-| **Thymeleaf** | 3.2.11 | Template engine (SSR) |
-| **Thymeleaf Security** | 6.x | Integración Thymeleaf + Spring Security |
-| **Flyway** | 9.22.3 | Migraciones de base de datos |
-| **PostgreSQL Driver** | Runtime | Driver JDBC PostgreSQL |
-| **H2 Database** | 2.2.224 | BD en memoria/archivo local |
-| **Lombok** | 1.18.30 | Eliminación boilerplate |
-| **Jakarta Validation** | 3.2.11 | Validaciones de datos |
-| **Maven Compiler** | 17 | Compilación Java 17 |
-| **Spring Boot Maven Plugin** | 3.2.11 | Build y packaging |
+### Portal público
 
-**Perfil de Compilación:**
-- Source/Target: Java 17
-- Encoding: UTF-8
-- Anotación de Lombok automática mediante maven-compiler-plugin
+- Formulario de reserva en `/reservar`
+- Creación de `BookingRequest`
+- Lookup público de clienta por teléfono en `/api/customers/lookup`
+- Bloques horarios configurables desde settings
+- Mensajes de derivación a WhatsApp humano configurables
+
+### Backoffice administrativo
+
+- Dashboard con métricas del día y solicitudes pendientes
+- Aprobación y rechazo de solicitudes de reserva
+- Gestión de citas en vistas **día / semana / mes**
+- Gestión de clientas con perfil ampliado
+- Gestión de servicios y usuarios admin
+- Configuración del portal y de la experiencia de WhatsApp
+- Envío manual de notificaciones y recordatorios
+
+### Seguridad y cuentas
+
+- Login form con redirección por host en `/`
+- Flujo de cambio obligatorio de contraseña para claves legacy
+- Recuperación de contraseña con token de un solo uso
+- Gestión de usuarios administrativos desde `/admin/users`
+
+### Notificaciones y automatizaciones
+
+- Email: confirmación, cancelación, recordatorios y recuperación de contraseña
+- WhatsApp: confirmación, recordatorio, cancelación, recepción y rechazo de solicitud
+- Scheduler diario a las 09:00 para recordatorios del día siguiente
+- Scheduler cada 2 horas para recordatorios cercanos
+
+### Webhook de WhatsApp
+
+- Verificación Meta por `GET /api/webhooks/whatsapp`
+- Recepción de eventos por `POST /api/webhooks/whatsapp`
+- Dedupe de eventos procesados
+- Registro de eventos operacionales y limpieza programada
+- Endpoints auxiliares de diagnóstico solo en local:
+  - `/api/webhooks/whatsapp/status`
+  - `/api/webhooks/whatsapp/test`
 
 ---
 
-## 🏗️ Arquitectura de Software
+## 🏗️ Stack tecnológico
 
-### 1. **Patrón de Capas**
+| Componente | Versión | Uso |
+|---|---:|---|
+| Java | 17 | Runtime principal |
+| Spring Boot | 3.2.11 | Framework base |
+| Spring Web + Thymeleaf | 3.2.11 | MVC SSR |
+| Spring Data JPA | 3.2.11 | Persistencia |
+| Spring Security | 3.2.11 | Login y autorización |
+| Spring Mail | 3.2.11 | Correos transaccionales |
+| Spring Actuator | 3.2.11 | Health/info |
+| Flyway | 9.22.3 | Migraciones |
+| PostgreSQL Driver | runtime | Producción |
+| H2 | 2.2.224 | Desarrollo local |
+| Lombok | 1.18.30 | Boilerplate |
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    WEB LAYER (Controllers)                   │
-│  HomeController, LoginController, DashboardController...    │
-└────────────────────────┬────────────────────────────────────┘
-                         │ Requests/Responses
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    DTO LAYER (Data Transfer Objects)         │
-│  BookingRequestDto, AppointmentDto, CustomerDto...          │
-└────────────────────────┬────────────────────────────────────┘
-                         │ Transformation
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                SERVICE LAYER (Business Logic)                │
-│  AppointmentService, BookingRequestService...              │
-│  - Transacciones                                             │
-│  - Validaciones                                              │
-│  - Operaciones Async (@Async)                              │
-└────────────────────────┬────────────────────────────────────┘
-                         │ Data Queries
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│          REPOSITORY LAYER (Data Persistence)                 │
-│  AppointmentRepository, BookingRequestRepository...          │
-│  (Spring Data JPA)                                           │
-└────────────────────────┬────────────────────────────────────┘
-                         │ SQL / JPA Queries
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│               DOMAIN LAYER (Entity Models)                    │
-│  Appointment, BookingRequest, Customer, User...              │
-│  - @Entity con JPA annotations                              │
-│  - Relaciones (ManyToOne, OneToMany)                        │
-│  - Enums (AppointmentStatus, BookingRequestStatus)          │
-└─────────────────────────────────────────────────────────────┘
-```
+---
 
-### 2. **Flujo de Datos – Ejemplo: Crear Solicitud de Reserva**
+## 📁 Estructura resumida
 
-```
-[Cliente] → POST /reservar/submit
-           ↓
-[BookingRequestController.submitRequest()]
-           ↓
-[BindingResult validation] ← BookingRequestDto
-           ↓
-[BookingRequestService.create()]
-           ↓
-[BookingRequestRepository.save()] → DB
-           ↓
-[NotificationService.sendAcknowledgement()] @Async
-           ↓
-[Confirmation Email] → SMTP
-```
+```text
+src/main/java/cl/bunnycure/
+├─ config/      Configuración de seguridad, datasource, schedulers e inicialización
+├─ domain/      Entidades, enums y repositorios
+├─ service/     Lógica de negocio, notificaciones y webhook
+├─ web/         Controllers MVC/REST y DTOs
+└─ exception/   Manejo de errores
 
-### 3. **Flujo de Datos – Ejemplo: Aprobar Solicitud**
-
-```
-[Admin] → POST /admin/booking-requests/{id}/approve
-         ↓
-[BookingRequestController.approve()]
-         ↓
-[BookingApprovalDto validation]
-         ↓
-[BookingRequestService.approve()]
-         ├─ Create Appointment
-         ├─ Update BookingRequest status
-         ├─ Save to DB
-         └─ Call NotificationService.sendAppointmentConfirmation() @Async
-         ↓
-[NotificationService.sendAppointmentConfirmation()]
-         ↓
-[Email Template: confirmation.html]
-         ↓
-[Send via JavaMailSender] → SMTP
-```
-
-### 4. **Transacciones y Consistencia**
-
-- **@Transactional(readOnly = true)**: En métodos de búsqueda (Services)
-- **@Transactional**: En métodos de creación/actualización
-- **JPA Open-in-View**: Deshabilitado (`spring.jpa.open-in-view=false`) para mejor control
-- **Lazy Loading**: FetchType.EAGER en relaciones críticas (Customer, Service)
-
-### 5. **Seguridad**
-
-```
-┌─────────────────────────────────────────────────┐
-│        SecurityFilterChain (Spring Security)     │
-├─────────────────────────────────────────────────┤
-│ ✓ Static assets (/css, /js, /images)            │
-│ ✓ Login endpoints                               │
-│ ✓ Public booking portal (/, /reservar)          │
-│ ✓ .well-known metadata                          │
-│ ✗ Admin endpoints (requieren ROLE_ADMIN)        │
-│ ✗ Dashboard (requieren autenticación)           │
-└─────────────────────────────────────────────────┘
-```
-
-**Credenciales de Administrador:**
-- Username: `admin` (configurable: `bunnycure.admin.username`)
-- Password: `` (configurable: `bunnycure.admin.password`)
-- Encoding: BCrypt
-
-### 6. **Notificaciones Asincrónicas**
-
-```
-@EnableAsync en BunnycureApplication
-         ↓
-[Service method] @Async
-         ├─ NotificationService.sendConfirmation()
-         ├─ NotificationService.sendCancellationNotice()
-         ├─ NotificationService.sendReminder()
-         └─ (Ejecutan en thread pool paralelo)
-
-ThreadPool Config:
-  - Core size: 2 threads
-  - Max size: 5 threads
-```
-
-### 7. **Programación de Tareas**
-
-```
-@EnableScheduling en BunnycureApplication
-         ↓
-[ReminderScheduler]
-  ├─ @Scheduled(cron = "0 0 9 * * ?") → Daily 9 AM
-  ├─ Busca citas confirmadas para mañana
-  ├─ Envía reminders @Async
-  └─ Marca notificationSent = true
+src/main/resources/
+├─ application*.properties
+├─ db/migration/      Migraciones PostgreSQL
+├─ db/migration-h2/   Migraciones H2
+├─ templates/         Vistas Thymeleaf
+└─ static/            CSS, JS, imágenes
 ```
 
 ---
 
-## 📁 Estructura de Carpetas (ver documento completo para detalles)
+## 🚀 Puesta en marcha local
 
-La estructura sigue el patrón de capas:
-- `config/`: Configuración de seguridad, mail, async, scheduling
-- `domain/`: Modelos JPA, enums, repositorios
-- `service/`: Lógica de negocio y transacciones
-- `web/`: Controllers y DTOs con validaciones
-- `exception/`: Manejo centralizado de excepciones
-- `resources/`: Properties, templates Thymeleaf, migraciones Flyway
+### 1) Compilar
 
----
-
-## ⚙️ Configuración y Runtime
-
-### 1. **Compilación**
-
-```bash
-# Windows CMD
-mvnw.cmd clean install
-
-# Linux/Mac
-./mvnw clean install
+```bat
+mvnw.cmd clean verify
 ```
 
-### 2. **Ejecución Local (H2)**
+### 2) Definir perfil y credenciales por variables de entorno
 
-```bash
+> Recomendado: definir explícitamente las variables de admin también en local. Si el entorno local arranca con una contraseña legacy, el sistema obligará al cambio en el primer login.
+
+```bat
 set SPRING_PROFILES_ACTIVE=local
+set BUNNYCURE_ADMIN_USERNAME=admin
+set BUNNYCURE_ADMIN_PASSWORD=TU_PASSWORD_LOCAL_SEGURA
+```
+
+Si también quieres probar correo o WhatsApp en local, agrega las variables correspondientes antes de iniciar.
+
+### 3) Ejecutar
+
+```bat
 mvnw.cmd spring-boot:run
 ```
 
-**URLs:**
-- Portal: http://localhost:8080/reservar
-- Admin: http://localhost:8080/login
-- H2 Console: http://localhost:8080/h2-console
+### 4) URLs útiles
 
-**Credenciales:**
-- Username: `admin`
-- Password: `changeme`
+- Portal público: `http://localhost:8080/reservar`
+- Login admin: `http://localhost:8080/login`
+- H2 Console: `http://localhost:8080/h2-console`
+- Health: `http://localhost:8080/actuator/health`
 
-> 🔐 **Seguridad Mejorada**: El sistema detecta automáticamente cuando la contraseña es `changeme` y **obliga al admin a cambiarla** al iniciar sesión. Ver [CAMBIO_OBLIGATORIO_PASSWORD.md](CAMBIO_OBLIGATORIO_PASSWORD.md) para detalles.
+---
 
-> 📖 **Para desarrollo desde IntelliJ IDEA**: Ver **[DESARROLLO_LOCAL.md](DESARROLLO_LOCAL.md)** - Guía completa con Run Configurations, scripts H2 separados, y troubleshooting.
+## ⚙️ Perfiles soportados
 
-### 3. **Perfiles (Profiles)**
+### `local`
 
-- **local**: H2 database (archivo), scripts en `db/migration-h2/`, H2 console habilitada, Flyway activo
-- **heroku**: PostgreSQL, scripts en `db/migration/`, Mail SMTP Hostinger, Admin dinámico
+- Base H2 en archivo: `target/bunnycure-local`
+- Flyway usando `classpath:db/migration-h2`
+- H2 Console habilitada
+- Thymeleaf sin caché
+- Logging más verboso
 
-> 💡 **Migraciones separadas por motor de BD**: Ver **[db/README_MIGRATIONS.md](docs-dev/README_MIGRATIONS.md)** para detalles de compatibilidad H2 vs PostgreSQL.
+### `heroku`
 
-### 4. **Variables de Entorno**
+- PostgreSQL obtenido desde `DATABASE_URL`
+- Datasource armado por `HerokuDataSourceConfig`
+- Flyway usando `classpath:db/migration`
+- Bootstrap admin validado por `AdminUserInitializer`
+- `Procfile` listo para arrancar con perfil `heroku`
 
-**Producción (Heroku):**
-```bash
-DATABASE_URL=postgresql://...
-MAIL_HOST=smtp.hostinger.com
-MAIL_PORT=587
-MAIL_USERNAME=contacto@bunnycure.cl
-MAIL_PASSWORD=...
-MAIL_FROM=contacto@bunnycure.cl
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=...
-WHATSAPP_API_TOKEN=...
-WHATSAPP_PHONE_ID=...
-WHATSAPP_WEBHOOK_VERIFY_TOKEN=...
+> El proyecto mantiene soporte de despliegue tipo Heroku, pero este README no asume ni afirma un despliegue productivo actualmente activo.
+
+---
+
+## 🔐 Variables de entorno relevantes
+
+### Obligatorias o altamente recomendadas en local
+
+| Variable | Uso |
+|---|---|
+| `SPRING_PROFILES_ACTIVE` | Activa `local` o `heroku` |
+| `BUNNYCURE_ADMIN_USERNAME` | Usuario bootstrap de administración |
+| `BUNNYCURE_ADMIN_PASSWORD` | Password bootstrap de administración |
+
+### Base de datos / runtime
+
+| Variable | Uso |
+|---|---|
+| `PORT` | Puerto HTTP |
+| `DATABASE_URL` | PostgreSQL para perfil `heroku` |
+| `JAVA_OPTS` | Ajustes JVM en despliegue |
+
+### Email
+
+| Variable | Uso |
+|---|---|
+| `MAIL_HOST` | Host SMTP |
+| `MAIL_PORT` | Puerto SMTP |
+| `MAIL_USERNAME` | Usuario SMTP |
+| `MAIL_PASSWORD` | Password SMTP |
+| `MAIL_FROM` | Remitente |
+| `MAIL_ENABLED` | Habilita/deshabilita envío |
+
+### WhatsApp Cloud API
+
+| Variable | Uso |
+|---|---|
+| `WHATSAPP_API_TOKEN` | Token de acceso a Cloud API |
+| `WHATSAPP_PHONE_ID` | Phone number ID |
+| `WHATSAPP_NUMBER` | Número humano / fallback visible |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | Token de verificación Meta |
+| `WHATSAPP_WEBHOOK_APP_SECRET` | Secreto para validar firma HMAC |
+| `WHATSAPP_TEMPLATE_CONFIRMACION` | Template confirmación |
+| `WHATSAPP_TEMPLATE_RECORDATORIO` | Template recordatorio |
+| `WHATSAPP_TEMPLATE_CANCELACION` | Template cancelación |
+| `WHATSAPP_TEMPLATE_AGENDA` | Template solicitud recibida |
+| `WHATSAPP_TEMPLATE_RECHAZO` | Template solicitud rechazada |
+| `WHATSAPP_TEMPLATE_LANG` | Idioma template |
+| `WHATSAPP_USE_TEMPLATE_CONFIRMATION` | Uso de template en confirmación |
+| `WHATSAPP_USE_TEMPLATE_REMINDER` | Uso de template en recordatorio |
+| `WHATSAPP_USE_TEMPLATE_CANCELLATION` | Uso de template en cancelación |
+| `WHATSAPP_USE_TEMPLATE_BOOKING_REQUEST` | Uso de template al recibir solicitud |
+| `WHATSAPP_USE_TEMPLATE_BOOKING_REJECTION` | Uso de template al rechazar solicitud |
+| `WHATSAPP_BUSINESS_NAME` | Nombre comercial usado en mensajes |
+| `WHATSAPP_WEBHOOK_ALERT_ADMIN` | Alertas admin por eventos de riesgo |
+| `WHATSAPP_WEBHOOK_OP_EVENTS_CLEANUP_ENABLED` | Limpieza de eventos operacionales |
+| `WHATSAPP_WEBHOOK_OP_EVENTS_RETENTION_DAYS` | Retención de eventos |
+| `WHATSAPP_WEBHOOK_OP_EVENTS_CLEANUP_CRON` | Cron de limpieza |
+
+---
+
+## 🔌 Rutas principales
+
+### Públicas
+
+| Ruta | Descripción |
+|---|---|
+| `/` | Redirección por host/autenticación |
+| `/reservar` | Portal público de reservas |
+| `/reservar/submit` | Creación de solicitud |
+| `/api/customers/lookup` | Lookup público de clienta por teléfono |
+| `/login` | Login |
+| `/forgot-password` | Solicitud de recuperación |
+| `/reset-password` | Restablecimiento con token |
+| `/api/webhooks/whatsapp` | Verificación y recepción del webhook |
+| `/.well-known/appspecific/com.chrome.devtools.json` | Respuesta técnica para DevTools |
+
+### Requieren autenticación
+
+| Ruta | Descripción |
+|---|---|
+| `/dashboard` | Dashboard principal |
+| `/appointments` | Agenda de citas |
+| `/customers` | Gestión de clientas |
+| `/admin/booking-requests` | Solicitudes de reserva |
+| `/admin/services` | Catálogo de servicios |
+| `/admin/settings` | Configuración de negocio y WhatsApp |
+| `/admin/users` | Usuarios administrativos |
+| `/admin/reminders` | Gestión de recordatorios |
+| `/admin/change-password` | Cambio de contraseña del usuario actual |
+
+---
+
+## 📱 Cambios recientes ya incorporados
+
+Los README quedan alineados con estos cambios del proyecto:
+
+- Integración real de **WhatsApp Cloud API** con templates configurables
+- **Webhook seguro** con soporte de firma `X-Hub-Signature-256`
+- Persistencia de **eventos procesados** y **eventos operacionales** del webhook
+- **Limpieza programada** de eventos operacionales
+- **Derivación a atención humana** por WhatsApp configurable desde settings
+- **Recuperación de contraseña** por token vía email
+- **Cambio obligatorio de contraseña** para claves legacy
+- **Campos de perfil** adicionales en solicitudes/clientas: género, fecha de nacimiento, teléfono de emergencia y notas
+- Vistas de agenda **día / semana / mes**
+- Paridad de migraciones entre H2 y PostgreSQL validada por tests
+
+---
+
+## 🧪 Validación y calidad
+
+El repositorio incluye pruebas para áreas críticas, entre ellas:
+
+- `WhatsAppWebhookControllerTest`
+- `WhatsAppWebhookServiceTest`
+- `WhatsAppServiceTest`
+- `WhatsAppHandoffServiceTest`
+- `PasswordResetServiceTest`
+- `AppointmentServiceTest`
+- `MigrationParityTest`
+
+Comando habitual:
+
+```bat
+mvnw.cmd test
 ```
 
 ---
 
-## 📱 WhatsApp Integration
+## 📚 Documentación complementaria
 
-BunnyCure incluye integración completa con **WhatsApp Cloud API** para enviar notificaciones instantáneas y recibir mensajes en tiempo real.
+- `README_TECNICO.md`: arquitectura y operación técnica detallada
+- `docs-dev/DESARROLLO_LOCAL.md`: guía de desarrollo local
+- `docs-dev/README_WHATSAPP.md`: integración WhatsApp
+- `docs-dev/README_MIGRATIONS.md`: estrategia de migraciones
+- `docs-dev/CHECKLIST_HEROKU.md`: checklist de despliegue
+- `docs-dev/CAMBIO_OBLIGATORIO_PASSWORD.md`: flujo de rotación de password
 
-### Características
+---
 
-- ✅ **Envío de Mensajes**: Confirmaciones, cancelaciones y recordatorios por WhatsApp
-- ✅ **Plantillas Aprobadas**: Uso de templates pre-aprobados por Meta
-- ✅ **Webhook**: Recepción de notificaciones en tiempo real
-- ✅ **Estados de Mensajes**: Tracking de enviado, entregado, leído
-- ✅ **Mensajes Entrantes**: Procesamiento de mensajes de clientes
+## 📦 Build y despliegue
 
-### Configuración Rápida
+### Build
 
-1. **Variables de Entorno (Heroku):**
-```bash
-heroku config:set WHATSAPP_API_TOKEN=tu_token_de_meta
-heroku config:set WHATSAPP_PHONE_ID=tu_phone_number_id
-heroku config:set WHATSAPP_WEBHOOK_VERIFY_TOKEN=tu_token_secreto
+```bat
+mvnw.cmd clean package
 ```
 
-2. **Configurar Webhook en Meta:**
-   - URL: `https://tu-app.herokuapp.com/api/webhooks/whatsapp`
-   - Token: El configurado en `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
-   - Eventos: `messages`, `message_status`
+### Soporte Heroku
 
-### Endpoints de WhatsApp
+El proyecto ya incluye:
 
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| `/api/webhooks/whatsapp` | GET | Verificación del webhook (Meta) |
-| `/api/webhooks/whatsapp` | POST | Recibir notificaciones |
-| `/api/webhooks/whatsapp/status` | GET | Estado del webhook |
+- `Procfile`
+- `system.properties`
+- perfil `heroku`
+- parsing de `DATABASE_URL`
 
-### Uso en Código
-
-```java
-@Autowired
-private WhatsAppService whatsAppService;
-
-// Enviar mensaje de texto
-whatsAppService.sendTextMessage("56912345678", "Tu cita está confirmada");
-
-// Enviar confirmación automática
-whatsAppService.sendAppointmentConfirmation(appointment);
-
-// Enviar recordatorio
-whatsAppService.sendAppointmentReminder(appointment);
-```
-
-### Documentación Detallada
-
-Para configuración paso a paso, troubleshooting y ejemplos completos, ver:
-- 📖 **README_WHATSAPP.md** - Guía completa de integración WhatsApp
+Antes de desplegar, configura todas las variables sensibles en el proveedor y no las subas al repositorio.
 
 ---
 
-## 🔌 Endpoints Principales
+## 🔒 Nota de seguridad
 
-### **Públicos (Sin Autenticación)**
-
-| Endpoint | Método | Descripción |
-|---|---|---|
-| `/` | GET | Redirección inteligente por subdominio |
-| `/reservar` | GET | Portal de solicitud de reserva |
-| `/reservar/submit` | POST | Crear solicitud de reserva |
-| `/login` | GET/POST | Página y procesamiento de login |
-
-### **Administrativos (ROLE_ADMIN)**
-
-| Endpoint | Método | Descripción |
-|---|---|---|
-| `/dashboard` | GET | Panel principal |
-| `/admin/booking-requests` | GET | Listar solicitudes |
-| `/admin/booking-requests/{id}/approve` | POST | Aprobar y crear cita |
-| `/admin/booking-requests/{id}/reject` | POST | Rechazar solicitud |
-| `/admin/appointments` | GET | Listar citas |
-| `/admin/appointments/reminders` | GET | Recordatorios pendientes |
-| `/admin/customers` | GET | Gestión de clientes |
-| `/admin/services` | GET | Gestión de servicios |
-| `/admin/settings` | GET | Configuración global |
-| `/actuator/health` | GET | Health check |
-
----
-
-## 🚀 Despliegue (Heroku)
-
-```bash
-heroku create bunnycure-prod
-heroku addons:create heroku-postgresql:hobby-dev
-heroku config:set SPRING_PROFILES_ACTIVE=heroku
-heroku config:set MAIL_HOST=smtp.hostinger.com
-# ... más variables
-git push heroku main
-```
-
-### 📋 Variables de Entorno Heroku
-
-Para configurar todas las variables necesarias en Heroku:
-
-**Guías disponibles:**
-- 📖 **INDICE_VARIABLES_HEROKU.md** - Índice maestro y punto de partida
-- ⚡ **GUIA_RAPIDA_VARIABLES_HEROKU.md** - Inicio rápido (3 pasos)
-- 📋 **COMANDOS_HEROKU_COPYPASTE.md** - Comandos listos para usar
-- 🔍 **COMPARACION_VARIABLES_HEROKU.md** - Análisis detallado de tu configuración
-- 📊 **TABLA_VARIABLES_HEROKU.md** - Tabla comparativa visual
-- 📖 **VARIABLES_HEROKU_COMPLETAS.md** - Documentación completa
-
-**Scripts de verificación:**
-- 🛠️ `verificar-valores-heroku.bat` - Verificar valores críticos
-- 🛠️ `comparar-variables-heroku.bat` - Comparar tu config con la requerida
-
----
-
-## 📚 Documentación Completa
-
-Para una documentación **exhaustiva** incluyendo:
-- Descripción detallada de todas las entidades JPA
-- Flujos completos de procesos (reserva, aprobación, recordatorios)
-- Ejemplos de uso con CURL
-- Guía extendida de desarrollo
-- Troubleshooting avanzado
-- Diagramas de arquitectura y secuencia
-
-👉 **Ver archivo `README_TECNICO.md`**
-
----
-
-## 📄 Información de Versión
-
-- **Version:** 0.0.1-SNAPSHOT
-- **Java:** 17 LTS
-- **Spring Boot:** 3.2.11
-- **Generated:** 4 de Marzo de 2026
-
----
-
-**Para soporte:** contacto@bunnycure.cl
+- No publiques usuarios, contraseñas, tokens, secretos SMTP ni secretos de webhook en commits, issues o documentación.
+- Aunque exista un entorno local, **define tus variables por ambiente** y rota cualquier valor temporal apenas se use.
+- Para producción, configura siempre `WHATSAPP_WEBHOOK_APP_SECRET` y un `BUNNYCURE_ADMIN_PASSWORD` fuerte.
