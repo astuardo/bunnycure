@@ -19,8 +19,11 @@ public class CustomerServiceRecordService {
 
     private static final Logger log = LoggerFactory.getLogger(CustomerServiceRecordService.class);
     private static final int MAX_RECORDS_PER_CUSTOMER = 3;
-    private static final Pattern CLIENT_PHONE_PATTERN = Pattern.compile("(?im)^\\s*cliente\\s*:\\s*(.+)$");
+    // Formato etiquetado: CLIENTE: xxx / SERVICIO: yyy
+    private static final Pattern CLIENT_PHONE_PATTERN  = Pattern.compile("(?im)^\\s*cliente\\s*:\\s*(.+)$");
     private static final Pattern SERVICE_DETAIL_PATTERN = Pattern.compile("(?im)^\\s*servicio\\s*:\\s*(.+)$");
+    // Formato simple: primera línea = teléfono, resto = descripción
+    private static final Pattern SIMPLE_PHONE_PATTERN  = Pattern.compile("^[+\\d][\\d\\s\\-().]{5,24}$");
 
     private final CustomerServiceRecordRepository customerServiceRecordRepository;
     private final CustomerService customerService;
@@ -109,22 +112,39 @@ public class CustomerServiceRecordService {
     private ParsedCaption parseCaption(String caption) {
         String raw = trimToNull(caption);
         if (raw == null) {
+            log.warn("[RECORD] Caption vacío o nulo — no se puede procesar");
             return ParsedCaption.invalid();
         }
 
-        Matcher clientMatcher = CLIENT_PHONE_PATTERN.matcher(raw);
+        // Formato etiquetado: CLIENTE: xxx / SERVICIO: yyy
+        Matcher clientMatcher  = CLIENT_PHONE_PATTERN.matcher(raw);
         Matcher serviceMatcher = SERVICE_DETAIL_PATTERN.matcher(raw);
-        if (!clientMatcher.find() || !serviceMatcher.find()) {
-            return ParsedCaption.invalid();
+        if (clientMatcher.find() && serviceMatcher.find()) {
+            String phone  = trimToNull(clientMatcher.group(1));
+            String detail = trimToNull(serviceMatcher.group(1));
+            if (phone != null && detail != null) {
+                log.info("[RECORD] Caption parseado en formato etiquetado. phone={}", phone);
+                return new ParsedCaption(phone, detail);
+            }
         }
 
-        String customerPhone = trimToNull(clientMatcher.group(1));
-        String serviceDetail = trimToNull(serviceMatcher.group(1));
-        if (customerPhone == null || serviceDetail == null) {
-            return ParsedCaption.invalid();
+        // Formato simple: primera línea = teléfono, segunda línea en adelante = descripción
+        String[] lines = raw.split("\\r?\\n", 2);
+        if (lines.length >= 2) {
+            String firstLine  = lines[0].trim();
+            String secondPart = lines[1].trim();
+            if (!firstLine.isEmpty() && !secondPart.isEmpty()
+                    && SIMPLE_PHONE_PATTERN.matcher(firstLine).matches()) {
+                log.info("[RECORD] Caption parseado en formato simple. phone={}", firstLine);
+                return new ParsedCaption(firstLine, secondPart);
+            }
         }
 
-        return new ParsedCaption(customerPhone, serviceDetail);
+        log.warn("[RECORD] Caption no coincide con ningún formato soportado. caption='{}'", raw);
+        log.warn("[RECORD] Formatos válidos:");
+        log.warn("[RECORD]   Simple  → primera línea: número de teléfono / segunda línea: descripción");
+        log.warn("[RECORD]   Etiquetado → CLIENTE: +56XXXXXXXXX / SERVICIO: descripción");
+        return ParsedCaption.invalid();
     }
 
     private String normalizePhone(String value) {

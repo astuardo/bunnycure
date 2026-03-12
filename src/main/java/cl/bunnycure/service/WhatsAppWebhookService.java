@@ -480,7 +480,10 @@ public class WhatsAppWebhookService {
     private boolean isCustomerRecordOwnerMessage(WhatsAppWebhookDto.Message message) {
         String expectedOwner = normalizePhone(customerRecordOwnerNumber);
         String from = normalizePhone(message != null ? message.getFrom() : null);
-        return !expectedOwner.isBlank() && expectedOwner.equals(from);
+        boolean match = !expectedOwner.isBlank() && expectedOwner.equals(from);
+        log.info("[WEBHOOK] 🔐 Owner check: configured='{}' sender='{}' match={}",
+                expectedOwner, from, match);
+        return match;
     }
 
     private String normalizeKey(String value) {
