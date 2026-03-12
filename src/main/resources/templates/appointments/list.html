@@ -153,12 +153,12 @@
                                           th:text="${appointmentCountByDate[day]}">0</span>
                                 </div>
                                 <div class="month-day-dots"
-                                     th:if="${appointmentDotCountByDate[day] != null and appointmentDotCountByDate[day] > 0}">
+                                     th:if="${appointmentDotsByDate[day] != null and !#lists.isEmpty(appointmentDotsByDate[day])}">
                                     <span class="month-day-dot"
-                                          th:each="i : ${#numbers.sequence(1, appointmentDotCountByDate[day])}"></span>
+                                          th:each="i : ${appointmentDotsByDate[day]}"></span>
                                 </div>
                                 <div class="month-day-dots"
-                                     th:unless="${appointmentDotCountByDate[day] != null and appointmentDotCountByDate[day] > 0}"></div>
+                                     th:unless="${appointmentDotsByDate[day] != null and !#lists.isEmpty(appointmentDotsByDate[day])}"></div>
                             </div>
                         </a>
                     </div>

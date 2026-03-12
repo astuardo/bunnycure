@@ -24,6 +24,13 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 
+  <div th:if="${errorMsg}"
+       class="alert alert-danger alert-dismissible fade show">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <span th:text="${errorMsg}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
   <!-- ── TABLA (solo desktop ≥ md) ─────────────────────────────────── -->
   <div class="card table-card d-none d-md-block">
     <div class="card-body p-0">

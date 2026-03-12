@@ -20,6 +20,8 @@ public interface BookingRequestRepository extends JpaRepository<BookingRequest, 
     // Conteo de pendientes (para badge en dashboard)
     long countByStatus(BookingRequestStatus status);
 
+    long countByServiceId(Long serviceId);
+
     // Con JOIN FETCH para evitar LazyInitializationException
     @Query("""
         SELECT r FROM BookingRequest r

@@ -1,6 +1,8 @@
 package cl.bunnycure.service;
 
 import cl.bunnycure.domain.model.ServiceCatalog;
+import cl.bunnycure.domain.repository.AppointmentRepository;
+import cl.bunnycure.domain.repository.BookingRequestRepository;
 import cl.bunnycure.domain.repository.ServiceCatalogRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.ServiceCatalogDto;
@@ -12,10 +14,21 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ServiceCatalogService {
 
-    private final ServiceCatalogRepository repository;
+    public enum DeleteOutcome {
+        DELETED,
+        DEACTIVATED_REFERENCED
+    }
 
-    public ServiceCatalogService(ServiceCatalogRepository repository) {
+    private final ServiceCatalogRepository repository;
+    private final AppointmentRepository appointmentRepository;
+    private final BookingRequestRepository bookingRequestRepository;
+
+    public ServiceCatalogService(ServiceCatalogRepository repository,
+                                 AppointmentRepository appointmentRepository,
+                                 BookingRequestRepository bookingRequestRepository) {
         this.repository = repository;
+        this.appointmentRepository = appointmentRepository;
+        this.bookingRequestRepository = bookingRequestRepository;
     }
 
     public List<ServiceCatalog> findAllActive() {
@@ -64,7 +77,18 @@ public class ServiceCatalogService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public DeleteOutcome delete(Long id) {
+        ServiceCatalog service = findById(id);
+        long linkedAppointments = appointmentRepository.countByServiceId(id);
+        long linkedBookingRequests = bookingRequestRepository.countByServiceId(id);
+
+        if (linkedAppointments > 0 || linkedBookingRequests > 0) {
+            service.setActive(false);
+            repository.save(service);
+            return DeleteOutcome.DEACTIVATED_REFERENCED;
+        }
+
         repository.deleteById(id);
+        return DeleteOutcome.DELETED;
     }
 }

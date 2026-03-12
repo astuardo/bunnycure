@@ -14,6 +14,8 @@ import cl.bunnycure.domain.model.Customer;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
+    long countByServiceId(Long serviceId);
+
     @Query("""
         SELECT a FROM Appointment a
         JOIN FETCH a.customer

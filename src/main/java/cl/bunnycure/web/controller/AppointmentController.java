@@ -117,9 +117,11 @@ public class AppointmentController extends BaseController {
             List<LocalDate> calendarDays = calendarStart.datesUntil(calendarEnd.plusDays(1)).toList();
             Map<LocalDate, Long> appointmentCountByDate = new LinkedHashMap<>();
             Map<LocalDate, Integer> appointmentDotCountByDate = new LinkedHashMap<>();
+            Map<LocalDate, List<Integer>> appointmentDotsByDate = new LinkedHashMap<>();
             for (LocalDate day : calendarDays) {
                 appointmentCountByDate.put(day, 0L);
                 appointmentDotCountByDate.put(day, 0);
+                appointmentDotsByDate.put(day, List.of());
             }
             for (Appointment appointment : appointments) {
                 LocalDate appointmentDate = appointment.getAppointmentDate();
@@ -128,7 +130,9 @@ public class AppointmentController extends BaseController {
 
             for (LocalDate day : calendarDays) {
                 long count = appointmentCountByDate.getOrDefault(day, 0L);
-                appointmentDotCountByDate.put(day, (int) count);
+                int dotCount = Math.max(0, (int) count);
+                appointmentDotCountByDate.put(day, dotCount);
+                appointmentDotsByDate.put(day, java.util.stream.IntStream.range(0, dotCount).boxed().toList());
             }
 
             List<Appointment> selectedDayAppointments = appointments.stream()
@@ -138,6 +142,7 @@ public class AppointmentController extends BaseController {
             model.addAttribute("calendarDays", calendarDays);
             model.addAttribute("appointmentCountByDate", appointmentCountByDate);
             model.addAttribute("appointmentDotCountByDate", appointmentDotCountByDate);
+            model.addAttribute("appointmentDotsByDate", appointmentDotsByDate);
             model.addAttribute("selectedDayAppointments", selectedDayAppointments);
             model.addAttribute("weekDayNames", List.of("Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"));
             model.addAttribute("monthStart", rangeStart);

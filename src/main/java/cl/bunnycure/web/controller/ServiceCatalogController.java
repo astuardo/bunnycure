@@ -3,6 +3,7 @@ package cl.bunnycure.web.controller;
 import cl.bunnycure.service.ServiceCatalogService;
 import cl.bunnycure.web.dto.ServiceCatalogDto;
 import jakarta.validation.Valid;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -85,8 +86,16 @@ public class ServiceCatalogController extends BaseController {
 
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, RedirectAttributes flash) {
-        service.delete(id);
-        flash.addFlashAttribute("successMsg", "Servicio eliminado.");
+        try {
+            ServiceCatalogService.DeleteOutcome outcome = service.delete(id);
+            if (outcome == ServiceCatalogService.DeleteOutcome.DELETED) {
+                flash.addFlashAttribute("successMsg", "Servicio eliminado.");
+            } else {
+                flash.addFlashAttribute("errorMsg", "El servicio tiene citas o solicitudes asociadas. Se ocultó del catálogo en lugar de eliminarse.");
+            }
+        } catch (DataIntegrityViolationException ex) {
+            flash.addFlashAttribute("errorMsg", "No se puede eliminar el servicio porque está en uso. Se recomienda ocultarlo.");
+        }
         return "redirect:/admin/services";
     }
 }
