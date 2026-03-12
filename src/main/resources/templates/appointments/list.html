@@ -61,20 +61,14 @@
             display: flex;
             align-items: center;
             gap: .24rem;
+            flex-wrap: wrap;
         }
         .month-day-dot {
-            width: .35rem;
-            height: .35rem;
+            width: .38rem;
+            height: .38rem;
             border-radius: 999px;
             background: #8b5cf6;
             display: inline-block;
-        }
-        .month-day-overflow {
-            font-size: .64rem;
-            color: #6b7280;
-            font-weight: 700;
-            line-height: 1;
-            margin-left: .12rem;
         }
     </style>
 
@@ -158,12 +152,13 @@
                                     <span th:if="${appointmentCountByDate[day] > 0}" class="month-day-count"
                                           th:text="${appointmentCountByDate[day]}">0</span>
                                 </div>
-                                <div class="month-day-dots" th:if="${appointmentDotCountByDate[day] > 0}">
+                                <div class="month-day-dots"
+                                     th:if="${appointmentDotCountByDate[day] != null and appointmentDotCountByDate[day] > 0}">
                                     <span class="month-day-dot"
                                           th:each="i : ${#numbers.sequence(1, appointmentDotCountByDate[day])}"></span>
-                                    <span th:if="${appointmentOverflowByDate[day]}" class="month-day-overflow">+</span>
                                 </div>
-                                <div class="month-day-dots" th:unless="${appointmentDotCountByDate[day] > 0}"></div>
+                                <div class="month-day-dots"
+                                     th:unless="${appointmentDotCountByDate[day] != null and appointmentDotCountByDate[day] > 0}"></div>
                             </div>
                         </a>
                     </div>
