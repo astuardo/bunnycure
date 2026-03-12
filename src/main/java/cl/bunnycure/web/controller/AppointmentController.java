@@ -3,8 +3,10 @@ package cl.bunnycure.web.controller;
 import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.service.AppointmentService;
+import cl.bunnycure.service.AppSettingsService;
 import cl.bunnycure.service.CustomerService;
 import cl.bunnycure.service.ServiceCatalogService;
+import cl.bunnycure.service.WhatsAppHandoffService;
 import cl.bunnycure.web.dto.AppointmentDto;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -30,13 +32,19 @@ public class AppointmentController extends BaseController {
     private final AppointmentService appointmentService;
     private final CustomerService customerService;
     private final ServiceCatalogService serviceCatalogService; // ✅ campo declarado
+    private final WhatsAppHandoffService whatsAppHandoffService;
+    private final AppSettingsService appSettingsService;
 
     public AppointmentController(AppointmentService appointmentService,
                                  CustomerService customerService,
-                                 ServiceCatalogService serviceCatalogService) {
+                                 ServiceCatalogService serviceCatalogService,
+                                 WhatsAppHandoffService whatsAppHandoffService,
+                                 AppSettingsService appSettingsService) {
         this.appointmentService    = appointmentService;
         this.customerService       = customerService;
         this.serviceCatalogService = serviceCatalogService;
+        this.whatsAppHandoffService = whatsAppHandoffService;
+        this.appSettingsService = appSettingsService;
     }
 
     @GetMapping
@@ -77,7 +85,21 @@ public class AppointmentController extends BaseController {
         }
 
         List<Appointment> appointments = appointmentService.findByDateRange(rangeStart, rangeEnd);
+        Map<Long, String> appointmentHandoffLinks = new LinkedHashMap<>();
+        for (Appointment appointment : appointments) {
+            if (appointment.getId() != null) {
+                appointmentHandoffLinks.put(
+                        appointment.getId(),
+                        whatsAppHandoffService.buildAdminToCustomerLinkFromAppointment(appointment)
+                );
+            }
+        }
+
         model.addAttribute("appointments", appointments);
+        model.addAttribute("appointmentHandoffLinks", appointmentHandoffLinks);
+        model.addAttribute("whatsappHandoffEnabled", appSettingsService.isWhatsappHandoffEnabled());
+        model.addAttribute("whatsappHumanDisplayName", appSettingsService.getHumanWhatsappDisplayName());
+        model.addAttribute("whatsappHumanChannelLink", whatsAppHandoffService.buildHumanChannelLink());
         model.addAttribute("viewMode", viewMode);
         model.addAttribute("selectedDate", base);
         model.addAttribute("rangeStart", rangeStart);

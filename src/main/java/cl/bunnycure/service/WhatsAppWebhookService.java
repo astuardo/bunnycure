@@ -47,6 +47,8 @@ public class WhatsAppWebhookService {
     private final WebhookOperationalEventRepository webhookOperationalEventRepository;
     private final WebhookProcessedEventRepository webhookProcessedEventRepository;
     private final WhatsAppService whatsAppService;
+    private final AppSettingsService appSettingsService;
+    private final WhatsAppHandoffService whatsAppHandoffService;
 
     @Value("${bunnycure.whatsapp.number:}")
     private String adminWhatsAppNumber;
@@ -57,11 +59,15 @@ public class WhatsAppWebhookService {
     public WhatsAppWebhookService(AppointmentRepository appointmentRepository,
                                   WebhookOperationalEventRepository webhookOperationalEventRepository,
                                   WebhookProcessedEventRepository webhookProcessedEventRepository,
-                                  WhatsAppService whatsAppService) {
+                                  WhatsAppService whatsAppService,
+                                  AppSettingsService appSettingsService,
+                                  WhatsAppHandoffService whatsAppHandoffService) {
         this.appointmentRepository = appointmentRepository;
         this.webhookOperationalEventRepository = webhookOperationalEventRepository;
         this.webhookProcessedEventRepository = webhookProcessedEventRepository;
         this.whatsAppService = whatsAppService;
+        this.appSettingsService = appSettingsService;
+        this.whatsAppHandoffService = whatsAppHandoffService;
     }
 
     public boolean isSignatureValid(String rawPayload, String signatureHeader, String appSecret) {
@@ -286,6 +292,11 @@ public class WhatsAppWebhookService {
             return;
         }
 
+        if (isHandoffEnabled()) {
+            sendHandoffMessage(message.getFrom(), "text_free_form");
+            return;
+        }
+
         whatsAppService.sendTextMessage(
                 message.getFrom(),
                 "Hola! Gracias por escribir a BunnyCure. " +
@@ -310,6 +321,9 @@ public class WhatsAppWebhookService {
         }
 
         log.info("[WEBHOOK] ℹ️ Payload de button no mapeado: {}", payload);
+        if (message.getFrom() != null && !message.getFrom().isBlank() && isHandoffEnabled()) {
+            sendHandoffMessage(message.getFrom(), "button_unmapped");
+        }
     }
 
     private boolean isConfirmPayload(String text, String payload) {
@@ -425,6 +439,31 @@ public class WhatsAppWebhookService {
             return "n/a";
         }
         return value.substring(0, Math.min(value.length(), 8));
+    }
+
+    private boolean isHandoffEnabled() {
+        try {
+            return appSettingsService.isWhatsappHandoffEnabled();
+        } catch (Exception ex) {
+            log.warn("[WEBHOOK] ⚠️ No se pudo leer configuración de handoff, se usará habilitado por defecto");
+            return true;
+        }
+    }
+
+    private void sendHandoffMessage(String toPhoneNumber, String trigger) {
+        String handoffMessage = whatsAppHandoffService.buildClientHandoffMessage();
+        String handoffLink = whatsAppHandoffService.buildHumanChannelLink();
+
+        String finalMessage = handoffMessage;
+        if (handoffLink != null && !handoffLink.isBlank() && (handoffMessage == null || !handoffMessage.contains(handoffLink))) {
+            finalMessage = (handoffMessage != null ? handoffMessage : "") + "\n" + handoffLink;
+        }
+        if (finalMessage == null || finalMessage.isBlank()) {
+            finalMessage = "Para ayudarte mejor, escribe a nuestro canal de atención humana.";
+        }
+
+        log.info("[WEBHOOK] 🤝 Derivando a atención humana. trigger={}, to={}", trigger, toPhoneNumber);
+        whatsAppService.sendTextMessage(toPhoneNumber, finalMessage.trim());
     }
 
     private void processMessageStatuses(java.util.List<WhatsAppWebhookDto.Status> statuses) {
@@ -651,10 +690,14 @@ public class WhatsAppWebhookService {
         }
 
         if (message.getFrom() != null && !message.getFrom().isBlank()) {
-            whatsAppService.sendTextMessage(
-                    message.getFrom(),
-                    "Gracias por tu respuesta. Si necesitas ayuda con tu cita, escribe CONFIRMAR ASISTENCIA."
-            );
+            if (isHandoffEnabled()) {
+                sendHandoffMessage(message.getFrom(), "interactive_unmapped");
+            } else {
+                whatsAppService.sendTextMessage(
+                        message.getFrom(),
+                        "Gracias por tu respuesta. Si necesitas ayuda con tu cita, escribe CONFIRMAR ASISTENCIA."
+                );
+            }
         }
     }
 }

@@ -36,8 +36,11 @@ public class BookingController {
                 appSettingsService.get("booking.enabled", "true"));
 
         model.addAttribute("bookingEnabled",  bookingEnabled);
-        model.addAttribute("whatsappNumber",
-                appSettingsService.get("whatsapp.number", "56964499995"));
+        model.addAttribute("whatsappNumber", appSettingsService.getHumanWhatsappNumber());
+        model.addAttribute("whatsappHumanNumber", appSettingsService.getHumanWhatsappNumber());
+        model.addAttribute("whatsappHumanDisplayName", appSettingsService.getHumanWhatsappDisplayName());
+        model.addAttribute("whatsappHandoffEnabled", appSettingsService.isWhatsappHandoffEnabled());
+        model.addAttribute("whatsappHandoffClientMessage", appSettingsService.getWhatsappHandoffClientMessage());
         model.addAttribute("messageTemplate",
                 appSettingsService.getBookingMessageTemplate());
         model.addAttribute("bookingRequest",  new BookingRequestDto());

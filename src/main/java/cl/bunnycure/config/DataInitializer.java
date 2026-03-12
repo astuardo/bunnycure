@@ -145,7 +145,12 @@ public class DataInitializer implements CommandLineRunner {
         if (appSettingsRepository.count() == 0) {
             appSettingsRepository.saveAll(List.of(
                     new AppSettings("booking.enabled",                  "true",  "Portal de reservas habilitado"),
-                    new AppSettings("whatsapp.number",                  "56964499995", "Número WhatsApp negocio"),
+                    new AppSettings("whatsapp.number",                  "56988873031", "Número WhatsApp humano (legacy)"),
+                    new AppSettings("whatsapp.human.number",            "56988873031", "Número WhatsApp atención humana"),
+                    new AppSettings("whatsapp.human.display-name",      "Equipo BunnyCure", "Nombre visible atención humana"),
+                    new AppSettings("whatsapp.handoff.enabled",         "true", "Habilita derivación a atención humana"),
+                    new AppSettings("whatsapp.handoff.client-message",  "Si necesitas ayuda personalizada, escríbenos al WhatsApp de atención humana: {numero}.", "Mensaje de derivación al cliente"),
+                    new AppSettings("whatsapp.handoff.admin-prefill",   "Hola {nombre}, te escribe BunnyCure por tu solicitud o cita. Te contacto para ayudarte personalmente.", "Mensaje prellenado para atención manual"),
                     new AppSettings("booking.message.template",
                             "Hola Bunny Cure! [conejo]\nMe gustar\u00EDa reservar una cita:\n\u2022 Servicio: {servicio}\n\u2022 Fecha: {fecha}\n\u2022 Bloque: {bloque}\n\u2022 Nombre: {nombre}\n\u2022 Tel\u00E9fono: {telefono}\n\u00BFTienen disponibilidad?",
                             "Template mensaje WhatsApp"),

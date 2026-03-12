@@ -2,6 +2,8 @@ package cl.bunnycure.web.controller;
 
 import cl.bunnycure.service.BookingRequestService;
 import cl.bunnycure.service.ServiceCatalogService;
+import cl.bunnycure.service.AppSettingsService;
+import cl.bunnycure.service.WhatsAppHandoffService;
 import cl.bunnycure.web.dto.BookingApprovalDto;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
@@ -16,11 +18,17 @@ public class BookingRequestController extends BaseController {
 
     private final BookingRequestService bookingRequestService;
     private final ServiceCatalogService serviceCatalogService;
+    private final WhatsAppHandoffService whatsAppHandoffService;
+    private final AppSettingsService appSettingsService;
 
     public BookingRequestController(BookingRequestService bookingRequestService,
-                                    ServiceCatalogService serviceCatalogService) {
+                                    ServiceCatalogService serviceCatalogService,
+                                    WhatsAppHandoffService whatsAppHandoffService,
+                                    AppSettingsService appSettingsService) {
         this.bookingRequestService = bookingRequestService;
         this.serviceCatalogService = serviceCatalogService;
+        this.whatsAppHandoffService = whatsAppHandoffService;
+        this.appSettingsService = appSettingsService;
     }
 
     // ── Lista de solicitudes ─────────────────────────────────────────────────
@@ -40,6 +48,7 @@ public class BookingRequestController extends BaseController {
         model.addAttribute("approval", new BookingApprovalDto());
         model.addAttribute("services", serviceCatalogService.findAll()
                 .stream().filter(s -> s.isActive()).toList());
+        addHandoffModelAttributes(model, request);
         return "admin/booking-requests/detail";
     }
 
@@ -55,6 +64,7 @@ public class BookingRequestController extends BaseController {
             model.addAttribute("request",  request);
             model.addAttribute("services", serviceCatalogService.findAll()
                     .stream().filter(s -> s.isActive()).toList());
+            addHandoffModelAttributes(model, request);
             return "admin/booking-requests/detail";
         }
 
@@ -82,5 +92,14 @@ public class BookingRequestController extends BaseController {
             flash.addFlashAttribute("errorMsg", e.getMessage());
         }
         return "redirect:/admin/booking-requests";
+    }
+
+    private void addHandoffModelAttributes(Model model, cl.bunnycure.domain.model.BookingRequest request) {
+        boolean handoffEnabled = appSettingsService.isWhatsappHandoffEnabled();
+        model.addAttribute("whatsappHandoffEnabled", handoffEnabled);
+        model.addAttribute("whatsappHandoffClientMessage", whatsAppHandoffService.buildClientHandoffMessage());
+        model.addAttribute("whatsappHumanChannelLink", whatsAppHandoffService.buildHumanChannelLink());
+        model.addAttribute("adminToCustomerHandoffLink", whatsAppHandoffService.buildAdminToCustomerLinkFromBookingRequest(request));
+        model.addAttribute("whatsappHumanDisplayName", appSettingsService.getHumanWhatsappDisplayName());
     }
 }

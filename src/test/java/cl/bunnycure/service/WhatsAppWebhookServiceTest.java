@@ -46,6 +46,12 @@ class WhatsAppWebhookServiceTest {
     @Mock
     private WebhookOperationalEventRepository webhookOperationalEventRepository;
 
+    @Mock
+    private AppSettingsService appSettingsService;
+
+    @Mock
+    private WhatsAppHandoffService whatsAppHandoffService;
+
     private WhatsAppWebhookService webhookService;
 
     @BeforeEach
@@ -54,7 +60,9 @@ class WhatsAppWebhookServiceTest {
                 appointmentRepository,
                 webhookOperationalEventRepository,
                 webhookProcessedEventRepository,
-                whatsAppService
+                whatsAppService,
+                appSettingsService,
+                whatsAppHandoffService
         );
     }
 
@@ -71,6 +79,7 @@ class WhatsAppWebhookServiceTest {
 
     @Test
     void processWebhookNotification_TextMessage_SendsWelcomeReply() {
+        when(appSettingsService.isWhatsappHandoffEnabled()).thenReturn(false);
         webhookService.processWebhookNotification(webhookWithMessage(textMessage("wamid-2", "56912345678", "Hola")));
 
         verify(whatsAppService).sendTextMessage(
@@ -102,6 +111,7 @@ class WhatsAppWebhookServiceTest {
 
     @Test
     void processWebhookNotification_InteractiveUnknown_SendsFallbackReply() {
+        when(appSettingsService.isWhatsappHandoffEnabled()).thenReturn(false);
         webhookService.processWebhookNotification(
                 webhookWithMessage(interactiveButtonReplyMessage("wamid-5", "56912345678", "menu_principal", "Menu principal"))
         );
@@ -110,6 +120,38 @@ class WhatsAppWebhookServiceTest {
         verify(whatsAppService).sendTextMessage(
                 "56912345678",
                 "Gracias por tu respuesta. Si necesitas ayuda con tu cita, escribe CONFIRMAR ASISTENCIA."
+        );
+    }
+
+    @Test
+    void processWebhookNotification_TextMessage_WithHandoffEnabled_SendsHandoffMessage() {
+        when(appSettingsService.isWhatsappHandoffEnabled()).thenReturn(true);
+        when(whatsAppHandoffService.buildClientHandoffMessage())
+                .thenReturn("Escribenos al canal humano +56988873031");
+        when(whatsAppHandoffService.buildHumanChannelLink())
+                .thenReturn("https://wa.me/56988873031");
+
+        webhookService.processWebhookNotification(webhookWithMessage(textMessage("wamid-6", "56912345678", "Necesito ayuda")));
+
+        verify(whatsAppService).sendTextMessage(
+                "56912345678",
+                "Escribenos al canal humano +56988873031\nhttps://wa.me/56988873031"
+        );
+    }
+
+    @Test
+    void processWebhookNotification_UnknownButton_WithHandoffEnabled_SendsHandoffMessage() {
+        when(appSettingsService.isWhatsappHandoffEnabled()).thenReturn(true);
+        when(whatsAppHandoffService.buildClientHandoffMessage())
+                .thenReturn("Atencion humana: +56988873031");
+        when(whatsAppHandoffService.buildHumanChannelLink())
+                .thenReturn("https://wa.me/56988873031");
+
+        webhookService.processWebhookNotification(webhookWithMessage(buttonMessage("wamid-7", "56912345678", "Otro", "menu_principal")));
+
+        verify(whatsAppService).sendTextMessage(
+                "56912345678",
+                "Atencion humana: +56988873031\nhttps://wa.me/56988873031"
         );
     }
 

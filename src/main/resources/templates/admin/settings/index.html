@@ -30,6 +30,12 @@
         Portal de Reservas
       </div>
       <div class="card-body p-4">
+        <div class="alert alert-info small mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Esta pantalla configura el <strong>WhatsApp de atención humana</strong> visible en el portal y futuras derivaciones.
+          El número de automatización/API se mantiene separado por variables de entorno y no se edita aquí.
+        </div>
+
         <div class="d-flex align-items-center justify-content-between mb-3">
           <div>
             <div class="fw-semibold">Habilitar reservas online</div>
@@ -46,16 +52,50 @@
         </div>
 
         <div class="mb-3">
-          <label class="form-label fw-semibold">Número WhatsApp</label>
+          <label class="form-label fw-semibold">Número WhatsApp humano</label>
           <div class="input-group" style="max-width:300px;">
                         <span class="input-group-text">
                             <i class="bi bi-whatsapp text-success"></i>
                         </span>
-            <input type="text" name="whatsappNumber" class="form-control"
-                   th:value="${whatsappNumber}"
-                   placeholder="56964499995"/>
+            <input type="text" name="whatsappHumanNumber" class="form-control"
+                   th:value="${whatsappHumanNumber}"
+                   placeholder="56988873031"/>
           </div>
-          <small class="text-muted">Sin + ni espacios. Ej: 56964499995</small>
+          <small class="text-muted">Sin + ni espacios. Ej: 56988873031</small>
+        </div>
+
+        <div class="mb-3" style="max-width:420px;">
+          <label class="form-label fw-semibold">Nombre visible del canal humano</label>
+          <input type="text" name="whatsappHumanDisplayName" class="form-control"
+                 th:value="${whatsappHumanDisplayName}"
+                 placeholder="Equipo BunnyCure"/>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <div class="fw-semibold">Habilitar derivación a humano</div>
+            <small class="text-muted">Permite mostrar y reutilizar textos de handoff al canal humano.</small>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox"
+                   name="whatsappHandoffEnabled" value="true"
+                   th:checked="${whatsappHandoffEnabled}"
+                   style="width:3rem;height:1.5rem;cursor:pointer;">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Mensaje de derivación al cliente</label>
+          <textarea name="whatsappHandoffClientMessage" class="form-control" rows="3"
+                    th:text="${whatsappHandoffClientMessage}"></textarea>
+          <small class="text-muted">Usa <code>{numero}</code> para insertar el número humano.</small>
+        </div>
+
+        <div>
+          <label class="form-label fw-semibold">Mensaje prellenado para atención manual</label>
+          <textarea name="whatsappHandoffAdminPrefill" class="form-control" rows="3"
+                    th:text="${whatsappHandoffAdminPrefill}"></textarea>
+          <small class="text-muted">Puedes reutilizar <code>{nombre}</code> más adelante para construir mensajes desde admin.</small>
         </div>
       </div>
     </div>

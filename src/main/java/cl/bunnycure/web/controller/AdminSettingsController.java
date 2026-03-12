@@ -20,6 +20,11 @@ public class AdminSettingsController {
     public String index(Model model) {
         model.addAttribute("bookingEnabled",   settingsService.isBookingEnabled());
         model.addAttribute("whatsappNumber",   settingsService.getWhatsappNumber());
+        model.addAttribute("whatsappHumanNumber", settingsService.getHumanWhatsappNumber());
+        model.addAttribute("whatsappHumanDisplayName", settingsService.getHumanWhatsappDisplayName());
+        model.addAttribute("whatsappHandoffEnabled", settingsService.isWhatsappHandoffEnabled());
+        model.addAttribute("whatsappHandoffClientMessage", settingsService.getWhatsappHandoffClientMessage());
+        model.addAttribute("whatsappHandoffAdminPrefill", settingsService.getWhatsappHandoffAdminPrefill());
         model.addAttribute("msgTemplate",      settingsService.getBookingMessageTemplate());
         model.addAttribute("morningBlock",     settingsService.getMorningBlock());
         model.addAttribute("afternoonBlock",   settingsService.getAfternoonBlock());
@@ -33,16 +38,22 @@ public class AdminSettingsController {
     @PostMapping
     public String save(@RequestParam Map<String, String> params,
                        RedirectAttributes ra) {
-        settingsService.saveAll(Map.of(
-                "booking.enabled",                params.getOrDefault("bookingEnabled", "false"),
-                "whatsapp.number",                params.getOrDefault("whatsappNumber", "56964499995"),
-                "booking.message.template",       params.getOrDefault("msgTemplate", ""),
-                "booking.block.morning",          params.getOrDefault("morningBlock", "09:00 – 13:00"),
-                "booking.block.afternoon",        params.getOrDefault("afternoonBlock", "15:00 – 18:00"),
-                "booking.block.night",            params.getOrDefault("nightBlock", "19:00 – 22:00"),
-                "booking.block.morning.enabled",  params.getOrDefault("morningEnabled", "false"),
-                "booking.block.afternoon.enabled",params.getOrDefault("afternoonEnabled", "false"),
-                "booking.block.night.enabled",    params.getOrDefault("nightEnabled", "false")
+        String humanWhatsappNumber = params.getOrDefault("whatsappHumanNumber", params.getOrDefault("whatsappNumber", "56988873031"));
+        settingsService.saveAll(Map.ofEntries(
+                Map.entry("booking.enabled", params.getOrDefault("bookingEnabled", "false")),
+                Map.entry("whatsapp.number", humanWhatsappNumber),
+                Map.entry("whatsapp.human.number", humanWhatsappNumber),
+                Map.entry("whatsapp.human.display-name", params.getOrDefault("whatsappHumanDisplayName", "Equipo BunnyCure")),
+                Map.entry("whatsapp.handoff.enabled", params.getOrDefault("whatsappHandoffEnabled", "false")),
+                Map.entry("whatsapp.handoff.client-message", params.getOrDefault("whatsappHandoffClientMessage", "")),
+                Map.entry("whatsapp.handoff.admin-prefill", params.getOrDefault("whatsappHandoffAdminPrefill", "")),
+                Map.entry("booking.message.template", params.getOrDefault("msgTemplate", "")),
+                Map.entry("booking.block.morning", params.getOrDefault("morningBlock", "09:00 – 13:00")),
+                Map.entry("booking.block.afternoon", params.getOrDefault("afternoonBlock", "15:00 – 18:00")),
+                Map.entry("booking.block.night", params.getOrDefault("nightBlock", "19:00 – 22:00")),
+                Map.entry("booking.block.morning.enabled", params.getOrDefault("morningEnabled", "false")),
+                Map.entry("booking.block.afternoon.enabled", params.getOrDefault("afternoonEnabled", "false")),
+                Map.entry("booking.block.night.enabled", params.getOrDefault("nightEnabled", "false"))
         ));
         ra.addFlashAttribute("successMsg", "Configuración guardada ✅");
         return "redirect:/admin/settings";

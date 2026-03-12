@@ -47,7 +47,33 @@ public class AppSettingsService {
     }
 
     public String getWhatsappNumber() {
-        return get("whatsapp.number", "56964499995");
+        return getHumanWhatsappNumber();
+    }
+
+    public String getHumanWhatsappNumber() {
+        String human = get("whatsapp.human.number", null);
+        if (human != null && !human.isBlank()) {
+            return human;
+        }
+        return get("whatsapp.number", "56988873031");
+    }
+
+    public String getHumanWhatsappDisplayName() {
+        return get("whatsapp.human.display-name", "Equipo BunnyCure");
+    }
+
+    public boolean isWhatsappHandoffEnabled() {
+        return getBoolean("whatsapp.handoff.enabled", true);
+    }
+
+    public String getWhatsappHandoffClientMessage() {
+        return get("whatsapp.handoff.client-message",
+                "Si necesitas ayuda personalizada, escríbenos al WhatsApp de atención humana: {numero}.");
+    }
+
+    public String getWhatsappHandoffAdminPrefill() {
+        return get("whatsapp.handoff.admin-prefill",
+                "Hola {nombre}, te escribe BunnyCure por tu solicitud o cita. Te contacto para ayudarte personalmente.");
     }
 
     public String getBookingMessageTemplate() {
