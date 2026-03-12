@@ -103,6 +103,22 @@ class WhatsAppWebhookControllerTest {
         verify(webhookService, never()).processWebhookNotification(any());
     }
 
+    @Test
+    void receiveNotification_WithLegacySignatureHeader_ProcessesWebhook() throws Exception {
+        byte[] payload = webhookPayload();
+        String signature = "sha256=" + hmacSha256Hex(payload, "secret123");
+        when(webhookService.isSignatureValid(any(byte[].class), eq(signature), eq("secret123"))).thenReturn(true);
+
+        mockMvc.perform(post("/api/webhooks/whatsapp")
+                        .contentType("application/json")
+                        .content(payload)
+                        .header("X-Hub-Signature", signature))
+                .andExpect(status().isOk())
+                .andExpect(content().string("EVENT_RECEIVED"));
+
+        verify(webhookService).processWebhookNotification(any(WhatsAppWebhookDto.class));
+    }
+
     private byte[] webhookPayload() throws Exception {
         String json = """
                 {

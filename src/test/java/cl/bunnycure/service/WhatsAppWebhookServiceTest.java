@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -176,6 +177,17 @@ class WhatsAppWebhookServiceTest {
     }
 
     @Test
+    void isSignatureValid_WithMultipleHeaderValues_ReturnsTrueWhenOneSignatureMatches() throws Exception {
+        byte[] payload = "{\"test\":true}".getBytes(StandardCharsets.UTF_8);
+        String validSignature = hmacSha256Hex(payload, "secret123");
+        String signatureHeader = "sha256=deadbeef, sha256=" + validSignature;
+
+        boolean valid = webhookService.isSignatureValid(payload, signatureHeader, "secret123");
+
+        org.junit.jupiter.api.Assertions.assertTrue(valid);
+    }
+
+    @Test
     void processWebhookNotification_DuplicateMessageInDatabase_IsIgnored() {
         doThrow(new DataIntegrityViolationException("duplicate key"))
                 .when(webhookProcessedEventRepository)
@@ -209,6 +221,19 @@ class WhatsAppWebhookServiceTest {
         verify(webhookOperationalEventRepository).save(any());
     }
 
+    @Test
+    void processWebhookNotification_TemplateStatusRejected_NotifiesAdminWhenEnabled() {
+        ReflectionTestUtils.setField(webhookService, "alertAdminOnRiskEvents", true);
+        ReflectionTestUtils.setField(webhookService, "adminWhatsAppNumber", "56911111111");
+
+        webhookService.processWebhookNotification(
+                webhookWithOperationalField("message_template_status_update", Map.of("event", "REJECTED"))
+        );
+
+        verify(webhookOperationalEventRepository).save(any());
+        verify(whatsAppService).sendTextMessage(any(), any());
+    }
+
     private String hmacSha256Hex(byte[] payload, String secret) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
@@ -228,6 +253,10 @@ class WhatsAppWebhookServiceTest {
     }
 
     private WhatsAppWebhookDto webhookWithOperationalField(String field) {
+        return webhookWithOperationalField(field, Map.of());
+    }
+
+    private WhatsAppWebhookDto webhookWithOperationalField(String field, Map<String, Object> extraFields) {
         WhatsAppWebhookDto.Metadata metadata = new WhatsAppWebhookDto.Metadata();
         metadata.setPhoneNumberId("phone-123");
         metadata.setDisplayPhoneNumber("+56 9 1111 1111");
@@ -235,6 +264,9 @@ class WhatsAppWebhookServiceTest {
         WhatsAppWebhookDto.Value value = new WhatsAppWebhookDto.Value();
         value.setMessagingProduct("whatsapp");
         value.setMetadata(metadata);
+        if (extraFields != null) {
+            extraFields.forEach(value::setExtraField);
+        }
 
         return webhookWithField(field, value);
     }

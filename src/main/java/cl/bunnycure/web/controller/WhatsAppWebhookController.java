@@ -117,7 +117,9 @@ public class WhatsAppWebhookController {
         try {
             log.info("[WEBHOOK] 📥 Notificación recibida de WhatsApp");
 
-            if (!webhookService.isSignatureValid(rawPayload, signatureHeader, appSecret)) {
+            String resolvedSignatureHeader = resolveSignatureHeader(signatureHeader, request);
+
+            if (!webhookService.isSignatureValid(rawPayload, resolvedSignatureHeader, appSecret)) {
                 log.warn("[WEBHOOK] ❌ Invalid webhook signature");
                 log.warn("[WEBHOOK] Proxy context contentType={}, contentLength={}, xForwardedFor={}, xForwardedProto={}, xForwardedHost={}",
                         request.getContentType(),
@@ -183,5 +185,18 @@ public class WhatsAppWebhookController {
 
     private boolean isLocalProfile() {
         return Arrays.asList(environment.getActiveProfiles()).contains("local");
+    }
+
+    private String resolveSignatureHeader(String signatureHeader, HttpServletRequest request) {
+        if (signatureHeader != null && !signatureHeader.isBlank()) {
+            return signatureHeader;
+        }
+
+        String forwardedHeader = request.getHeader("x-hub-signature-256");
+        if (forwardedHeader != null && !forwardedHeader.isBlank()) {
+            return forwardedHeader;
+        }
+
+        return request.getHeader("X-Hub-Signature");
     }
 }

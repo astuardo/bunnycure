@@ -19,6 +19,8 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -83,27 +85,59 @@ public class WhatsAppWebhookService {
             return true;
         }
 
-        if (signatureHeader == null || !signatureHeader.startsWith("sha256=")) {
+        List<String> expectedSignatures = extractExpectedSignatures(signatureHeader);
+        if (expectedSignatures.isEmpty()) {
             log.warn("[WEBHOOK] ⚠️ Missing or invalid X-Hub-Signature-256 header");
             return false;
         }
 
         try {
-            String expected = signatureHeader.substring("sha256=".length()).trim().toLowerCase();
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(appSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             byte[] digest = mac.doFinal(rawPayloadBytes != null ? rawPayloadBytes : new byte[0]);
             String actual = toHex(digest);
-            boolean valid = MessageDigest.isEqual(actual.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8));
+            boolean valid = expectedSignatures.stream().anyMatch(expected ->
+                    MessageDigest.isEqual(actual.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8))
+            );
             if (!valid) {
                 log.warn("[WEBHOOK] ⚠️ Signature mismatch. expectedPrefix={}, actualPrefix={}, payloadBytes={}",
-                        safePrefix(expected), safePrefix(actual), rawPayloadBytes != null ? rawPayloadBytes.length : 0);
+                        safePrefix(expectedSignatures.get(0)), safePrefix(actual), rawPayloadBytes != null ? rawPayloadBytes.length : 0);
             }
             return valid;
         } catch (Exception e) {
             log.error("[WEBHOOK] ❌ Error validating webhook signature", e);
             return false;
         }
+    }
+
+    private List<String> extractExpectedSignatures(String signatureHeader) {
+        if (signatureHeader == null || signatureHeader.isBlank()) {
+            return List.of();
+        }
+
+        List<String> signatures = new ArrayList<>();
+        String[] candidates = signatureHeader.split(",");
+        for (String rawCandidate : candidates) {
+            if (rawCandidate == null) {
+                continue;
+            }
+            String candidate = rawCandidate.trim();
+            if (candidate.isEmpty()) {
+                continue;
+            }
+
+            String normalized = candidate.toLowerCase(Locale.ROOT);
+            if (!normalized.startsWith("sha256=")) {
+                continue;
+            }
+
+            String value = normalized.substring("sha256=".length()).trim();
+            if (value.length() != 64 || !value.matches("[0-9a-f]{64}")) {
+                continue;
+            }
+            signatures.add(value);
+        }
+        return signatures;
     }
 
     /**
@@ -173,7 +207,7 @@ public class WhatsAppWebhookService {
                 break;
                 
             case "message_template_status_update":
-                handleOperationalWebhookEvent("message_template_status_update", value, false);
+                handleOperationalWebhookEvent("message_template_status_update", value, isTemplateStatusRisk(value));
                 break;
                 
             case "message_template_quality_update":
@@ -632,9 +666,34 @@ public class WhatsAppWebhookService {
                 ? value.getMetadata().getDisplayPhoneNumber()
                 : "unknown";
 
-        String summary = String.format("product=%s,displayPhone=%s,messages=%d,statuses=%d",
-                messagingProduct, displayPhone, messagesCount, statusesCount);
+        String extraSummary = summarizeExtraFields(value.getExtraFields());
+        String summary = String.format("product=%s,displayPhone=%s,messages=%d,statuses=%d,extras=%s",
+                messagingProduct, displayPhone, messagesCount, statusesCount, extraSummary);
         return summary.length() > 500 ? summary.substring(0, 500) : summary;
+    }
+
+    private String summarizeExtraFields(Map<String, Object> extraFields) {
+        if (extraFields == null || extraFields.isEmpty()) {
+            return "none";
+        }
+        String raw = extraFields.toString().replaceAll("\\s+", " ").trim();
+        if (raw.length() <= 240) {
+            return raw;
+        }
+        return raw.substring(0, 240) + "...";
+    }
+
+    private boolean isTemplateStatusRisk(WhatsAppWebhookDto.Value value) {
+        if (value == null || value.getExtraFields() == null || value.getExtraFields().isEmpty()) {
+            return false;
+        }
+
+        String raw = value.getExtraFields().toString().toLowerCase(Locale.ROOT);
+        return raw.contains("rejected")
+                || raw.contains("reject")
+                || raw.contains("paused")
+                || raw.contains("disabled")
+                || raw.contains("blocked");
     }
 
     private void maybeNotifyAdmin(String field, String phoneId, long count) {

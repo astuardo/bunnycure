@@ -1,9 +1,13 @@
 package cl.bunnycure.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * DTO para recibir notificaciones de webhook de WhatsApp Cloud API
@@ -85,6 +89,7 @@ public class WhatsAppWebhookDto {
         private List<Contact> contacts;
         private List<Message> messages;
         private List<Status> statuses;
+        private final Map<String, Object> extraFields = new LinkedHashMap<>();
 
         public String getMessagingProduct() {
             return messagingProduct;
@@ -124,6 +129,27 @@ public class WhatsAppWebhookDto {
 
         public void setStatuses(List<Status> statuses) {
             this.statuses = statuses;
+        }
+
+        @JsonAnySetter
+        public void setExtraField(String key, Object value) {
+            if (key == null) {
+                return;
+            }
+
+            if ("messaging_product".equals(key)
+                    || "metadata".equals(key)
+                    || "contacts".equals(key)
+                    || "messages".equals(key)
+                    || "statuses".equals(key)) {
+                return;
+            }
+            extraFields.put(key, value);
+        }
+
+        @JsonAnyGetter
+        public Map<String, Object> getExtraFields() {
+            return extraFields;
         }
     }
 

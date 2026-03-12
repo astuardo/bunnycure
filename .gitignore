@@ -207,3 +207,4 @@ htmlcov/
 *.pid
 *.seed
 *.pid.lock
+/src/main/resources/static/images/README.md
