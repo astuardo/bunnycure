@@ -99,7 +99,8 @@ public class CustomerServiceRecordService {
         record.setSourceFromPhone(normalizePhone(message.getFrom()));
         record.setClientPhoneInPayload(normalizePhone(parsedCaption.customerPhone()));
         record.setServiceDetail(parsedCaption.serviceDetail());
-        record.setPhotoCaption(trimToNull(message.getImage().getCaption()));
+        // Keep only the service message in description, not the phone line from caption input.
+        record.setPhotoCaption(parsedCaption.serviceDetail());
 
         whatsAppService.downloadImageByMediaId(mediaId).ifPresent(media -> {
             record.setPhotoData(media.content());
