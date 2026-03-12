@@ -156,18 +156,18 @@
                     <div th:each="dayName : ${weekDayNames}" th:text="${dayName}">Lun</div>
                 </div>
                 <div class="month-grid">
-                    <div th:each="day : ${calendarDays}">
-                        <a th:href="@{/appointments(view='month',date=${day})}" class="month-day-link"
-                           th:attr="aria-label=${#temporals.format(day, 'dd/MM/yyyy') + ', citas: ' + appointmentCountByDate[day]}">
+                    <div th:each="cell : ${calendarDayCells}">
+                        <a th:href="@{/appointments(view='month',date=${cell.date})}" class="month-day-link"
+                           th:attr="aria-label=${#temporals.format(cell.date, 'dd/MM/yyyy') + ', citas: ' + cell.appointmentCount}">
                             <div class="month-day-card"
-                                 th:classappend="${day == selectedDate} ? ' is-selected' : (${day == today} ? ' is-today' : (${day.monthValue != monthStart.monthValue} ? ' is-outside' : ''))">
+                                 th:classappend="${cell.selected} ? ' is-selected' : (${cell.today} ? ' is-today' : (${cell.outsideCurrentMonth} ? ' is-outside' : ''))">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="month-day-number" th:text="${day.dayOfMonth}">1</span>
-                                    <span th:if="${appointmentCountByDate[day] > 0}" class="month-day-count"
-                                          th:text="${appointmentCountByDate[day]}">0</span>
+                                    <span class="month-day-number" th:text="${cell.date.dayOfMonth}">1</span>
+                                    <span th:if="${cell.appointmentCount > 0}" class="month-day-count"
+                                          th:text="${cell.appointmentCount}">0</span>
                                 </div>
                                 <div class="month-day-dots"
-                                     th:with="dotCount=${appointmentDotCountByDate[day] != null ? appointmentDotCountByDate[day] : 0}">
+                                     th:with="dotCount=${cell.dotCount}">
                                     <span class="month-day-dot"
                                           th:if="${dotCount > 1}"
                                           th:each="i : ${#numbers.sequence(1, dotCount)}"></span>
@@ -176,8 +176,8 @@
                                           aria-hidden="true">•</span>
                                 </div>
                                 <div class="month-day-mini-label"
-                                     th:if="${appointmentCountByDate[day] != null and appointmentCountByDate[day] > 0}"
-                                     th:text="${appointmentCountByDate[day] == 1} ? '1 cita' : (${appointmentCountByDate[day]} + ' citas')">
+                                     th:if="${cell.appointmentCount > 0}"
+                                     th:text="${cell.miniLabel}">
                                     1 cita
                                 </div>
                             </div>

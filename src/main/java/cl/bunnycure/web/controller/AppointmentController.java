@@ -20,6 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +29,57 @@ import java.util.Map;
 @Controller
 @RequestMapping("/appointments")
 public class AppointmentController extends BaseController {
+
+    public static class CalendarDayCell {
+        private final LocalDate date;
+        private final boolean today;
+        private final boolean selected;
+        private final boolean outsideCurrentMonth;
+        private final long appointmentCount;
+
+        public CalendarDayCell(LocalDate date,
+                               boolean today,
+                               boolean selected,
+                               boolean outsideCurrentMonth,
+                               long appointmentCount) {
+            this.date = date;
+            this.today = today;
+            this.selected = selected;
+            this.outsideCurrentMonth = outsideCurrentMonth;
+            this.appointmentCount = appointmentCount;
+        }
+
+        public LocalDate getDate() {
+            return date;
+        }
+
+        public boolean isToday() {
+            return today;
+        }
+
+        public boolean isSelected() {
+            return selected;
+        }
+
+        public boolean isOutsideCurrentMonth() {
+            return outsideCurrentMonth;
+        }
+
+        public long getAppointmentCount() {
+            return appointmentCount;
+        }
+
+        public int getDotCount() {
+            return Math.max(0, (int) appointmentCount);
+        }
+
+        public String getMiniLabel() {
+            if (appointmentCount <= 0) {
+                return "";
+            }
+            return appointmentCount == 1 ? "1 cita" : appointmentCount + " citas";
+        }
+    }
 
     private final AppointmentService appointmentService;
     private final CustomerService customerService;
@@ -116,20 +168,24 @@ public class AppointmentController extends BaseController {
 
             List<LocalDate> calendarDays = calendarStart.datesUntil(calendarEnd.plusDays(1)).toList();
             Map<LocalDate, Long> appointmentCountByDate = new LinkedHashMap<>();
-            Map<LocalDate, Integer> appointmentDotCountByDate = new LinkedHashMap<>();
             for (LocalDate day : calendarDays) {
                 appointmentCountByDate.put(day, 0L);
-                appointmentDotCountByDate.put(day, 0);
             }
             for (Appointment appointment : appointments) {
                 LocalDate appointmentDate = appointment.getAppointmentDate();
                 appointmentCountByDate.computeIfPresent(appointmentDate, (d, count) -> count + 1);
             }
 
+            List<CalendarDayCell> calendarDayCells = new ArrayList<>();
             for (LocalDate day : calendarDays) {
                 long count = appointmentCountByDate.getOrDefault(day, 0L);
-                int dotCount = Math.max(0, (int) count);
-                appointmentDotCountByDate.put(day, dotCount);
+                calendarDayCells.add(new CalendarDayCell(
+                        day,
+                        day.equals(today),
+                        day.equals(base),
+                        day.getMonthValue() != rangeStart.getMonthValue(),
+                        count
+                ));
             }
 
             List<Appointment> selectedDayAppointments = appointments.stream()
@@ -138,7 +194,7 @@ public class AppointmentController extends BaseController {
 
             model.addAttribute("calendarDays", calendarDays);
             model.addAttribute("appointmentCountByDate", appointmentCountByDate);
-            model.addAttribute("appointmentDotCountByDate", appointmentDotCountByDate);
+            model.addAttribute("calendarDayCells", calendarDayCells);
             model.addAttribute("selectedDayAppointments", selectedDayAppointments);
             model.addAttribute("weekDayNames", List.of("Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"));
             model.addAttribute("monthStart", rangeStart);
