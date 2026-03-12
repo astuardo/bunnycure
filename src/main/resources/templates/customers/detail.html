@@ -119,6 +119,43 @@
                     </table>
                 </div>
             </div>
+
+            <div class="card table-card mt-3">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-images me-2"></i>Registros de Servicio (FIFO: max 3)
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div th:if="${#lists.isEmpty(serviceRecords)}" class="text-center text-muted py-3">
+                        <i class="bi bi-image" style="font-size:1.25rem;"></i>
+                        <p class="mt-2 mb-0 small">No hay registros de servicio con foto para este cliente.</p>
+                    </div>
+                    <div th:unless="${#lists.isEmpty(serviceRecords)}" class="d-flex flex-column gap-3">
+                        <div th:each="record : ${serviceRecords}" class="border rounded p-3 bg-light-subtle">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div>
+                                    <div class="fw-semibold" th:text="${record.serviceDetail}"></div>
+                                    <small class="text-muted d-block">
+                                        Cargado: <span th:text="${#temporals.format(record.createdAt, 'dd/MM/yyyy HH:mm')}"></span>
+                                    </small>
+                                    <small class="text-muted d-block" th:text="${'Media ID: ' + record.whatsappMediaId}"></small>
+                                </div>
+                            </div>
+                            <div class="mt-2" th:if="${record.photoData != null}">
+                                <img class="img-fluid rounded border"
+                                     style="max-height:220px;"
+                                     th:src="@{/customers/{customerId}/service-records/{recordId}/photo(customerId=${customer.id},recordId=${record.id})}"
+                                     alt="Foto de servicio"/>
+                            </div>
+                            <div class="small mt-2" th:if="${record.photoCaption}">
+                                <span class="text-muted">Descripcion:</span>
+                                <span th:text="${record.photoCaption}"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </div>

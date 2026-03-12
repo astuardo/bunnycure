@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Servicio para enviar mensajes mediante WhatsApp Cloud API.
@@ -39,6 +40,60 @@ public class WhatsAppService {
     public WhatsAppService(WhatsAppConfig config, RestTemplate restTemplate) {
         this.config = config;
         this.restTemplate = restTemplate;
+    }
+
+    public Optional<MediaDownloadResult> downloadImageByMediaId(String mediaId) {
+        if (mediaId == null || mediaId.isBlank()) {
+            return Optional.empty();
+        }
+        if (config.getToken() == null || config.getToken().isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Token no configurado para descargar media");
+            return Optional.empty();
+        }
+
+        try {
+            HttpHeaders metadataHeaders = new HttpHeaders();
+            metadataHeaders.setBearerAuth(config.getToken());
+            HttpEntity<Void> metadataRequest = new HttpEntity<>(metadataHeaders);
+
+            ResponseEntity<Map> metadataResponse = restTemplate.exchange(
+                    String.format("%s/%s", WHATSAPP_API_URL, mediaId),
+                    HttpMethod.GET,
+                    metadataRequest,
+                    Map.class
+            );
+
+            if (!metadataResponse.getStatusCode().is2xxSuccessful() || metadataResponse.getBody() == null) {
+                return Optional.empty();
+            }
+
+            String mediaUrl = asString(metadataResponse.getBody().get("url"));
+            if (mediaUrl == null || mediaUrl.isBlank()) {
+                return Optional.empty();
+            }
+
+            HttpHeaders downloadHeaders = new HttpHeaders();
+            downloadHeaders.setBearerAuth(config.getToken());
+            HttpEntity<Void> downloadRequest = new HttpEntity<>(downloadHeaders);
+
+            ResponseEntity<byte[]> downloadResponse = restTemplate.exchange(
+                    mediaUrl,
+                    HttpMethod.GET,
+                    downloadRequest,
+                    byte[].class
+            );
+
+            if (!downloadResponse.getStatusCode().is2xxSuccessful() || downloadResponse.getBody() == null) {
+                return Optional.empty();
+            }
+
+            String mimeType = asString(metadataResponse.getBody().get("mime_type"));
+            String sha256 = asString(metadataResponse.getBody().get("sha256"));
+            return Optional.of(new MediaDownloadResult(downloadResponse.getBody(), mimeType, sha256));
+        } catch (Exception ex) {
+            log.warn("[WHATSAPP] No se pudo descargar media id={}: {}", mediaId, ex.getMessage());
+            return Optional.empty();
+        }
     }
 
     /**
@@ -613,5 +668,12 @@ public class WhatsAppService {
         normalized = normalized.replace("+", "");
         
         return normalized;
+    }
+
+    private String asString(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    public record MediaDownloadResult(byte[] content, String mimeType, String sha256) {
     }
 }

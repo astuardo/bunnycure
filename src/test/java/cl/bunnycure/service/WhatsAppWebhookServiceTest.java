@@ -53,6 +53,9 @@ class WhatsAppWebhookServiceTest {
     @Mock
     private WhatsAppHandoffService whatsAppHandoffService;
 
+    @Mock
+    private CustomerServiceRecordService customerServiceRecordService;
+
     private WhatsAppWebhookService webhookService;
 
     @BeforeEach
@@ -63,8 +66,23 @@ class WhatsAppWebhookServiceTest {
                 webhookProcessedEventRepository,
                 whatsAppService,
                 appSettingsService,
-                whatsAppHandoffService
+                whatsAppHandoffService,
+                customerServiceRecordService
         );
+    }
+
+    @Test
+    void processWebhookNotification_ImageFromOwner_DelegatesToCustomerRecordService() {
+        ReflectionTestUtils.setField(webhookService, "customerRecordOwnerNumber", "56964499995");
+
+        webhookService.processWebhookNotification(webhookWithMessage(imageMessage(
+                "wamid-image-1",
+                "56964499995",
+                "media-1",
+                "CLIENTE: +56912345678\nSERVICIO: Control"
+        )));
+
+        verify(customerServiceRecordService).registerFromIncomingImage(any());
     }
 
     @Test
@@ -326,6 +344,19 @@ class WhatsAppWebhookServiceTest {
         message.setFrom(from);
         message.setType("interactive");
         message.setInteractive(interactive);
+        return message;
+    }
+
+    private WhatsAppWebhookDto.Message imageMessage(String id, String from, String mediaId, String caption) {
+        WhatsAppWebhookDto.Image image = new WhatsAppWebhookDto.Image();
+        image.setId(mediaId);
+        image.setCaption(caption);
+
+        WhatsAppWebhookDto.Message message = new WhatsAppWebhookDto.Message();
+        message.setId(id);
+        message.setFrom(from);
+        message.setType("image");
+        message.setImage(image);
         return message;
     }
 

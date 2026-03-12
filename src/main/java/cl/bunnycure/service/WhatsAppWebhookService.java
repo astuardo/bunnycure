@@ -51,6 +51,7 @@ public class WhatsAppWebhookService {
     private final WhatsAppService whatsAppService;
     private final AppSettingsService appSettingsService;
     private final WhatsAppHandoffService whatsAppHandoffService;
+    private final CustomerServiceRecordService customerServiceRecordService;
 
     @Value("${bunnycure.whatsapp.number:}")
     private String adminWhatsAppNumber;
@@ -58,18 +59,23 @@ public class WhatsAppWebhookService {
     @Value("${whatsapp.webhook.alert-admin:false}")
     private boolean alertAdminOnRiskEvents;
 
+    @Value("${whatsapp.webhook.customer-record.owner-number:56964499995}")
+    private String customerRecordOwnerNumber;
+
     public WhatsAppWebhookService(AppointmentRepository appointmentRepository,
                                   WebhookOperationalEventRepository webhookOperationalEventRepository,
                                   WebhookProcessedEventRepository webhookProcessedEventRepository,
                                   WhatsAppService whatsAppService,
                                   AppSettingsService appSettingsService,
-                                  WhatsAppHandoffService whatsAppHandoffService) {
+                                  WhatsAppHandoffService whatsAppHandoffService,
+                                  CustomerServiceRecordService customerServiceRecordService) {
         this.appointmentRepository = appointmentRepository;
         this.webhookOperationalEventRepository = webhookOperationalEventRepository;
         this.webhookProcessedEventRepository = webhookProcessedEventRepository;
         this.whatsAppService = whatsAppService;
         this.appSettingsService = appSettingsService;
         this.whatsAppHandoffService = whatsAppHandoffService;
+        this.customerServiceRecordService = customerServiceRecordService;
     }
 
     public boolean isSignatureValid(String rawPayload, String signatureHeader, String appSecret) {
@@ -279,6 +285,16 @@ public class WhatsAppWebhookService {
                     if (message.getImage() != null) {
                         log.info("[WEBHOOK] 🖼️ Imagen recibida - ID: {}", message.getImage().getId());
                         log.info("[WEBHOOK] 📝 Caption: {}", message.getImage().getCaption());
+                        if (isCustomerRecordOwnerMessage(message)) {
+                            customerServiceRecordService.registerFromIncomingImage(message)
+                                    .ifPresent(record -> log.info(
+                                            "[WEBHOOK] ✅ Customer service record saved. customerId={}, recordId={}",
+                                            record.getCustomer().getId(),
+                                            record.getId()
+                                    ));
+                        } else {
+                            log.info("[WEBHOOK] ℹ️ Imagen ignorada para ficha cliente. sender={}", message.getFrom());
+                        }
                     }
                     break;
                 
@@ -459,6 +475,12 @@ public class WhatsAppWebhookService {
             return "";
         }
         return phone.replaceAll("\\D", "");
+    }
+
+    private boolean isCustomerRecordOwnerMessage(WhatsAppWebhookDto.Message message) {
+        String expectedOwner = normalizePhone(customerRecordOwnerNumber);
+        String from = normalizePhone(message != null ? message.getFrom() : null);
+        return !expectedOwner.isBlank() && expectedOwner.equals(from);
     }
 
     private String normalizeKey(String value) {

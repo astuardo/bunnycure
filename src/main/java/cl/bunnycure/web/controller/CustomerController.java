@@ -1,8 +1,13 @@
 package cl.bunnycure.web.controller;
 
 import cl.bunnycure.service.CustomerService;
+import cl.bunnycure.service.CustomerServiceRecordService;
 import cl.bunnycure.web.dto.CustomerDto;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -14,9 +19,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class CustomerController extends BaseController {
 
     private final CustomerService customerService;
+    private final CustomerServiceRecordService customerServiceRecordService;
 
-    public CustomerController(CustomerService customerService) {
+    public CustomerController(CustomerService customerService,
+                              CustomerServiceRecordService customerServiceRecordService) {
         this.customerService = customerService;
+        this.customerServiceRecordService = customerServiceRecordService;
     }
 
     // ── Lista ─────────────────────────────────────────────────────────────────
@@ -101,7 +109,34 @@ public class CustomerController extends BaseController {
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id, Model model) {
         model.addAttribute("customer", customerService.findByIdWithAppointments(id));
+        model.addAttribute("serviceRecords", customerServiceRecordService.findLatestByCustomerId(id));
         return "customers/detail";
+    }
+
+    @GetMapping("/{customerId}/service-records/{recordId}/photo")
+    @ResponseBody
+    public ResponseEntity<byte[]> serviceRecordPhoto(@PathVariable Long customerId,
+                                                     @PathVariable Long recordId) {
+        return customerServiceRecordService.findById(recordId)
+                .filter(record -> record.getCustomer() != null && customerId.equals(record.getCustomer().getId()))
+                .filter(record -> record.getPhotoData() != null && record.getPhotoData().length > 0)
+                .map(record -> {
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(resolveMediaType(record.getMimeType()));
+                    return new ResponseEntity<>(record.getPhotoData(), headers, HttpStatus.OK);
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private MediaType resolveMediaType(String mimeType) {
+        if (mimeType == null || mimeType.isBlank()) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+        try {
+            return MediaType.parseMediaType(mimeType);
+        } catch (Exception ex) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
     }
 
     // ── Eliminar ──────────────────────────────────────────────────────────────
