@@ -139,7 +139,21 @@ public class CustomerController extends BaseController {
         }
     }
 
-    // ── Eliminar ──────────────────────────────────────────────────────────────
+    // ── Eliminar registro de servicio ─────────────────────────────────────────
+    @PostMapping("/{customerId}/service-records/{recordId}/delete")
+    public String deleteServiceRecord(@PathVariable Long customerId,
+                                      @PathVariable Long recordId,
+                                      RedirectAttributes flash) {
+        boolean deleted = customerServiceRecordService.deleteByIdForCustomer(recordId, customerId);
+        if (deleted) {
+            flash.addFlashAttribute("successMsg", "Registro de servicio eliminado correctamente.");
+        } else {
+            flash.addFlashAttribute("errorMsg", "No se encontró el registro o no pertenece a este cliente.");
+        }
+        return "redirect:/customers/" + customerId;
+    }
+
+    // ── Eliminar cliente ──────────────────────────────────────────────────────
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, RedirectAttributes flash) {
         customerService.delete(id);

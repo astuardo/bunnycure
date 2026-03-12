@@ -59,8 +59,8 @@ public class WhatsAppWebhookService {
     @Value("${whatsapp.webhook.alert-admin:false}")
     private boolean alertAdminOnRiskEvents;
 
-    @Value("${whatsapp.webhook.customer-record.owner-number:56964499995}")
-    private String customerRecordOwnerNumber;
+    @Value("${whatsapp.webhook.customer-record.authorized-numbers:}")
+    private String customerRecordAuthorizedNumbers;
 
     public WhatsAppWebhookService(AppointmentRepository appointmentRepository,
                                   WebhookOperationalEventRepository webhookOperationalEventRepository,
@@ -478,12 +478,18 @@ public class WhatsAppWebhookService {
     }
 
     private boolean isCustomerRecordOwnerMessage(WhatsAppWebhookDto.Message message) {
-        String expectedOwner = normalizePhone(customerRecordOwnerNumber);
         String from = normalizePhone(message != null ? message.getFrom() : null);
-        boolean match = !expectedOwner.isBlank() && expectedOwner.equals(from);
-        log.info("[WEBHOOK] 🔐 Owner check: configured='{}' sender='{}' match={}",
-                expectedOwner, from, match);
-        return match;
+        if (from.isBlank() || customerRecordAuthorizedNumbers == null || customerRecordAuthorizedNumbers.isBlank()) {
+            log.warn("[WEBHOOK] ⚠️ Owner check: sin números autorizados configurados o sender vacío. sender='{}'", from);
+            return false;
+        }
+        boolean authorized = java.util.Arrays.stream(customerRecordAuthorizedNumbers.split(","))
+                .map(n -> normalizePhone(n.trim()))
+                .filter(n -> !n.isBlank())
+                .anyMatch(n -> n.equals(from));
+        log.info("[WEBHOOK] 🔐 Owner check: authorized='{}' sender='{}' match={}",
+                customerRecordAuthorizedNumbers, from, authorized);
+        return authorized;
     }
 
     private String normalizeKey(String value) {

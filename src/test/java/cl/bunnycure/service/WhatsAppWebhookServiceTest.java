@@ -73,7 +73,7 @@ class WhatsAppWebhookServiceTest {
 
     @Test
     void processWebhookNotification_ImageFromOwner_DelegatesToCustomerRecordService() {
-        ReflectionTestUtils.setField(webhookService, "customerRecordOwnerNumber", "56964499995");
+        ReflectionTestUtils.setField(webhookService, "customerRecordAuthorizedNumbers", "56964499995");
 
         webhookService.processWebhookNotification(webhookWithMessage(imageMessage(
                 "wamid-image-1",

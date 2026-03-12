@@ -48,6 +48,21 @@ public class CustomerServiceRecordService {
     }
 
     @Transactional
+    public boolean deleteByIdForCustomer(Long recordId, Long customerId) {
+        return customerServiceRecordRepository.findById(recordId)
+                .filter(r -> r.getCustomer() != null && customerId.equals(r.getCustomer().getId()))
+                .map(r -> {
+                    customerServiceRecordRepository.delete(r);
+                    log.info("[RECORD] ✅ Registro de servicio eliminado. recordId={} customerId={}", recordId, customerId);
+                    return true;
+                })
+                .orElseGet(() -> {
+                    log.warn("[RECORD] ⚠️ No se encontró registro id={} para cliente id={}", recordId, customerId);
+                    return false;
+                });
+    }
+
+    @Transactional
     public Optional<CustomerServiceRecord> registerFromIncomingImage(WhatsAppWebhookDto.Message message) {
         if (message == null || message.getImage() == null) {
             return Optional.empty();
