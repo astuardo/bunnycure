@@ -2,8 +2,6 @@
 
 Sistema web para gestión de reservas, agenda y seguimiento de clientas de un centro estético, construido con Spring Boot 3.2.11, Thymeleaf, JPA/Flyway y soporte de notificaciones por email y WhatsApp.
 
-> Documento actualizado al **12 de marzo de 2026**. Este README evita publicar credenciales, secretos o contraseñas de ningún entorno.
-
 ---
 
 ## ✅ Estado actual del proyecto

@@ -6,6 +6,8 @@ import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.domain.repository.BookingRequestRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.AppointmentDto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,11 +15,12 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 @Service
 @Transactional(readOnly = true)
 public class AppointmentService {
+
+    private static final Logger log = LoggerFactory.getLogger(AppointmentService.class);
 
     private final AppointmentRepository appointmentRepository;
     private final BookingRequestRepository bookingRequestRepository;
@@ -40,7 +43,16 @@ public class AppointmentService {
     public void updateAppointment(Long id, AppointmentDto dto) {
         var appointment = findById(id);
         var customer    = customerService.findById(dto.getCustomerId());
-        var service     = serviceCatalogService.findById(dto.getServiceId()); // ✅
+        var service     = serviceCatalogService.findById(dto.getServiceId());
+
+        // Resetear recordatorio si cambia la fecha u hora para que vuelva a recibir aviso
+        boolean dateOrTimeChanged = !dto.getAppointmentDate().equals(appointment.getAppointmentDate())
+                || !dto.getAppointmentTime().equals(appointment.getAppointmentTime());
+        if (dateOrTimeChanged) {
+            appointment.setReminderSent(false);
+            log.info("[APPOINTMENT] Cita {} reagendada a {}/{} — reminderSent reseteado",
+                    id, dto.getAppointmentDate(), dto.getAppointmentTime());
+        }
 
         appointment.setCustomer(customer);
         appointment.setService(service);
@@ -126,49 +138,60 @@ public class AppointmentService {
     }
 
     /**
-     * Envía recordatorios para citas programadas para mañana
+     * Envía recordatorios para citas programadas para mañana.
+     * Usa query JPQL filtrada por fecha para evitar traer toda la tabla a memoria.
      */
     @Transactional
     public void sendRemindersForUpcomingAppointments() {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
-        List<Appointment> appointments = findByReminderStatuses();
-        
-        appointments.stream()
-                .filter(a -> a.getAppointmentDate().equals(tomorrow))
-                .forEach(appointment -> {
-                    try {
-                        notificationService.sendReminderNotification(appointment, "tomorrow");
-                        appointment.setReminderSent(true);
-                        appointmentRepository.save(appointment);
-                    } catch (Exception e) {
-                        // Log error but continue processing other appointments
-                    }
-                });
+        List<Appointment> appointments = appointmentRepository.findPendingRemindersForDateByStatuses(
+                List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
+                tomorrow
+        );
+
+        log.info("[REMINDER] {} citas encontradas para mañana ({})", appointments.size(), tomorrow);
+
+        appointments.forEach(appointment -> {
+            try {
+                notificationService.sendReminderNotification(appointment, "tomorrow");
+                appointment.setReminderSent(true);
+                appointmentRepository.save(appointment);
+            } catch (Exception e) {
+                log.error("[REMINDER] Error enviando recordatorio día anterior para cita {}: {}",
+                        appointment.getId(), e.getMessage(), e);
+            }
+        });
     }
 
     /**
-     * Envía recordatorios para citas en las próximas 2 horas
+     * Envía recordatorios para citas en las próximas 2 horas.
+     * Usa query JPQL filtrada por fecha y ventana horaria para evitar traer toda la tabla a memoria.
      */
     @Transactional
     public void sendRemindersForAppointmentsIn2Hours() {
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
         LocalTime inTwoHours = now.plusHours(2);
-        List<Appointment> appointments = findByReminderStatuses();
-        
-        appointments.stream()
-                .filter(a -> a.getAppointmentDate().equals(today))
-                .filter(a -> a.getAppointmentTime() != null)
-                .filter(a -> !a.getAppointmentTime().isBefore(now) && !a.getAppointmentTime().isAfter(inTwoHours))
-                .forEach(appointment -> {
-                    try {
-                        notificationService.sendReminderNotification(appointment, "2hours");
-                        appointment.setReminderSent(true);
-                        appointmentRepository.save(appointment);
-                    } catch (Exception e) {
-                        // Log error but continue processing other appointments
-                    }
-                });
+
+        List<Appointment> appointments = appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
+                List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
+                today,
+                now,
+                inTwoHours
+        );
+
+        log.info("[REMINDER] {} citas encontradas en ventana 2h ({} - {})", appointments.size(), now, inTwoHours);
+
+        appointments.forEach(appointment -> {
+            try {
+                notificationService.sendReminderNotification(appointment, "2hours");
+                appointment.setReminderSent(true);
+                appointmentRepository.save(appointment);
+            } catch (Exception e) {
+                log.error("[REMINDER] Error enviando recordatorio 2h para cita {}: {}",
+                        appointment.getId(), e.getMessage(), e);
+            }
+        });
     }
 
     /**
@@ -184,12 +207,5 @@ public class AppointmentService {
     @Transactional
     public Appointment save(Appointment appointment) {
         return appointmentRepository.save(appointment);
-    }
-
-    private List<Appointment> findByReminderStatuses() {
-        return Stream.concat(
-                        findByStatus(AppointmentStatus.PENDING).stream(),
-                        findByStatus(AppointmentStatus.CONFIRMED).stream())
-                .toList();
     }
 }

@@ -161,6 +161,40 @@
       </div>
     </div>
 
+    <!-- Estrategia de recordatorios -->
+    <div class="card table-card mb-4">
+      <div class="card-header fw-semibold py-3 px-4"
+           style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
+        <i class="bi bi-bell me-2" style="color:#8B5CF6;"></i>
+        Recordatorios de citas
+      </div>
+      <div class="card-body p-4">
+        <label class="form-label fw-semibold" for="reminderStrategy">Cuándo enviar el recordatorio</label>
+        <select id="reminderStrategy" name="reminderStrategy" class="form-select">
+          <option value="2hours"
+                  th:selected="${reminderStrategy == '2hours'}">
+            ⏰ Solo 2 horas antes de la cita (recomendado)
+          </option>
+          <option value="morning"
+                  th:selected="${reminderStrategy == 'morning'}">
+            🌅 Solo aviso a las 08:00 del día de la cita
+          </option>
+          <option value="day_before"
+                  th:selected="${reminderStrategy == 'day_before'}">
+            📅 Solo aviso a las 09:00 del día anterior
+          </option>
+          <option value="both"
+                  th:selected="${reminderStrategy == 'both'}">
+            🔔 Aviso mañana del día (08:00) + 2 horas antes
+          </option>
+        </select>
+        <small class="text-muted mt-2 d-block">
+          <strong>2 horas antes</strong>: el sistema revisa cada 2 horas y avisa cuando la cita está próxima.<br>
+          Usar <em>Solo 2 horas antes</em> evita que lleguen dos avisos muy seguidos (ej. cita a las 11:00 → aviso 08:00 y luego 09:00).
+        </small>
+      </div>
+    </div>
+
     <!-- Template mensaje -->
     <div class="card table-card mb-4">
       <div class="card-header fw-semibold py-3 px-4"

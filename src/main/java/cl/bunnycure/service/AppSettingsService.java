@@ -96,4 +96,37 @@ public class AppSettingsService {
     public boolean isMorningEnabled()   { return getBoolean("booking.block.morning.enabled",   true); }
     public boolean isAfternoonEnabled() { return getBoolean("booking.block.afternoon.enabled", true); }
     public boolean isNightEnabled()     { return getBoolean("booking.block.night.enabled",     true); }
+
+    // ── Estrategia de recordatorios ──────────────────────────────────────────
+
+    /** Valores válidos para reminder.strategy */
+    public static final String REMINDER_STRATEGY_2HOURS    = "2hours";
+    public static final String REMINDER_STRATEGY_MORNING   = "morning";
+    public static final String REMINDER_STRATEGY_DAY_BEFORE = "day_before";
+    public static final String REMINDER_STRATEGY_BOTH      = "both";
+
+    /**
+     * Estrategia de recordatorios configurada.
+     * Default: "2hours" (solo avisa 2h antes de la cita).
+     */
+    public String getReminderStrategy() {
+        return get("reminder.strategy", REMINDER_STRATEGY_2HOURS);
+    }
+
+    /** true cuando la estrategia activa el recordatorio del día de la cita a las 08:00 */
+    public boolean isReminderMorningEnabled() {
+        String s = getReminderStrategy();
+        return REMINDER_STRATEGY_MORNING.equals(s) || REMINDER_STRATEGY_BOTH.equals(s);
+    }
+
+    /** true cuando la estrategia activa el recordatorio 2h antes de la cita */
+    public boolean isReminder2HoursEnabled() {
+        String s = getReminderStrategy();
+        return REMINDER_STRATEGY_2HOURS.equals(s) || REMINDER_STRATEGY_BOTH.equals(s);
+    }
+
+    /** true cuando la estrategia activa el recordatorio del día anterior a las 09:00 */
+    public boolean isReminderDayBeforeEnabled() {
+        return REMINDER_STRATEGY_DAY_BEFORE.equals(getReminderStrategy());
+    }
 }

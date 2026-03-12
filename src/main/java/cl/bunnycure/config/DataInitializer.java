@@ -58,8 +58,15 @@ public class DataInitializer implements CommandLineRunner {
             userRepository.save(adminUser);
             log.info("✅ Usuario admin local creado (username: {})", adminUsername);
         } else {
-            // Ya existe, solo asegurar estado habilitado.
+            // Ya existe, asegurar estado habilitado y sincronizar contraseña configurada.
             adminUser.setEnabled(true);
+
+            if (adminPassword != null && !adminPassword.isBlank()
+                    && !passwordEncoder.matches(adminPassword, adminUser.getPassword())) {
+                adminUser.setPassword(passwordEncoder.encode(adminPassword));
+                log.info("✅ Usuario admin local actualizado con password desde configuración (username: {})", adminUsername);
+            }
+
             userRepository.save(adminUser);
             log.info("✅ Usuario admin local verificado (username: {})", adminUsername);
         }
@@ -159,7 +166,9 @@ public class DataInitializer implements CommandLineRunner {
                     new AppSettings("booking.block.night",              "19:00 – 22:00", "Bloque noche"),
                     new AppSettings("booking.block.morning.enabled",    "true",  "Mañana habilitado"),
                     new AppSettings("booking.block.afternoon.enabled",  "true",  "Tarde habilitado"),
-                    new AppSettings("booking.block.night.enabled",      "true",  "Noche habilitado")
+                    new AppSettings("booking.block.night.enabled",      "true",  "Noche habilitado"),
+                    new AppSettings("reminder.strategy",                "2hours",
+                            "Estrategia de recordatorios: 2hours | morning | day_before | both")
             ));
             log.info("✅ Configuración inicial cargada");
         }

@@ -32,6 +32,13 @@ public class AdminSettingsController {
         model.addAttribute("morningEnabled",   settingsService.isMorningEnabled());
         model.addAttribute("afternoonEnabled", settingsService.isAfternoonEnabled());
         model.addAttribute("nightEnabled",     settingsService.isNightEnabled());
+        model.addAttribute("reminderStrategy", settingsService.getReminderStrategy());
+        model.addAttribute("reminderStrategyOptions", java.util.List.of(
+                java.util.Map.entry("2hours",     "Solo 2 horas antes de la cita"),
+                java.util.Map.entry("morning",    "Solo aviso mañana (08:00 del día de la cita)"),
+                java.util.Map.entry("day_before", "Solo aviso día anterior (09:00)"),
+                java.util.Map.entry("both",       "Mañana del día + 2 horas antes")
+        ));
         return "admin/settings/index";
     }
 
@@ -53,7 +60,8 @@ public class AdminSettingsController {
                 Map.entry("booking.block.night", params.getOrDefault("nightBlock", "19:00 – 22:00")),
                 Map.entry("booking.block.morning.enabled", params.getOrDefault("morningEnabled", "false")),
                 Map.entry("booking.block.afternoon.enabled", params.getOrDefault("afternoonEnabled", "false")),
-                Map.entry("booking.block.night.enabled", params.getOrDefault("nightEnabled", "false"))
+                Map.entry("booking.block.night.enabled", params.getOrDefault("nightEnabled", "false")),
+                Map.entry("reminder.strategy", params.getOrDefault("reminderStrategy", "2hours"))
         ));
         ra.addFlashAttribute("successMsg", "Configuración guardada ✅");
         return "redirect:/admin/settings";

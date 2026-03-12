@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import cl.bunnycure.domain.model.Customer;
@@ -108,6 +109,24 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findPendingRemindersFromDateByStatuses(
             @Param("statuses") Collection<AppointmentStatus> statuses,
             @Param("date") LocalDate date
+    );
+
+    @Query("""
+        SELECT a FROM Appointment a
+        JOIN FETCH a.customer
+        JOIN FETCH a.service
+        WHERE a.status IN :statuses
+        AND a.reminderSent = false
+        AND a.appointmentDate = :date
+        AND a.appointmentTime >= :startTime
+        AND a.appointmentTime <= :endTime
+        ORDER BY a.appointmentTime ASC
+    """)
+    List<Appointment> findPendingRemindersForDateAndTimeWindowByStatuses(
+            @Param("statuses") Collection<AppointmentStatus> statuses,
+            @Param("date") LocalDate date,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime
     );
 
     @Query("""

@@ -33,12 +33,19 @@ public class AppointmentReminderService {
     }
 
     /**
-     * Se ejecuta diariamente a las 08:00 AM
-     * Envía recordatorios de citas para hoy a los clientes
+     * Se ejecuta diariamente a las 08:00 AM (zona America/Santiago).
+     * Solo activo cuando reminder.strategy = "morning" o "both".
+     * Envía recordatorios de citas para hoy a los clientes.
      */
     @Scheduled(cron = "0 0 8 * * *", zone = "America/Santiago")
     @Transactional
     public void sendDailyReminders() {
+        if (!appSettingsService.isReminderMorningEnabled()) {
+            log.debug("[REMINDER] Recordatorio mañana omitido (strategy={})",
+                    appSettingsService.getReminderStrategy());
+            return;
+        }
+
         log.info("[REMINDER] Iniciando envío de recordatorios diarios...");
 
         LocalDate today = LocalDate.now();
