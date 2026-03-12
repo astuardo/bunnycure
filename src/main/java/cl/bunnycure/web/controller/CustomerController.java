@@ -1,5 +1,6 @@
 package cl.bunnycure.web.controller;
 
+import cl.bunnycure.domain.model.Customer;
 import cl.bunnycure.service.CustomerService;
 import cl.bunnycure.service.CustomerServiceRecordService;
 import cl.bunnycure.web.dto.CustomerDto;
@@ -70,11 +71,15 @@ public class CustomerController extends BaseController {
     }
 
     // ── Formulario editar ─────────────────────────────────────────────────────
-    @GetMapping("/{id}/edit")
-    public String editForm(@PathVariable Long id, Model model) {
-        var customer = customerService.findById(id);
+    @GetMapping("/{publicId}/edit")
+    public String editForm(@PathVariable String publicId, Model model) {
+        var customer = resolveCustomerByPublicIdOrLegacyId(publicId);
+        if (!publicId.equals(customer.getPublicId())) {
+            return "redirect:/customers/" + customer.getPublicId() + "/edit";
+        }
         var dto = new CustomerDto();
         dto.setId(customer.getId());
+        dto.setPublicId(customer.getPublicId());
         dto.setFullName(customer.getFullName());
         dto.setPhone(customer.getPhone());
         dto.setEmail(customer.getEmail());
@@ -90,35 +95,42 @@ public class CustomerController extends BaseController {
     }
 
     // ── Actualizar ────────────────────────────────────────────────────────────
-    @PostMapping("/{id}/edit")
-    public String update(@PathVariable Long id,
+    @PostMapping("/{publicId}/edit")
+    public String update(@PathVariable String publicId,
                          @Valid @ModelAttribute("customer") CustomerDto dto,
                          BindingResult result,
                          Model model,
                          RedirectAttributes flash) {
         if (result.hasErrors()) {
+            dto.setPublicId(resolveCustomerByPublicIdOrLegacyId(publicId).getPublicId());
             model.addAttribute("isNew", false);
             return "customers/form";
         }
-        customerService.update(id, dto);
+        var customer = resolveCustomerByPublicIdOrLegacyId(publicId);
+        customerService.updateByPublicId(customer.getPublicId(), dto);
         flash.addFlashAttribute("successMsg", "Cliente actualizado exitosamente.");
         return "redirect:/customers";
     }
 
     // ── Ver detalle / historial ───────────────────────────────────────────────
-    @GetMapping("/{id}")
-    public String detail(@PathVariable Long id, Model model) {
-        model.addAttribute("customer", customerService.findByIdWithAppointments(id));
-        model.addAttribute("serviceRecords", customerServiceRecordService.findLatestByCustomerId(id));
+    @GetMapping("/{publicId}")
+    public String detail(@PathVariable String publicId, Model model) {
+        var customer = resolveCustomerByPublicIdOrLegacyIdWithAppointments(publicId);
+        if (!publicId.equals(customer.getPublicId())) {
+            return "redirect:/customers/" + customer.getPublicId();
+        }
+        model.addAttribute("customer", customer);
+        model.addAttribute("serviceRecords", customerServiceRecordService.findLatestByCustomerId(customer.getId()));
         return "customers/detail";
     }
 
-    @GetMapping("/{customerId}/service-records/{recordId}/photo")
+    @GetMapping("/{customerPublicId}/service-records/{recordId}/photo")
     @ResponseBody
-    public ResponseEntity<byte[]> serviceRecordPhoto(@PathVariable Long customerId,
+    public ResponseEntity<byte[]> serviceRecordPhoto(@PathVariable String customerPublicId,
                                                      @PathVariable Long recordId) {
         return customerServiceRecordService.findById(recordId)
-                .filter(record -> record.getCustomer() != null && customerId.equals(record.getCustomer().getId()))
+                .filter(record -> record.getCustomer() != null)
+                .filter(record -> customerPublicId.equals(record.getCustomer().getPublicId()))
                 .filter(record -> record.getPhotoData() != null && record.getPhotoData().length > 0)
                 .map(record -> {
                     HttpHeaders headers = new HttpHeaders();
@@ -140,25 +152,41 @@ public class CustomerController extends BaseController {
     }
 
     // ── Eliminar registro de servicio ─────────────────────────────────────────
-    @PostMapping("/{customerId}/service-records/{recordId}/delete")
-    public String deleteServiceRecord(@PathVariable Long customerId,
+    @PostMapping("/{customerPublicId}/service-records/{recordId}/delete")
+    public String deleteServiceRecord(@PathVariable String customerPublicId,
                                       @PathVariable Long recordId,
                                       RedirectAttributes flash) {
-        boolean deleted = customerServiceRecordService.deleteByIdForCustomer(recordId, customerId);
+        var customer = resolveCustomerByPublicIdOrLegacyId(customerPublicId);
+        boolean deleted = customerServiceRecordService.deleteByIdForCustomer(recordId, customer.getId());
         if (deleted) {
             flash.addFlashAttribute("successMsg", "Registro de servicio eliminado correctamente.");
         } else {
             flash.addFlashAttribute("errorMsg", "No se encontró el registro o no pertenece a este cliente.");
         }
-        return "redirect:/customers/" + customerId;
+        return "redirect:/customers/" + customer.getPublicId();
     }
 
     // ── Eliminar cliente ──────────────────────────────────────────────────────
-    @PostMapping("/{id}/delete")
-    public String delete(@PathVariable Long id, RedirectAttributes flash) {
-        customerService.delete(id);
+    @PostMapping("/{publicId}/delete")
+    public String delete(@PathVariable String publicId, RedirectAttributes flash) {
+        var customer = resolveCustomerByPublicIdOrLegacyId(publicId);
+        customerService.deleteByPublicId(customer.getPublicId());
         flash.addFlashAttribute("successMsg", "Cliente eliminado correctamente.");
         return "redirect:/customers";
+    }
+
+    private Customer resolveCustomerByPublicIdOrLegacyId(String value) {
+        if (value != null && value.matches("\\d+")) {
+            return customerService.findById(Long.parseLong(value));
+        }
+        return customerService.findByPublicId(value);
+    }
+
+    private Customer resolveCustomerByPublicIdOrLegacyIdWithAppointments(String value) {
+        if (value != null && value.matches("\\d+")) {
+            return customerService.findByIdWithAppointments(Long.parseLong(value));
+        }
+        return customerService.findByPublicIdWithAppointments(value);
     }
 
 

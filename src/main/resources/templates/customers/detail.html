@@ -13,7 +13,7 @@
             <h4 class="fw-bold mb-0" th:text="${customer.fullName}"></h4>
             <p class="text-muted small mb-0">Historial completo del cliente</p>
         </div>
-        <a th:href="@{/customers/{id}/edit(id=${customer.id})}"
+        <a th:href="@{/customers/{publicId}/edit(publicId=${customer.publicId})}"
            class="btn btn-sm btn-bc ms-auto">
             <i class="bi bi-pencil me-1"></i> Editar
         </a>
@@ -88,7 +88,7 @@
                     <h6 class="fw-bold mb-0">
                         <i class="bi bi-calendar3 me-2"></i>Historial de Citas
                     </h6>
-                    <a th:href="@{/appointments/new(customerId=${customer.id})}"
+                    <a th:href="@{/appointments/new(customerPublicId=${customer.publicId})}"
                        class="btn btn-sm btn-bc">
                         <i class="bi bi-plus"></i> Nueva Cita
                     </a>
@@ -152,7 +152,7 @@
                                     </small>
                                     <small class="text-muted d-block" th:text="${'Media ID: ' + record.whatsappMediaId}"></small>
                                 </div>
-                                <form th:action="@{/customers/{cid}/service-records/{rid}/delete(cid=${customer.id},rid=${record.id})}"
+                                <form th:action="@{/customers/{cid}/service-records/{rid}/delete(cid=${customer.publicId},rid=${record.id})}"
                                       method="post" class="ms-auto flex-shrink-0"
                                       onsubmit="return confirm('¿Eliminar este registro de servicio?')">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -163,7 +163,7 @@
                             <div class="mt-2" th:if="${record.photoData != null}">
                                 <img class="img-fluid rounded border"
                                      style="max-height:220px;"
-                                     th:src="@{/customers/{customerId}/service-records/{recordId}/photo(customerId=${customer.id},recordId=${record.id})}"
+                                     th:src="@{/customers/{customerId}/service-records/{recordId}/photo(customerId=${customer.publicId},recordId=${record.id})}"
                                      alt="Foto de servicio"/>
                             </div>
                             <div class="small mt-2" th:if="${record.photoCaption}">

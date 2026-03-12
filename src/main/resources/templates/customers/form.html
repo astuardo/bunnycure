@@ -27,10 +27,12 @@
 
     <div class="card table-card">
         <div class="card-body p-4">
-            <form th:action="${isNew} ? @{/customers} : @{/customers/{id}/edit(id=${customer.id})}"
+            <form th:action="${isNew} ? @{/customers} : @{/customers/{publicId}/edit(publicId=${customer.publicId})}"
                   th:object="${customer}"
                   method="post"
                   novalidate>
+
+                <input type="hidden" th:if="${!isNew}" th:field="*{publicId}"/>
 
                 <div class="row g-3">
                     <!-- Nombre -->

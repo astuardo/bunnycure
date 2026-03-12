@@ -65,10 +65,10 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="c : ${customers}">
-                    <td class="text-muted small" th:text="${c.id}"></td>
+                <tr th:each="c, stat : ${customers}">
+                    <td class="text-muted small" th:text="${stat.count}"></td>
                     <td>
-                        <a th:href="@{/customers/{id}(id=${c.id})}"
+                        <a th:href="@{/customers/{publicId}(publicId=${c.publicId})}"
                            class="fw-semibold text-decoration-none"
                            th:text="${c.fullName}">
                         </a>
@@ -82,7 +82,7 @@
                             </span>
                     </td>
                     <td class="text-end">
-                        <a th:href="@{/customers/{id}/edit(id=${c.id})}"
+                        <a th:href="@{/customers/{publicId}/edit(publicId=${c.publicId})}"
                            class="btn btn-sm btn-outline-secondary me-1"
                            title="Editar">
                             <i class="bi bi-pencil"></i>
@@ -92,7 +92,7 @@
                                 title="Eliminar"
                                 data-bs-toggle="modal"
                                 th:data-bs-target="'#deleteModal'"
-                                th:data-id="${c.id}"
+                                th:data-id="${c.publicId}"
                                 th:data-name="${c.fullName}"
                                 onclick="confirmDelete(this)">
                             <i class="bi bi-trash"></i>

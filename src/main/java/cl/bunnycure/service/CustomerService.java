@@ -40,6 +40,16 @@ public class CustomerService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado con ID: " + id));
     }
 
+    public Customer findByPublicId(String publicId) {
+        return customerRepository.findByPublicId(publicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado con identificador: " + publicId));
+    }
+
+    public Customer findByPublicIdWithAppointments(String publicId) {
+        return customerRepository.findByPublicIdWithAppointments(publicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado con identificador: " + publicId));
+    }
+
     public List<CustomerSummary> findAllSummary() {
         return customerRepository.findAllWithAppointmentCount()
                 .stream()
@@ -129,6 +139,19 @@ public class CustomerService {
         return customerRepository.save(customer);
     }
 
+    @Transactional
+    public Customer updateByPublicId(String publicId, CustomerDto dto) {
+        var customer = findByPublicId(publicId);
+        customer.setFullName(dto.getFullName());
+        customer.setPhone(dto.getPhone());
+        customer.setGender(normalizeNullable(dto.getGender()));
+        customer.setBirthDate(dto.getBirthDate());
+        customer.setEmergencyPhone(normalizeNullable(dto.getEmergencyPhone()));
+        customer.setHealthNotes(normalizeNullable(dto.getHealthNotes()));
+        customer.setNotes(dto.getNotes());
+        return customerRepository.save(customer);
+    }
+
     private String normalizeNullable(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -139,6 +162,12 @@ public class CustomerService {
     @Transactional
     public void delete(Long id) {
         var customer = findById(id);
+        customerRepository.delete(customer);
+    }
+
+    @Transactional
+    public void deleteByPublicId(String publicId) {
+        var customer = findByPublicId(publicId);
         customerRepository.delete(customer);
     }
 }

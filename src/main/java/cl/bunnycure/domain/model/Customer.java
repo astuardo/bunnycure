@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "customers")
@@ -20,6 +21,9 @@ public class Customer {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "customers_seq_generator")
     @SequenceGenerator(name = "customers_seq_generator", sequenceName = "customers_seq", allocationSize = 1)
     private Long id;
+
+    @Column(name = "public_id", nullable = false, unique = true, length = 36)
+    private String publicId;
 
     @Column(nullable = false, length = 100)
     private String fullName;
@@ -60,6 +64,13 @@ public class Customer {
         this.fullName = fullName;
         this.phone    = phone;
         this.email    = email;
+    }
+
+    @PrePersist
+    public void assignPublicIdIfMissing() {
+        if (publicId == null || publicId.isBlank()) {
+            publicId = UUID.randomUUID().toString();
+        }
     }
 
     /**

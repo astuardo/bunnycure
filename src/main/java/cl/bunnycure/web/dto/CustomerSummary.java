@@ -11,6 +11,7 @@ public class CustomerSummary {
 
     // Delegados para Thymeleaf
     private final Long id;
+    private final String publicId;
     private final String fullName;
     private final String phone;
     private final String email;
@@ -19,6 +20,7 @@ public class CustomerSummary {
         this.customer         = customer;
         this.appointmentCount = appointmentCount;
         this.id               = customer.getId();
+        this.publicId         = customer.getPublicId();
         this.fullName         = customer.getFullName();
         this.phone            = customer.getPhone();
         this.email            = customer.getEmail();

@@ -215,7 +215,7 @@
                     <tr th:each="apt : ${selectedDayAppointments}" th:classappend="${apt.appointmentDate == today} ? 'table-active'">
                         <td class="fw-semibold" th:text="${#temporals.format(apt.appointmentTime, 'HH:mm')}"></td>
                         <td>
-                            <a th:href="@{/customers/{id}(id=${apt.customer.id})}" class="text-decoration-none" th:text="${apt.customer.fullName}"></a>
+                            <a th:href="@{/customers/{publicId}(publicId=${apt.customer.publicId})}" class="text-decoration-none" th:text="${apt.customer.fullName}"></a>
                         </td>
                         <td th:text="${apt.service.name}"></td>
                         <td>
@@ -313,7 +313,7 @@
                         th:text="${#temporals.format(apt.appointmentTime, 'HH:mm')}">
                     </td>
                     <td>
-                        <a th:href="@{/customers/{id}(id=${apt.customer.id})}"
+                        <a th:href="@{/customers/{publicId}(publicId=${apt.customer.publicId})}"
                            class="text-decoration-none"
                            th:text="${apt.customer.fullName}">
                         </a>

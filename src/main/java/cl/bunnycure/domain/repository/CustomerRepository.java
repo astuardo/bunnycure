@@ -11,6 +11,8 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     Optional<Customer> findByEmail(String email);
 
+    Optional<Customer> findByPublicId(String publicId);
+
     // Nuevo: búsqueda por teléfono para matching desde solicitudes de reserva
     Optional<Customer> findByPhone(String phone);
 
@@ -20,6 +22,9 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.appointments WHERE c.id = :id")
     Optional<Customer> findByIdWithAppointments(Long id);
+
+    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.appointments WHERE c.publicId = :publicId")
+    Optional<Customer> findByPublicIdWithAppointments(String publicId);
 
     @Query("""
         SELECT c, COUNT(a) as appointmentCount

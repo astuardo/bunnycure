@@ -247,11 +247,17 @@ public class AppointmentController extends BaseController {
     }
 
     @GetMapping("/new")
-    public String newForm(@RequestParam(required = false) Long customerId, Model model) {
+    public String newForm(@RequestParam(required = false) Long customerId,
+                          @RequestParam(required = false) String customerPublicId,
+                          Model model) {
         var dto = AppointmentDto.builder()
                 .appointmentDate(LocalDate.now().plusDays(1))
                 .build();
-        if (customerId != null) dto.setCustomerId(customerId);
+        if (customerId != null) {
+            dto.setCustomerId(customerId);
+        } else if (customerPublicId != null && !customerPublicId.isBlank()) {
+            dto.setCustomerId(customerService.findByPublicId(customerPublicId).getId());
+        }
 
         model.addAttribute("appointment",  dto);
         model.addAttribute("customers",    customerService.findAll());
