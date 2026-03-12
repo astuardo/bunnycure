@@ -39,19 +39,19 @@
                th:text="${request.phone}">
             </a>
           </div>
-          <div th:if="${request.gender}">
+          <div th:if="${request.gender != null and !request.gender.isBlank()}">
             <small class="text-muted d-block">🧾 Genero registrado</small>
             <span th:text="${request.gender}"></span>
           </div>
-          <div th:if="${request.birthDate}">
+          <div th:if="${request.birthDate != null}">
             <small class="text-muted d-block">🎂 Fecha de nacimiento</small>
             <span th:text="${#temporals.format(request.birthDate, 'dd/MM/yyyy')}"></span>
           </div>
-          <div th:if="${request.emergencyPhone}">
+          <div th:if="${request.emergencyPhone != null and !request.emergencyPhone.isBlank()}">
             <small class="text-muted d-block">📞 Telefono de emergencia</small>
             <span th:text="${request.emergencyPhone}"></span>
           </div>
-          <div th:if="${request.email}">
+          <div th:if="${request.email != null and !request.email.isBlank()}">
             <small class="text-muted d-block">✉️ Email</small>
             <span th:text="${request.email}"></span>
           </div>
@@ -71,7 +71,7 @@
             <small class="text-muted d-block">⏰ Bloque horario</small>
             <strong th:text="${request.preferredBlock}"></strong>
           </div>
-          <div th:if="${request.notes}"
+          <div th:if="${request.notes != null and !request.notes.isBlank()}"
                class="p-2 rounded" style="background:#FFFBEB;">
             <small class="text-muted d-block">📝 Notas de salud</small>
             <span class="small" th:text="${request.notes}"></span>
@@ -238,7 +238,7 @@
           <div th:if="${request.status.name() == 'REJECTED'}">
             <i class="bi bi-x-circle-fill text-danger" style="font-size:2.5rem;"></i>
             <h6 class="fw-bold mt-2">Solicitud rechazada</h6>
-            <p class="text-muted small" th:if="${request.rejectionReason}"
+            <p class="text-muted small" th:if="${request.rejectionReason != null and !request.rejectionReason.isBlank()}"
                th:text="'Motivo: ' + ${request.rejectionReason}"></p>
           </div>
         </div>
