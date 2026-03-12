@@ -70,6 +70,13 @@
             background: #8b5cf6;
             display: inline-block;
         }
+        .month-day-dot-fallback {
+            font-size: .72rem;
+            line-height: 1;
+            color: #8b5cf6;
+            font-weight: 700;
+            letter-spacing: .05rem;
+        }
     </style>
 
     <!-- Encabezado -->
@@ -153,12 +160,14 @@
                                           th:text="${appointmentCountByDate[day]}">0</span>
                                 </div>
                                 <div class="month-day-dots"
-                                     th:if="${appointmentDotsByDate[day] != null and !#lists.isEmpty(appointmentDotsByDate[day])}">
+                                     th:with="dotCount=${appointmentDotCountByDate[day] != null ? appointmentDotCountByDate[day] : 0}">
                                     <span class="month-day-dot"
-                                          th:each="i : ${appointmentDotsByDate[day]}"></span>
+                                          th:if="${dotCount > 1}"
+                                          th:each="i : ${#numbers.sequence(1, dotCount)}"></span>
+                                    <span class="month-day-dot-fallback"
+                                          th:if="${dotCount == 1}"
+                                          aria-hidden="true">•</span>
                                 </div>
-                                <div class="month-day-dots"
-                                     th:unless="${appointmentDotsByDate[day] != null and !#lists.isEmpty(appointmentDotsByDate[day])}"></div>
                             </div>
                         </a>
                     </div>
