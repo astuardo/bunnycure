@@ -149,7 +149,7 @@
               </label>
               <input type="date"
                      th:field="*{appointmentDate}"
-                     th:attr="min=${T(java.time.LocalDate).now()}"
+                     th:attr="min=${minAppointmentDate}"
                      th:classappend="${#fields.hasErrors('appointmentDate')} ? 'is-invalid'"
                      class="form-control"/>
               <div class="form-text text-muted">

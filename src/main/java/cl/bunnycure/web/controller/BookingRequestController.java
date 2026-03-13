@@ -12,6 +12,8 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDate;
+
 @Controller
 @RequestMapping("/admin/booking-requests")
 public class BookingRequestController extends BaseController {
@@ -48,6 +50,7 @@ public class BookingRequestController extends BaseController {
         var approval = new BookingApprovalDto();
         approval.setAppointmentDate(request.getPreferredDate());
         model.addAttribute("approval", approval);
+        model.addAttribute("minAppointmentDate", LocalDate.now());
         model.addAttribute("services", serviceCatalogService.findAll()
                 .stream().filter(s -> s.isActive()).toList());
         addHandoffModelAttributes(model, request);
@@ -64,6 +67,7 @@ public class BookingRequestController extends BaseController {
         if (result.hasErrors()) {
             var request = bookingRequestService.findById(id);
             model.addAttribute("request",  request);
+            model.addAttribute("minAppointmentDate", LocalDate.now());
             model.addAttribute("services", serviceCatalogService.findAll()
                     .stream().filter(s -> s.isActive()).toList());
             addHandoffModelAttributes(model, request);
