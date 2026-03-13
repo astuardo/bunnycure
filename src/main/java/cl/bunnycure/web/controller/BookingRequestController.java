@@ -45,7 +45,9 @@ public class BookingRequestController extends BaseController {
     public String detail(@PathVariable Long id, Model model) {
         var request = bookingRequestService.findById(id);
         model.addAttribute("request",  request);
-        model.addAttribute("approval", new BookingApprovalDto());
+        var approval = new BookingApprovalDto();
+        approval.setAppointmentDate(request.getPreferredDate());
+        model.addAttribute("approval", approval);
         model.addAttribute("services", serviceCatalogService.findAll()
                 .stream().filter(s -> s.isActive()).toList());
         addHandoffModelAttributes(model, request);

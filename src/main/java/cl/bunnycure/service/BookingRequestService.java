@@ -141,7 +141,7 @@ public class BookingRequestService {
         var appointment = Appointment.builder()
                 .customer(customer)
                 .service(service)
-                .appointmentDate(request.getPreferredDate())
+                .appointmentDate(approval.getAppointmentDate())
                 .appointmentTime(approval.getAppointmentTime())
                 .status(AppointmentStatus.PENDING)
                 .observations(approval.getAdminNotes())
