@@ -102,6 +102,10 @@ public class BookingRequestService {
     public Appointment approve(Long requestId, BookingApprovalDto approval) {
         var request = findById(requestId);
 
+        if (approval.getAppointmentDate() != null && approval.getAppointmentDate().isBefore(java.time.LocalDate.now())) {
+            throw new IllegalStateException("La fecha de la cita no puede ser anterior a hoy.");
+        }
+
         if (request.getStatus() != BookingRequestStatus.PENDING) {
             throw new IllegalStateException("Esta solicitud ya fue procesada.");
         }

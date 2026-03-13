@@ -23,6 +23,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -106,5 +107,68 @@ class BookingRequestServiceTest {
         assertEquals(BookingRequestStatus.APPROVED, request.getStatus());
         assertSame(result, request.getAppointment());
         verify(notificationService).sendAppointmentConfirmation(result);
+    }
+
+    @Test
+    void approve_shouldRejectPastDate() {
+        Long requestId = 170L;
+        LocalDate today = LocalDate.now();
+
+        ServiceCatalog requestedService = ServiceCatalog.builder().id(7L).name("Limpieza facial").build();
+        BookingRequest request = BookingRequest.builder()
+                .id(requestId)
+                .fullName("Sofia")
+                .phone("+56933334444")
+                .service(requestedService)
+                .preferredDate(today)
+                .status(BookingRequestStatus.PENDING)
+                .build();
+
+        BookingApprovalDto approval = new BookingApprovalDto();
+        approval.setAppointmentDate(today.minusDays(1));
+        approval.setAppointmentTime(LocalTime.of(10, 0));
+
+        when(bookingRequestRepository.findById(requestId)).thenReturn(Optional.of(request));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> bookingRequestService.approve(requestId, approval));
+
+        assertEquals("La fecha de la cita no puede ser anterior a hoy.", ex.getMessage());
+    }
+
+    @Test
+    void approve_shouldAllowTodayDate() {
+        Long requestId = 171L;
+        LocalDate today = LocalDate.now();
+        LocalTime approvedTime = LocalTime.of(12, 0);
+
+        ServiceCatalog requestedService = ServiceCatalog.builder().id(7L).name("Limpieza facial").build();
+        BookingRequest request = BookingRequest.builder()
+                .id(requestId)
+                .fullName("Valentina")
+                .phone("+56955556666")
+                .service(requestedService)
+                .preferredDate(today.plusDays(1))
+                .status(BookingRequestStatus.PENDING)
+                .build();
+
+        Customer customer = new Customer("Valentina", "+56955556666", null);
+
+        BookingApprovalDto approval = new BookingApprovalDto();
+        approval.setAppointmentDate(today);
+        approval.setAppointmentTime(approvedTime);
+
+        when(bookingRequestRepository.findById(requestId)).thenReturn(Optional.of(request));
+        when(customerRepository.findByPhone(request.getPhone())).thenReturn(Optional.of(customer));
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> {
+            Appointment appointment = invocation.getArgument(0);
+            appointment.setId(777L);
+            return appointment;
+        });
+
+        Appointment result = bookingRequestService.approve(requestId, approval);
+
+        assertEquals(today, result.getAppointmentDate());
+        assertEquals(approvedTime, result.getAppointmentTime());
     }
 }

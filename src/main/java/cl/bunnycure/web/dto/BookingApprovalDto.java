@@ -1,5 +1,6 @@
 package cl.bunnycure.web.dto;
 
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -7,6 +8,7 @@ import java.time.LocalTime;
 public class BookingApprovalDto {
 
     @NotNull(message = "La fecha de la cita es obligatoria")
+    @FutureOrPresent(message = "La fecha de la cita debe ser hoy o posterior")
     private LocalDate appointmentDate;
 
     @NotNull(message = "La hora de la cita es obligatoria")
