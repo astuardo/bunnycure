@@ -21,6 +21,7 @@ public class AdminSettingsController {
         model.addAttribute("bookingEnabled",   settingsService.isBookingEnabled());
         model.addAttribute("whatsappNumber",   settingsService.getWhatsappNumber());
         model.addAttribute("whatsappHumanNumber", settingsService.getHumanWhatsappNumber());
+        model.addAttribute("whatsappAdminAlertNumber", settingsService.getAdminAlertWhatsappNumber("56964499995"));
         model.addAttribute("whatsappHumanDisplayName", settingsService.getHumanWhatsappDisplayName());
         model.addAttribute("whatsappHandoffEnabled", settingsService.isWhatsappHandoffEnabled());
         model.addAttribute("whatsappHandoffClientMessage", settingsService.getWhatsappHandoffClientMessage());
@@ -46,10 +47,12 @@ public class AdminSettingsController {
     public String save(@RequestParam Map<String, String> params,
                        RedirectAttributes ra) {
         String humanWhatsappNumber = params.getOrDefault("whatsappHumanNumber", params.getOrDefault("whatsappNumber", "56988873031"));
+        String whatsappAdminAlertNumber = params.getOrDefault("whatsappAdminAlertNumber", "56964499995");
         settingsService.saveAll(Map.ofEntries(
                 Map.entry("booking.enabled", params.getOrDefault("bookingEnabled", "false")),
                 Map.entry("whatsapp.number", humanWhatsappNumber),
                 Map.entry("whatsapp.human.number", humanWhatsappNumber),
+                Map.entry("whatsapp.admin-alert.number", whatsappAdminAlertNumber),
                 Map.entry("whatsapp.human.display-name", params.getOrDefault("whatsappHumanDisplayName", "Equipo BunnyCure")),
                 Map.entry("whatsapp.handoff.enabled", params.getOrDefault("whatsappHandoffEnabled", "false")),
                 Map.entry("whatsapp.handoff.client-message", params.getOrDefault("whatsappHandoffClientMessage", "")),

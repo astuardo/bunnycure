@@ -30,12 +30,13 @@ public class WhatsAppAdminAlertOutboxService {
     private final WhatsAppAdminAlertOutboxRepository outboxRepository;
     private final BookingRequestRepository bookingRequestRepository;
     private final WhatsAppService whatsAppService;
+    private final AppSettingsService appSettingsService;
 
     @Value("${bunnycure.whatsapp.admin-alert.enabled:true}")
     private boolean adminAlertEnabled;
 
     @Value("${bunnycure.whatsapp.admin-alert-number:56964499995}")
-    private String adminAlertNumber;
+    private String adminAlertNumberFallback;
 
     @Value("${bunnycure.whatsapp.admin-alert.outbox.enabled:true}")
     private boolean outboxEnabled;
@@ -51,10 +52,12 @@ public class WhatsAppAdminAlertOutboxService {
 
     public WhatsAppAdminAlertOutboxService(WhatsAppAdminAlertOutboxRepository outboxRepository,
                                            BookingRequestRepository bookingRequestRepository,
-                                           WhatsAppService whatsAppService) {
+                                           WhatsAppService whatsAppService,
+                                           AppSettingsService appSettingsService) {
         this.outboxRepository = outboxRepository;
         this.bookingRequestRepository = bookingRequestRepository;
         this.whatsAppService = whatsAppService;
+        this.appSettingsService = appSettingsService;
     }
 
     @Async
@@ -127,7 +130,8 @@ public class WhatsAppAdminAlertOutboxService {
             return;
         }
 
-        boolean sent = whatsAppService.sendTextMessageSync(adminAlertNumber, buildAdminMessage(request));
+        String targetNumber = resolveAdminAlertNumber();
+        boolean sent = whatsAppService.sendTextMessageSync(targetNumber, buildAdminMessage(request));
         if (sent) {
             event.setStatus(OutboxStatus.SENT);
             event.setSentAt(LocalDateTime.now());
@@ -162,18 +166,23 @@ public class WhatsAppAdminAlertOutboxService {
             log.warn("[WHATSAPP-ADMIN] No se pudo enviar alerta directa, reserva {} no encontrada", bookingRequestId);
             return;
         }
-        whatsAppService.sendTextMessage(adminAlertNumber, buildAdminMessage(request));
+        whatsAppService.sendTextMessage(resolveAdminAlertNumber(), buildAdminMessage(request));
     }
 
     private boolean isAlertActive() {
         if (!adminAlertEnabled) {
             return false;
         }
-        if (adminAlertNumber == null || adminAlertNumber.isBlank()) {
+        String resolved = resolveAdminAlertNumber();
+        if (resolved == null || resolved.isBlank()) {
             log.warn("[WHATSAPP-ADMIN] Numero admin-alert no configurado");
             return false;
         }
         return true;
+    }
+
+    private String resolveAdminAlertNumber() {
+        return appSettingsService.getAdminAlertWhatsappNumber(adminAlertNumberFallback);
     }
 
     private long calculateBackoffSeconds(int attempts) {

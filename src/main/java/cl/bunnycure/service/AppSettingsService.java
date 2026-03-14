@@ -62,6 +62,14 @@ public class AppSettingsService {
         return get("whatsapp.human.display-name", "Equipo BunnyCure");
     }
 
+    public String getAdminAlertWhatsappNumber(String fallbackValue) {
+        String configured = get("whatsapp.admin-alert.number", null);
+        if (configured != null && !configured.isBlank()) {
+            return configured.trim();
+        }
+        return fallbackValue;
+    }
+
     public boolean isWhatsappHandoffEnabled() {
         return getBoolean("whatsapp.handoff.enabled", true);
     }

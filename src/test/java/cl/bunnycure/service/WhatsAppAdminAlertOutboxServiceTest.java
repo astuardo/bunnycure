@@ -41,13 +41,21 @@ class WhatsAppAdminAlertOutboxServiceTest {
     @Mock
     private WhatsAppService whatsAppService;
 
+    @Mock
+    private AppSettingsService appSettingsService;
+
     private WhatsAppAdminAlertOutboxService service;
 
     @BeforeEach
     void setUp() {
-        service = new WhatsAppAdminAlertOutboxService(outboxRepository, bookingRequestRepository, whatsAppService);
+        service = new WhatsAppAdminAlertOutboxService(
+                outboxRepository,
+                bookingRequestRepository,
+                whatsAppService,
+                appSettingsService
+        );
         ReflectionTestUtils.setField(service, "adminAlertEnabled", true);
-        ReflectionTestUtils.setField(service, "adminAlertNumber", "56964499995");
+        ReflectionTestUtils.setField(service, "adminAlertNumberFallback", "56964499995");
         ReflectionTestUtils.setField(service, "outboxEnabled", true);
         ReflectionTestUtils.setField(service, "batchSize", 20);
         ReflectionTestUtils.setField(service, "maxAttempts", 6);
@@ -74,6 +82,7 @@ class WhatsAppAdminAlertOutboxServiceTest {
                 .thenReturn(List.of(pending));
         when(bookingRequestRepository.findById(bookingId)).thenReturn(Optional.of(request));
         when(whatsAppService.sendTextMessageSync(any(), any())).thenReturn(true);
+        when(appSettingsService.getAdminAlertWhatsappNumber("56964499995")).thenReturn("56964499995");
 
         service.enqueueAndTryDispatch(bookingId);
 
@@ -102,6 +111,7 @@ class WhatsAppAdminAlertOutboxServiceTest {
         when(bookingRequestRepository.findById(bookingId)).thenReturn(Optional.of(request));
         when(whatsAppService.sendTextMessageSync(any(), any())).thenReturn(false);
         when(outboxRepository.save(any(WhatsAppAdminAlertOutbox.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(appSettingsService.getAdminAlertWhatsappNumber("56964499995")).thenReturn("56964499995");
 
         service.dispatchDueAlerts();
 

@@ -154,6 +154,7 @@ public class DataInitializer implements CommandLineRunner {
                     new AppSettings("booking.enabled",                  "true",  "Portal de reservas habilitado"),
                     new AppSettings("whatsapp.number",                  "56988873031", "Número WhatsApp humano (legacy)"),
                     new AppSettings("whatsapp.human.number",            "56988873031", "Número WhatsApp atención humana"),
+                    new AppSettings("whatsapp.admin-alert.number",      "56964499995", "Número WhatsApp alertas internas de reservas"),
                     new AppSettings("whatsapp.human.display-name",      "Equipo BunnyCure", "Nombre visible atención humana"),
                     new AppSettings("whatsapp.handoff.enabled",         "true", "Habilita derivación a atención humana"),
                     new AppSettings("whatsapp.handoff.client-message",  "Si necesitas ayuda personalizada, escríbenos al WhatsApp de atención humana: {numero}.", "Mensaje de derivación al cliente"),
