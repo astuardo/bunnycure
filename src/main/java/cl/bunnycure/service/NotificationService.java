@@ -26,6 +26,7 @@ public class NotificationService {
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
     private final WhatsAppService whatsAppService;
+    private final WhatsAppAdminAlertOutboxService whatsAppAdminAlertOutboxService;
 
     @Value("${bunnycure.mail.enabled:false}")
     private boolean mailEnabled;
@@ -36,10 +37,14 @@ public class NotificationService {
     @Value("${bunnycure.whatsapp.number:56964499995}")
     private String whatsappNumber;
 
-    public NotificationService(JavaMailSender mailSender, TemplateEngine templateEngine, WhatsAppService whatsAppService) {
+    public NotificationService(JavaMailSender mailSender,
+                               TemplateEngine templateEngine,
+                               WhatsAppService whatsAppService,
+                               WhatsAppAdminAlertOutboxService whatsAppAdminAlertOutboxService) {
         this.mailSender     = mailSender;
         this.templateEngine = templateEngine;
         this.whatsAppService = whatsAppService;
+        this.whatsAppAdminAlertOutboxService = whatsAppAdminAlertOutboxService;
     }
 
     // ── Citas ────────────────────────────────────────────────────────────────
@@ -151,6 +156,20 @@ public class NotificationService {
                     request.getPhone());
             whatsAppService.sendSolicitudRechazadaTemplate(request);
         }
+    }
+
+    /**
+     * Punto de entrada para alertas internas de nuevas reservas.
+     *
+     * Nota: se mantiene como método "queue" para facilitar migración a outbox/cola.
+     */
+    @Async
+    public void queueAdminNewBookingAlert(BookingRequest request) {
+        if (request == null || request.getId() == null) {
+            log.warn("[WHATSAPP-ADMIN] No se pudo encolar alerta: solicitud nula o sin id");
+            return;
+        }
+        whatsAppAdminAlertOutboxService.enqueueAndTryDispatch(request.getId());
     }
 
     /**

@@ -93,6 +93,9 @@ public class BookingRequestService {
             notificationService.sendBookingRequestReceived(saved);
         }
 
+        // Alerta interna inmediata para evitar depender del dashboard de citas.
+        notificationService.queueAdminNewBookingAlert(saved);
+
         return saved;
     }
 

@@ -101,15 +101,19 @@ public class WhatsAppService {
      */
     @Async
     public void sendTextMessage(String toPhoneNumber, String message) {
+        sendTextMessageSync(toPhoneNumber, message);
+    }
+
+    public boolean sendTextMessageSync(String toPhoneNumber, String message) {
         try {
             if (config.getToken() == null || config.getToken().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Token no configurado");
-                return;
+                return false;
             }
 
             if (config.getPhoneId() == null || config.getPhoneId().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Phone ID no configurado");
-                return;
+                return false;
             }
 
             String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
@@ -156,14 +160,17 @@ public class WhatsAppService {
                 log.info("[WHATSAPP] ✅ Mensaje enviado exitosamente a {}", normalizedPhone);
                 log.info("[WHATSAPP] ℹ️ IMPORTANTE: Verifica que el número {} esté registrado en Meta for Developers", normalizedPhone);
                 log.info("[WHATSAPP] ℹ️ Si estás en modo sandbox, solo puedes enviar a números verificados");
+                return true;
             } else {
                 log.error("[WHATSAPP] ❌ Error al enviar mensaje. Status: {}, Body: {}", 
                         response.getStatusCode(), response.getBody());
+                return false;
             }
 
         } catch (Exception e) {
             log.error("[WHATSAPP] ❌ Excepción al enviar mensaje a {}: {}", toPhoneNumber, e.getMessage());
             log.error("[WHATSAPP] ℹ️ Detalles del error:", e);
+            return false;
         }
     }
 

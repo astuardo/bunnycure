@@ -10,6 +10,7 @@ import cl.bunnycure.domain.repository.BookingRequestRepository;
 import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.domain.repository.ServiceCatalogRepository;
 import cl.bunnycure.web.dto.BookingApprovalDto;
+import cl.bunnycure.web.dto.BookingRequestDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -170,5 +173,74 @@ class BookingRequestServiceTest {
 
         assertEquals(today, result.getAppointmentDate());
         assertEquals(approvedTime, result.getAppointmentTime());
+    }
+
+    @Test
+    void create_shouldQueueAdminAlertAndNotifyCustomerWhenEmailPresent() {
+        Long serviceId = 9L;
+
+        ServiceCatalog service = ServiceCatalog.builder()
+                .id(serviceId)
+                .name("Limpieza facial")
+                .build();
+
+        BookingRequestDto dto = new BookingRequestDto();
+        dto.setFullName("Camila Perez");
+        dto.setPhone("+56911112222");
+        dto.setGender("FEMENINO");
+        dto.setBirthDate(LocalDate.of(1998, 4, 10));
+        dto.setEmail("camila@example.com");
+        dto.setServiceId(serviceId);
+        dto.setPreferredDate(LocalDate.of(2026, 4, 2));
+        dto.setPreferredBlock("Tarde");
+        dto.setNotes("Prefiere WhatsApp");
+
+        when(serviceCatalogRepository.findById(serviceId)).thenReturn(Optional.of(service));
+        when(customerRepository.findByPhone(dto.getPhone())).thenReturn(Optional.empty());
+        when(customerRepository.save(any(Customer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(bookingRequestRepository.save(any(BookingRequest.class))).thenAnswer(invocation -> {
+            BookingRequest request = invocation.getArgument(0);
+            request.setId(1001L);
+            return request;
+        });
+
+        BookingRequest created = bookingRequestService.create(dto);
+
+        verify(notificationService).sendBookingRequestReceived(eq(created));
+        verify(notificationService).queueAdminNewBookingAlert(eq(created));
+    }
+
+    @Test
+    void create_shouldQueueAdminAlertEvenWithoutEmail() {
+        Long serviceId = 10L;
+
+        ServiceCatalog service = ServiceCatalog.builder()
+                .id(serviceId)
+                .name("Drenaje linfatico")
+                .build();
+
+        BookingRequestDto dto = new BookingRequestDto();
+        dto.setFullName("Sofia Rojas");
+        dto.setPhone("+56933334444");
+        dto.setGender("FEMENINO");
+        dto.setBirthDate(LocalDate.of(1995, 8, 20));
+        dto.setEmail(" ");
+        dto.setServiceId(serviceId);
+        dto.setPreferredDate(LocalDate.of(2026, 4, 5));
+        dto.setPreferredBlock("Manana");
+
+        when(serviceCatalogRepository.findById(serviceId)).thenReturn(Optional.of(service));
+        when(customerRepository.findByPhone(dto.getPhone())).thenReturn(Optional.empty());
+        when(customerRepository.save(any(Customer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(bookingRequestRepository.save(any(BookingRequest.class))).thenAnswer(invocation -> {
+            BookingRequest request = invocation.getArgument(0);
+            request.setId(1002L);
+            return request;
+        });
+
+        BookingRequest created = bookingRequestService.create(dto);
+
+        verify(notificationService, never()).sendBookingRequestReceived(any(BookingRequest.class));
+        verify(notificationService).queueAdminNewBookingAlert(eq(created));
     }
 }
