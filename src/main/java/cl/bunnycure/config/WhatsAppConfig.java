@@ -23,9 +23,11 @@ public class WhatsAppConfig {
     private String cancelacionCitaTemplateName = "cancelacion_cita";
     private String agendaEnRevisionTemplateName = "agenda_en_revision";
     private String solicitudRechazadaTemplateName = "solicitud_rechazada";
+    private String adminBookingAlertTemplateName = "";
     
     // Language
     private String citaConfirmadaLanguageCode = "es_CL";
+    private String adminBookingAlertLanguageCode = "es_CL";
     
     // Behavior
     private boolean useTemplateForConfirmation = true;
@@ -33,6 +35,8 @@ public class WhatsAppConfig {
     private boolean useTemplateForCancellation = true;
     private boolean useTemplateForBookingRequest = true;
     private boolean useTemplateForBookingRejection = true;
+    private boolean useTemplateForAdminAlert = false;
+    private String adminBookingRequestsUrl = "";
     
     private String businessName = "BunnyCure";
 
@@ -46,7 +50,10 @@ public class WhatsAppConfig {
         log.info("[WHATSAPP-CONFIG]   - Cancelacion: {} (enabled={})", cancelacionCitaTemplateName, useTemplateForCancellation);
         log.info("[WHATSAPP-CONFIG]   - Agenda en revision: {} (enabled={})", agendaEnRevisionTemplateName, useTemplateForBookingRequest);
         log.info("[WHATSAPP-CONFIG]   - Solicitud rechazada: {} (enabled={})", solicitudRechazadaTemplateName, useTemplateForBookingRejection);
+        log.info("[WHATSAPP-CONFIG]   - Alerta admin: {} (enabled={})", adminBookingAlertTemplateName, useTemplateForAdminAlert);
         log.info("[WHATSAPP-CONFIG] Language: {}", citaConfirmadaLanguageCode);
+        log.info("[WHATSAPP-CONFIG] Admin alert language: {}", adminBookingAlertLanguageCode);
+        log.info("[WHATSAPP-CONFIG] Admin booking requests URL: {}", adminBookingRequestsUrl);
         log.info("[WHATSAPP-CONFIG] Business name: {}", businessName);
     }
 
@@ -106,12 +113,28 @@ public class WhatsAppConfig {
         this.solicitudRechazadaTemplateName = solicitudRechazadaTemplateName;
     }
 
+    public String getAdminBookingAlertTemplateName() {
+        return adminBookingAlertTemplateName;
+    }
+
+    public void setAdminBookingAlertTemplateName(String adminBookingAlertTemplateName) {
+        this.adminBookingAlertTemplateName = adminBookingAlertTemplateName;
+    }
+
     public String getCitaConfirmadaLanguageCode() {
         return citaConfirmadaLanguageCode;
     }
 
     public void setCitaConfirmadaLanguageCode(String citaConfirmadaLanguageCode) {
         this.citaConfirmadaLanguageCode = citaConfirmadaLanguageCode;
+    }
+
+    public String getAdminBookingAlertLanguageCode() {
+        return adminBookingAlertLanguageCode;
+    }
+
+    public void setAdminBookingAlertLanguageCode(String adminBookingAlertLanguageCode) {
+        this.adminBookingAlertLanguageCode = adminBookingAlertLanguageCode;
     }
 
     public boolean isUseTemplateForConfirmation() {
@@ -152,6 +175,22 @@ public class WhatsAppConfig {
 
     public void setUseTemplateForBookingRejection(boolean useTemplateForBookingRejection) {
         this.useTemplateForBookingRejection = useTemplateForBookingRejection;
+    }
+
+    public boolean isUseTemplateForAdminAlert() {
+        return useTemplateForAdminAlert;
+    }
+
+    public void setUseTemplateForAdminAlert(boolean useTemplateForAdminAlert) {
+        this.useTemplateForAdminAlert = useTemplateForAdminAlert;
+    }
+
+    public String getAdminBookingRequestsUrl() {
+        return adminBookingRequestsUrl;
+    }
+
+    public void setAdminBookingRequestsUrl(String adminBookingRequestsUrl) {
+        this.adminBookingRequestsUrl = adminBookingRequestsUrl;
     }
 
     public String getBusinessName() {

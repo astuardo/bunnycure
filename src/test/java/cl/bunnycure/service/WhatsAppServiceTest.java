@@ -20,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -226,6 +227,73 @@ class WhatsAppServiceTest {
                 any(HttpEntity.class),
                 eq(String.class)
         );
+    }
+
+    @Test
+    void sendAdminBookingAlertSync_UsesPersonalizedTextByDefault() {
+        BookingRequest request = createTestBookingRequest();
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("123456789");
+        when(config.isUseTemplateForAdminAlert()).thenReturn(false);
+
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>("{\"success\":true}", HttpStatus.OK));
+
+        boolean sent = whatsAppService.sendAdminBookingAlertSync("+56964499995", request);
+
+        assertTrue(sent);
+        verify(restTemplate).exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                requestCaptor.capture(),
+                eq(String.class)
+        );
+        Map<String, Object> payload = requestCaptor.getValue().getBody();
+        assertNotNull(payload);
+        assertEquals("text", payload.get("type"));
+        @SuppressWarnings("unchecked")
+        Map<String, String> textPayload = (Map<String, String>) payload.get("text");
+        assertNotNull(textPayload);
+        assertTrue(textPayload.get("body").contains("Ana López solicitó una hora"));
+        assertTrue(textPayload.get("body").contains("Revisar ahora"));
+    }
+
+    @Test
+    void sendAdminBookingAlertSync_WhenTextFails_UsesCustomerTemplateAsFallback() {
+        BookingRequest request = createTestBookingRequest();
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("123456789");
+        when(config.isUseTemplateForAdminAlert()).thenReturn(false);
+        when(config.isUseTemplateForBookingRequest()).thenReturn(true);
+        when(config.getAgendaEnRevisionTemplateName()).thenReturn("agenda_en_revision");
+        when(config.getCitaConfirmadaLanguageCode()).thenReturn("es_CL");
+
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        ))
+                .thenThrow(new RuntimeException("text failed"))
+                .thenReturn(new ResponseEntity<>("{\"success\":true}", HttpStatus.OK));
+
+        boolean sent = whatsAppService.sendAdminBookingAlertSync("+56964499995", request);
+
+        assertTrue(sent);
+        verify(restTemplate, times(2)).exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                requestCaptor.capture(),
+                eq(String.class)
+        );
+
+        List<HttpEntity<Map<String, Object>>> calls = requestCaptor.getAllValues();
+        assertEquals("text", calls.get(0).getBody().get("type"));
+        assertEquals("template", calls.get(1).getBody().get("type"));
     }
 
     // Métodos auxiliares para crear objetos de prueba

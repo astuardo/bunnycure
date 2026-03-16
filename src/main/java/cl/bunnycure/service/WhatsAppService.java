@@ -522,11 +522,12 @@ public class WhatsAppService {
                 ? request.getPreferredBlock().trim()
                 : "-";
 
-        if (config.isUseTemplateForBookingRequest()) {
+        String adminTemplate = config.getAdminBookingAlertTemplateName();
+        if (config.isUseTemplateForAdminAlert() && adminTemplate != null && !adminTemplate.isBlank()) {
             boolean templateSent = sendTemplateSync(
                     toPhoneNumber,
-                    config.getAgendaEnRevisionTemplateName(),
-                    config.getCitaConfirmadaLanguageCode(),
+                    adminTemplate,
+                    resolveAdminAlertLanguageCode(),
                     cliente,
                     Arrays.asList(servicio, fecha, bloque)
             );
@@ -534,10 +535,26 @@ public class WhatsAppService {
                 log.info("[WHATSAPP-ADMIN] ✅ Alerta enviada por template a {}", normalizePhoneNumber(toPhoneNumber));
                 return true;
             }
-            log.warn("[WHATSAPP-ADMIN] ⚠️ Fallo envío por template, se intentará fallback a texto libre");
+            log.warn("[WHATSAPP-ADMIN] ⚠️ Fallo envío por template admin, se intentará texto personalizado");
         }
 
-        return sendTextMessageSync(toPhoneNumber, buildAdminAlertText(request));
+        boolean textSent = sendTextMessageSync(toPhoneNumber, buildAdminAlertText(request));
+        if (textSent) {
+            return true;
+        }
+
+        if (config.isUseTemplateForBookingRequest()) {
+            log.warn("[WHATSAPP-ADMIN] ⚠️ Fallo texto personalizado, se intentará template de respaldo '{}'", config.getAgendaEnRevisionTemplateName());
+            return sendTemplateSync(
+                    toPhoneNumber,
+                    config.getAgendaEnRevisionTemplateName(),
+                    config.getCitaConfirmadaLanguageCode(),
+                    cliente,
+                    Arrays.asList(servicio, fecha, bloque)
+            );
+        }
+
+        return false;
     }
 
     /**
@@ -728,6 +745,14 @@ public class WhatsAppService {
         return value == null ? null : String.valueOf(value);
     }
 
+    private String resolveAdminAlertLanguageCode() {
+        String configured = config.getAdminBookingAlertLanguageCode();
+        if (configured == null || configured.isBlank()) {
+            return config.getCitaConfirmadaLanguageCode();
+        }
+        return configured;
+    }
+
     private String buildAdminAlertText(BookingRequest request) {
         String serviceName = request.getService() != null && request.getService().getName() != null
                 ? request.getService().getName()
@@ -735,23 +760,26 @@ public class WhatsAppService {
         String preferredDate = request.getPreferredDate() != null
                 ? request.getPreferredDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")))
                 : "(sin fecha)";
-        String preferredBlock = request.getPreferredBlock() != null && !request.getPreferredBlock().isBlank()
-                ? request.getPreferredBlock().trim()
-                : "(sin bloque)";
+        String preferredBlock = formatPreferredBlock(request.getPreferredBlock());
         String notes = request.getNotes() != null && !request.getNotes().isBlank()
                 ? request.getNotes().trim()
                 : "-";
+        String reviewLink = buildAdminReviewLink(request.getId());
 
         return String.format(
-                "Nueva reserva recibida en BunnyCure\n\n" +
-                        "ID: %s\n" +
+                "NUEVA SOLICITUD - BunnyCure\n\n" +
+                        "%s solicitó una hora.\n" +
+                        "Revisa disponibilidad en Solicitudes y confirma/reagenda.\n\n" +
+                        "ID solicitud: %s\n" +
                         "Cliente: %s\n" +
                         "Telefono: %s\n" +
                         "Email: %s\n" +
                         "Servicio: %s\n" +
                         "Fecha preferida: %s\n" +
                         "Bloque: %s\n" +
-                        "Notas: %s",
+                        "Notas: %s\n\n" +
+                        "Revisar ahora: %s",
+                safeValue(request.getFullName()),
                 request.getId(),
                 safeValue(request.getFullName()),
                 safeValue(request.getPhone()),
@@ -759,8 +787,34 @@ public class WhatsAppService {
                 serviceName,
                 preferredDate,
                 preferredBlock,
-                notes
+                notes,
+                reviewLink
         );
+    }
+
+    private String formatPreferredBlock(String rawBlock) {
+        if (rawBlock == null || rawBlock.isBlank()) {
+            return "(sin bloque)";
+        }
+        String normalized = rawBlock.trim();
+        return switch (normalized.toUpperCase(Locale.ROOT)) {
+            case "MORNING" -> "Manana";
+            case "AFTERNOON" -> "Tarde";
+            case "NIGHT" -> "Noche";
+            default -> normalized;
+        };
+    }
+
+    private String buildAdminReviewLink(Long bookingRequestId) {
+        String baseUrl = config.getAdminBookingRequestsUrl();
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "Panel admin -> /admin/booking-requests";
+        }
+        String trimmed = baseUrl.trim();
+        if (bookingRequestId == null) {
+            return trimmed;
+        }
+        return trimmed.endsWith("/") ? trimmed + bookingRequestId : trimmed + "/" + bookingRequestId;
     }
 
     private String safeValue(String value) {
