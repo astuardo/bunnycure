@@ -618,6 +618,7 @@ public class WhatsAppWebhookDto {
         
         private Conversation conversation;
         private Pricing pricing;
+        private List<StatusError> errors;
 
         public String getId() {
             return id;
@@ -665,6 +666,78 @@ public class WhatsAppWebhookDto {
 
         public void setPricing(Pricing pricing) {
             this.pricing = pricing;
+        }
+
+        public List<StatusError> getErrors() {
+            return errors;
+        }
+
+        public void setErrors(List<StatusError> errors) {
+            this.errors = errors;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class StatusError {
+        private String code;
+        private String title;
+        private String message;
+        private String href;
+
+        @JsonProperty("error_data")
+        private StatusErrorData errorData;
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public String getHref() {
+            return href;
+        }
+
+        public void setHref(String href) {
+            this.href = href;
+        }
+
+        public StatusErrorData getErrorData() {
+            return errorData;
+        }
+
+        public void setErrorData(StatusErrorData errorData) {
+            this.errorData = errorData;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class StatusErrorData {
+        private String details;
+
+        public String getDetails() {
+            return details;
+        }
+
+        public void setDetails(String details) {
+            this.details = details;
         }
     }
 

@@ -16,9 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -131,7 +129,7 @@ public class WhatsAppAdminAlertOutboxService {
         }
 
         String targetNumber = resolveAdminAlertNumber();
-        boolean sent = whatsAppService.sendTextMessageSync(targetNumber, buildAdminMessage(request));
+        boolean sent = whatsAppService.sendAdminBookingAlertSync(targetNumber, request);
         if (sent) {
             event.setStatus(OutboxStatus.SENT);
             event.setSentAt(LocalDateTime.now());
@@ -166,7 +164,7 @@ public class WhatsAppAdminAlertOutboxService {
             log.warn("[WHATSAPP-ADMIN] No se pudo enviar alerta directa, reserva {} no encontrada", bookingRequestId);
             return;
         }
-        whatsAppService.sendTextMessage(resolveAdminAlertNumber(), buildAdminMessage(request));
+        whatsAppService.sendAdminBookingAlertSync(resolveAdminAlertNumber(), request);
     }
 
     private boolean isAlertActive() {
@@ -191,42 +189,4 @@ public class WhatsAppAdminAlertOutboxService {
         return Math.min(delay, 3600L);
     }
 
-    private String buildAdminMessage(BookingRequest request) {
-        String serviceName = request.getService() != null && request.getService().getName() != null
-                ? request.getService().getName()
-                : "(sin servicio)";
-        String preferredDate = request.getPreferredDate() != null
-                ? request.getPreferredDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")))
-                : "(sin fecha)";
-        String preferredBlock = request.getPreferredBlock() != null && !request.getPreferredBlock().isBlank()
-                ? request.getPreferredBlock()
-                : "(sin bloque)";
-        String notes = request.getNotes() != null && !request.getNotes().isBlank()
-                ? request.getNotes().trim()
-                : "-";
-
-        return String.format(
-                "Nueva reserva recibida en BunnyCure\n\n" +
-                        "ID: %s\n" +
-                        "Cliente: %s\n" +
-                        "Telefono: %s\n" +
-                        "Email: %s\n" +
-                        "Servicio: %s\n" +
-                        "Fecha preferida: %s\n" +
-                        "Bloque: %s\n" +
-                        "Notas: %s",
-                request.getId(),
-                safeValue(request.getFullName()),
-                safeValue(request.getPhone()),
-                safeValue(request.getEmail()),
-                serviceName,
-                preferredDate,
-                preferredBlock,
-                notes
-        );
-    }
-
-    private String safeValue(String value) {
-        return (value == null || value.isBlank()) ? "-" : value.trim();
-    }
 }

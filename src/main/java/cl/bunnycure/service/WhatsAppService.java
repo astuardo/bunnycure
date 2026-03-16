@@ -367,7 +367,7 @@ public class WhatsAppService {
      */
     @Async
     public void sendTemplate(String toPhoneNumber, String templateName, String languageCode) {
-        sendTemplate(toPhoneNumber, templateName, languageCode, null, List.of());
+        sendTemplateSync(toPhoneNumber, templateName, languageCode, null, List.of());
     }
 
     /**
@@ -375,7 +375,7 @@ public class WhatsAppService {
      */
     @Async
     public void sendTemplate(String toPhoneNumber, String templateName, String languageCode, List<String> bodyParams) {
-        sendTemplate(toPhoneNumber, templateName, languageCode, null, bodyParams);
+        sendTemplateSync(toPhoneNumber, templateName, languageCode, null, bodyParams);
     }
 
     /**
@@ -390,15 +390,23 @@ public class WhatsAppService {
                              String languageCode,
                              String headerParam,
                              List<String> bodyParams) {
+        sendTemplateSync(toPhoneNumber, templateName, languageCode, headerParam, bodyParams);
+    }
+
+    public boolean sendTemplateSync(String toPhoneNumber,
+                                    String templateName,
+                                    String languageCode,
+                                    String headerParam,
+                                    List<String> bodyParams) {
         try {
             if (config.getToken() == null || config.getToken().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Token no configurado");
-                return;
+                return false;
             }
 
             if (config.getPhoneId() == null || config.getPhoneId().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Phone ID no configurado");
-                return;
+                return false;
             }
 
             String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
@@ -482,15 +490,54 @@ public class WhatsAppService {
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 log.info("[WHATSAPP] ✅ Template '{}' enviado exitosamente a {}", templateName, normalizedPhone);
+                return true;
             } else {
                 log.error("[WHATSAPP] ❌ Error al enviar template. Status: {}, Body: {}", 
                         response.getStatusCode(), response.getBody());
+                return false;
             }
 
         } catch (Exception e) {
             log.error("[WHATSAPP] ❌ Excepción al enviar template '{}' a {}: {}", templateName, toPhoneNumber, e.getMessage());
             log.error("[WHATSAPP] ℹ️ Detalles del error:", e);
+            return false;
         }
+    }
+
+    public boolean sendAdminBookingAlertSync(String toPhoneNumber, BookingRequest request) {
+        if (request == null) {
+            return false;
+        }
+
+        String fecha = request.getPreferredDate() != null
+                ? request.getPreferredDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")))
+                : "-";
+        String servicio = request.getService() != null && request.getService().getName() != null
+                ? request.getService().getName()
+                : "-";
+        String cliente = request.getFullName() != null && !request.getFullName().isBlank()
+                ? request.getFullName().trim()
+                : "-";
+        String bloque = request.getPreferredBlock() != null && !request.getPreferredBlock().isBlank()
+                ? request.getPreferredBlock().trim()
+                : "-";
+
+        if (config.isUseTemplateForBookingRequest()) {
+            boolean templateSent = sendTemplateSync(
+                    toPhoneNumber,
+                    config.getAgendaEnRevisionTemplateName(),
+                    config.getCitaConfirmadaLanguageCode(),
+                    cliente,
+                    Arrays.asList(servicio, fecha, bloque)
+            );
+            if (templateSent) {
+                log.info("[WHATSAPP-ADMIN] ✅ Alerta enviada por template a {}", normalizePhoneNumber(toPhoneNumber));
+                return true;
+            }
+            log.warn("[WHATSAPP-ADMIN] ⚠️ Fallo envío por template, se intentará fallback a texto libre");
+        }
+
+        return sendTextMessageSync(toPhoneNumber, buildAdminAlertText(request));
     }
 
     /**
@@ -679,6 +726,45 @@ public class WhatsAppService {
 
     private String asString(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    private String buildAdminAlertText(BookingRequest request) {
+        String serviceName = request.getService() != null && request.getService().getName() != null
+                ? request.getService().getName()
+                : "(sin servicio)";
+        String preferredDate = request.getPreferredDate() != null
+                ? request.getPreferredDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")))
+                : "(sin fecha)";
+        String preferredBlock = request.getPreferredBlock() != null && !request.getPreferredBlock().isBlank()
+                ? request.getPreferredBlock().trim()
+                : "(sin bloque)";
+        String notes = request.getNotes() != null && !request.getNotes().isBlank()
+                ? request.getNotes().trim()
+                : "-";
+
+        return String.format(
+                "Nueva reserva recibida en BunnyCure\n\n" +
+                        "ID: %s\n" +
+                        "Cliente: %s\n" +
+                        "Telefono: %s\n" +
+                        "Email: %s\n" +
+                        "Servicio: %s\n" +
+                        "Fecha preferida: %s\n" +
+                        "Bloque: %s\n" +
+                        "Notas: %s",
+                request.getId(),
+                safeValue(request.getFullName()),
+                safeValue(request.getPhone()),
+                safeValue(request.getEmail()),
+                serviceName,
+                preferredDate,
+                preferredBlock,
+                notes
+        );
+    }
+
+    private String safeValue(String value) {
+        return (value == null || value.isBlank()) ? "-" : value.trim();
     }
 
     public record MediaDownloadResult(byte[] content, String mimeType, String sha256) {

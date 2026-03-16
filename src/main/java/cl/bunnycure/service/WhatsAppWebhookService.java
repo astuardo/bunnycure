@@ -559,6 +559,7 @@ public class WhatsAppWebhookService {
                     break;
                 case "failed":
                     log.error("[WEBHOOK] ❌ Mensaje falló al enviarse");
+                    logFailedStatusErrors(status);
                     break;
                 default:
                     log.info("[WEBHOOK] ℹ️ Estado: {}", status.getStatus());
@@ -576,6 +577,23 @@ public class WhatsAppWebhookService {
                 log.info("[WEBHOOK] 💰 Billable: {}", status.getPricing().isBillable());
                 log.info("[WEBHOOK] 💰 Category: {}", status.getPricing().getCategory());
             }
+        }
+    }
+
+    private void logFailedStatusErrors(WhatsAppWebhookDto.Status status) {
+        if (status == null || status.getErrors() == null || status.getErrors().isEmpty()) {
+            log.error("[WEBHOOK] ❌ status=failed sin campo errors en payload");
+            return;
+        }
+
+        for (WhatsAppWebhookDto.StatusError error : status.getErrors()) {
+            String details = error.getErrorData() != null ? error.getErrorData().getDetails() : null;
+            log.error("[WEBHOOK] ❌ Meta error code={}, title={}, message={}, details={}, href={}",
+                    error.getCode(),
+                    error.getTitle(),
+                    error.getMessage(),
+                    details,
+                    error.getHref());
         }
     }
 

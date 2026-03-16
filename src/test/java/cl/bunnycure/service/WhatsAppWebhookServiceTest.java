@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -252,6 +253,15 @@ class WhatsAppWebhookServiceTest {
         verify(whatsAppService).sendTextMessage(any(), any());
     }
 
+    @Test
+    void processWebhookNotification_FailedStatusWithErrors_DoesNotThrow() {
+        assertDoesNotThrow(() -> webhookService.processWebhookNotification(
+                webhookWithFailedStatus("wamid-failed-1", "56964499995", "131026", "Recipient not in allowed list")
+        ));
+
+        verify(whatsAppService, never()).sendTextMessage(any(), any());
+    }
+
     private String hmacSha256Hex(byte[] payload, String secret) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
@@ -303,6 +313,33 @@ class WhatsAppWebhookServiceTest {
         webhook.setObject("whatsapp_business_account");
         webhook.setEntry(List.of(entry));
         return webhook;
+    }
+
+    private WhatsAppWebhookDto webhookWithFailedStatus(String messageId,
+                                                       String recipient,
+                                                       String code,
+                                                       String details) {
+        WhatsAppWebhookDto.StatusErrorData errorData = new WhatsAppWebhookDto.StatusErrorData();
+        errorData.setDetails(details);
+
+        WhatsAppWebhookDto.StatusError statusError = new WhatsAppWebhookDto.StatusError();
+        statusError.setCode(code);
+        statusError.setTitle("Message failed");
+        statusError.setMessage("Delivery failed");
+        statusError.setHref("https://developers.facebook.com/docs/whatsapp/cloud-api/support/error-codes");
+        statusError.setErrorData(errorData);
+
+        WhatsAppWebhookDto.Status status = new WhatsAppWebhookDto.Status();
+        status.setId(messageId);
+        status.setStatus("failed");
+        status.setRecipientId(recipient);
+        status.setTimestamp("1773669361");
+        status.setErrors(List.of(statusError));
+
+        WhatsAppWebhookDto.Value value = new WhatsAppWebhookDto.Value();
+        value.setStatuses(List.of(status));
+
+        return webhookWithField("messages", value);
     }
 
     private WhatsAppWebhookDto.Message textMessage(String id, String from, String body) {
