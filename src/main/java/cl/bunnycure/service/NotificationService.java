@@ -10,6 +10,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
@@ -163,13 +165,24 @@ public class NotificationService {
      *
      * Nota: se mantiene como método "queue" para facilitar migración a outbox/cola.
      */
-    @Async
     public void queueAdminNewBookingAlert(BookingRequest request) {
         if (request == null || request.getId() == null) {
             log.warn("[WHATSAPP-ADMIN] No se pudo encolar alerta: solicitud nula o sin id");
             return;
         }
-        whatsAppAdminAlertOutboxService.enqueueAndTryDispatch(request.getId());
+
+        Long bookingRequestId = request.getId();
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    whatsAppAdminAlertOutboxService.enqueueAndTryDispatch(bookingRequestId);
+                }
+            });
+            return;
+        }
+
+        whatsAppAdminAlertOutboxService.enqueueAndTryDispatch(bookingRequestId);
     }
 
     /**
