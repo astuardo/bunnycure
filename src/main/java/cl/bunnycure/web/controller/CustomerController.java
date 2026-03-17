@@ -5,6 +5,7 @@ import cl.bunnycure.service.CustomerService;
 import cl.bunnycure.service.CustomerServiceRecordService;
 import cl.bunnycure.web.dto.CustomerDto;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -17,16 +18,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/customers")
+@RequiredArgsConstructor
 public class CustomerController extends BaseController {
 
     private final CustomerService customerService;
     private final CustomerServiceRecordService customerServiceRecordService;
-
-    public CustomerController(CustomerService customerService,
-                              CustomerServiceRecordService customerServiceRecordService) {
-        this.customerService = customerService;
-        this.customerServiceRecordService = customerServiceRecordService;
-    }
 
     // ── Lista ─────────────────────────────────────────────────────────────────
     @GetMapping

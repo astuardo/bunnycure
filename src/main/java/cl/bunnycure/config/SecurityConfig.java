@@ -1,5 +1,6 @@
 package cl.bunnycure.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -15,15 +16,11 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
 	private final Environment env;
 	private final PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler;
-
-	public SecurityConfig(Environment env, PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler) {
-		this.env = env;
-		this.passwordChangeSuccessHandler = passwordChangeSuccessHandler;
-	}
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {

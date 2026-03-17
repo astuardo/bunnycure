@@ -2,8 +2,10 @@ package cl.bunnycure.web;
 
 import cl.bunnycure.config.WhatsAppConfig;
 import cl.bunnycure.service.WhatsAppService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,20 +28,15 @@ import java.util.Map;
  *   "message": "Hola desde BunnyCure! 🐰"
  * }
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/test/whatsapp")
 @Profile("local")
+@RequiredArgsConstructor
 public class WhatsAppTestController {
-
-    private static final Logger log = LoggerFactory.getLogger(WhatsAppTestController.class);
     
     private final WhatsAppService whatsAppService;
     private final WhatsAppConfig whatsAppConfig;
-
-    public WhatsAppTestController(WhatsAppService whatsAppService, WhatsAppConfig whatsAppConfig) {
-        this.whatsAppService = whatsAppService;
-        this.whatsAppConfig = whatsAppConfig;
-    }
 
     /**
      * Endpoint para enviar un mensaje de prueba
@@ -327,24 +324,10 @@ public class WhatsAppTestController {
     }
 
     // DTO para la petición
+    @Getter
+    @Setter
     static class TestMessageRequest {
         private String phone;
         private String message;
-
-        public String getPhone() {
-            return phone;
-        }
-
-        public void setPhone(String phone) {
-            this.phone = phone;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
     }
 }

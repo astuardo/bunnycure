@@ -1,7 +1,6 @@
 package cl.bunnycure.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -13,10 +12,9 @@ import jakarta.servlet.http.HttpSession;
  * Interceptor que bloquea el acceso a páginas admin si el usuario
  * debe cambiar su contraseña obligatoriamente.
  */
+@Slf4j
 @Component
 public class PasswordChangeInterceptor implements HandlerInterceptor {
-
-    private static final Logger log = LoggerFactory.getLogger(PasswordChangeInterceptor.class);
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {

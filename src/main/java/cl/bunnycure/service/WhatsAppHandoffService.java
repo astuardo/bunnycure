@@ -2,6 +2,7 @@ package cl.bunnycure.service;
 
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.BookingRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.net.URLEncoder;
@@ -11,16 +12,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class WhatsAppHandoffService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     private final AppSettingsService appSettingsService;
-
-    public WhatsAppHandoffService(AppSettingsService appSettingsService) {
-        this.appSettingsService = appSettingsService;
-    }
 
     public String getHumanWhatsappNumber() {
         return normalizePhone(appSettingsService.getHumanWhatsappNumber());

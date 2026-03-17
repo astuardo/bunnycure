@@ -3,6 +3,7 @@ package cl.bunnycure.web.controller;
 import cl.bunnycure.service.ServiceCatalogService;
 import cl.bunnycure.web.dto.ServiceCatalogDto;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,13 +13,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/admin/services")
+@RequiredArgsConstructor
 public class ServiceCatalogController extends BaseController {
 
     private final ServiceCatalogService service;
-
-    public ServiceCatalogController(ServiceCatalogService service) {
-        this.service = service;
-    }
 
     @GetMapping
     public String list(Model model) {

@@ -5,8 +5,8 @@ import cl.bunnycure.domain.model.BookingRequest;
 import cl.bunnycure.domain.model.WhatsAppAdminAlertOutbox;
 import cl.bunnycure.domain.repository.BookingRequestRepository;
 import cl.bunnycure.domain.repository.WhatsAppAdminAlertOutboxRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,10 +19,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class WhatsAppAdminAlertOutboxService {
 
-    private static final Logger log = LoggerFactory.getLogger(WhatsAppAdminAlertOutboxService.class);
     private static final Set<OutboxStatus> DUE_STATUSES = Set.of(OutboxStatus.PENDING, OutboxStatus.RETRY);
 
     private final WhatsAppAdminAlertOutboxRepository outboxRepository;
@@ -47,16 +48,6 @@ public class WhatsAppAdminAlertOutboxService {
 
     @Value("${bunnycure.whatsapp.admin-alert.outbox.retry-base-seconds:30}")
     private int retryBaseSeconds;
-
-    public WhatsAppAdminAlertOutboxService(WhatsAppAdminAlertOutboxRepository outboxRepository,
-                                           BookingRequestRepository bookingRequestRepository,
-                                           WhatsAppService whatsAppService,
-                                           AppSettingsService appSettingsService) {
-        this.outboxRepository = outboxRepository;
-        this.bookingRequestRepository = bookingRequestRepository;
-        this.whatsAppService = whatsAppService;
-        this.appSettingsService = appSettingsService;
-    }
 
     @Async
     public void enqueueAndTryDispatch(Long bookingRequestId) {

@@ -1,18 +1,18 @@
 package cl.bunnycure.service;
 
 import cl.bunnycure.domain.repository.WebhookOperationalEventRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class WebhookOperationalEventMaintenanceService {
-
-    private static final Logger log = LoggerFactory.getLogger(WebhookOperationalEventMaintenanceService.class);
 
     private final WebhookOperationalEventRepository webhookOperationalEventRepository;
 
@@ -21,10 +21,6 @@ public class WebhookOperationalEventMaintenanceService {
 
     @Value("${whatsapp.webhook.operational-events.retention-days:30}")
     private int retentionDays;
-
-    public WebhookOperationalEventMaintenanceService(WebhookOperationalEventRepository webhookOperationalEventRepository) {
-        this.webhookOperationalEventRepository = webhookOperationalEventRepository;
-    }
 
     @Scheduled(cron = "${whatsapp.webhook.operational-events.cleanup-cron:0 15 * * * *}")
     public void cleanupOldOperationalEvents() {

@@ -6,8 +6,8 @@ import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.domain.repository.BookingRequestRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.AppointmentDto;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,28 +16,17 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class AppointmentService {
-
-    private static final Logger log = LoggerFactory.getLogger(AppointmentService.class);
 
     private final AppointmentRepository appointmentRepository;
     private final BookingRequestRepository bookingRequestRepository;
     private final CustomerService customerService;
     private final NotificationService notificationService;
     private final ServiceCatalogService serviceCatalogService;
-
-    public AppointmentService(AppointmentRepository appointmentRepository,
-                              BookingRequestRepository bookingRequestRepository,
-                              CustomerService customerService,
-                              NotificationService notificationService, ServiceCatalogService serviceCatalogService) {
-        this.appointmentRepository = appointmentRepository;
-        this.bookingRequestRepository = bookingRequestRepository;
-        this.customerService = customerService;
-        this.notificationService = notificationService;
-        this.serviceCatalogService = serviceCatalogService;
-    }
 
     @Transactional
     public void updateAppointment(Long id, AppointmentDto dto) {

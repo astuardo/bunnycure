@@ -8,8 +8,8 @@ import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.domain.repository.WebhookOperationalEventRepository;
 import cl.bunnycure.domain.repository.WebhookProcessedEventRepository;
 import cl.bunnycure.web.dto.WhatsAppWebhookDto;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -32,10 +32,10 @@ import java.util.regex.Pattern;
 /**
  * Servicio para procesar las notificaciones de webhook de WhatsApp
  */
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class WhatsAppWebhookService {
-
-    private static final Logger log = LoggerFactory.getLogger(WhatsAppWebhookService.class);
     private static final long DEDUPE_TTL_MILLIS = 10 * 60 * 1000L;
     private static final long DEDUPE_CLEANUP_EVERY_EVENTS = 250;
     private static final long ALERT_THROTTLE_MILLIS = 5 * 60 * 1000L;
@@ -61,22 +61,6 @@ public class WhatsAppWebhookService {
 
     @Value("${whatsapp.webhook.customer-record.authorized-numbers:}")
     private String customerRecordAuthorizedNumbers;
-
-    public WhatsAppWebhookService(AppointmentRepository appointmentRepository,
-                                  WebhookOperationalEventRepository webhookOperationalEventRepository,
-                                  WebhookProcessedEventRepository webhookProcessedEventRepository,
-                                  WhatsAppService whatsAppService,
-                                  AppSettingsService appSettingsService,
-                                  WhatsAppHandoffService whatsAppHandoffService,
-                                  CustomerServiceRecordService customerServiceRecordService) {
-        this.appointmentRepository = appointmentRepository;
-        this.webhookOperationalEventRepository = webhookOperationalEventRepository;
-        this.webhookProcessedEventRepository = webhookProcessedEventRepository;
-        this.whatsAppService = whatsAppService;
-        this.appSettingsService = appSettingsService;
-        this.whatsAppHandoffService = whatsAppHandoffService;
-        this.customerServiceRecordService = customerServiceRecordService;
-    }
 
     public boolean isSignatureValid(String rawPayload, String signatureHeader, String appSecret) {
         byte[] payloadBytes = rawPayload != null

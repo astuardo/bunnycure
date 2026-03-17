@@ -122,23 +122,23 @@ class WhatsAppWebhookControllerTest {
     private byte[] webhookPayload() throws Exception {
         String json = """
                 {
-                  \"object\": \"whatsapp_business_account\",
-                  \"entry\": [
+                  "object": "whatsapp_business_account",
+                  "entry": [
                     {
-                      \"id\": \"entry-1\",
-                      \"changes\": [
+                      "id": "entry-1",
+                      "changes": [
                         {
-                          \"field\": \"messages\",
-                          \"value\": {
-                            \"messaging_product\": \"whatsapp\",
-                            \"messages\": [
+                          "field": "messages",
+                          "value": {
+                            "messaging_product": "whatsapp",
+                            "messages": [
                               {
-                                \"from\": \"56912345678\",
-                                \"id\": \"wamid-test-1\",
-                                \"timestamp\": \"1710000000\",
-                                \"type\": \"text\",
-                                \"text\": {
-                                  \"body\": \"Hola\"
+                                "from": "56912345678",
+                                "id": "wamid-test-1",
+                                "timestamp": "1710000000",
+                                "type": "text",
+                                "text": {
+                                  "body": "Hola"
                                 }
                               }
                             ]

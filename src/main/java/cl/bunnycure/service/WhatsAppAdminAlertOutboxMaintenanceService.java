@@ -2,8 +2,8 @@ package cl.bunnycure.service;
 
 import cl.bunnycure.domain.enums.OutboxStatus;
 import cl.bunnycure.domain.repository.WhatsAppAdminAlertOutboxRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -11,10 +11,11 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Set;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class WhatsAppAdminAlertOutboxMaintenanceService {
 
-    private static final Logger log = LoggerFactory.getLogger(WhatsAppAdminAlertOutboxMaintenanceService.class);
     private static final Set<OutboxStatus> CLEANUP_STATUSES = Set.of(OutboxStatus.SENT, OutboxStatus.FAILED);
 
     private final WhatsAppAdminAlertOutboxRepository outboxRepository;
@@ -24,10 +25,6 @@ public class WhatsAppAdminAlertOutboxMaintenanceService {
 
     @Value("${bunnycure.whatsapp.admin-alert.outbox.retention-days:30}")
     private int retentionDays;
-
-    public WhatsAppAdminAlertOutboxMaintenanceService(WhatsAppAdminAlertOutboxRepository outboxRepository) {
-        this.outboxRepository = outboxRepository;
-    }
 
     @Scheduled(cron = "${bunnycure.whatsapp.admin-alert.outbox.cleanup-cron:0 20 * * * *}")
     public void cleanupOldOutboxRows() {

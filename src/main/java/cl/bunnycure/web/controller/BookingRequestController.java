@@ -6,6 +6,7 @@ import cl.bunnycure.service.AppSettingsService;
 import cl.bunnycure.service.WhatsAppHandoffService;
 import cl.bunnycure.web.dto.BookingApprovalDto;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -16,22 +17,13 @@ import java.time.LocalDate;
 
 @Controller
 @RequestMapping("/admin/booking-requests")
+@RequiredArgsConstructor
 public class BookingRequestController extends BaseController {
 
     private final BookingRequestService bookingRequestService;
     private final ServiceCatalogService serviceCatalogService;
     private final WhatsAppHandoffService whatsAppHandoffService;
     private final AppSettingsService appSettingsService;
-
-    public BookingRequestController(BookingRequestService bookingRequestService,
-                                    ServiceCatalogService serviceCatalogService,
-                                    WhatsAppHandoffService whatsAppHandoffService,
-                                    AppSettingsService appSettingsService) {
-        this.bookingRequestService = bookingRequestService;
-        this.serviceCatalogService = serviceCatalogService;
-        this.whatsAppHandoffService = whatsAppHandoffService;
-        this.appSettingsService = appSettingsService;
-    }
 
     // ── Lista de solicitudes ─────────────────────────────────────────────────
     @GetMapping

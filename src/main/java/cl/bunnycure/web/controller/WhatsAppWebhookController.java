@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import cl.bunnycure.service.WhatsAppWebhookService;
 import cl.bunnycure.web.dto.WhatsAppWebhookDto;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
@@ -24,11 +24,11 @@ import java.util.Arrays;
  * 2. HTTPS en producción
  * 3. Responder rápidamente (< 20 segundos)
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/webhooks/whatsapp")
+@RequiredArgsConstructor
 public class WhatsAppWebhookController {
-
-    private static final Logger log = LoggerFactory.getLogger(WhatsAppWebhookController.class);
 
     private final WhatsAppWebhookService webhookService;
     private final Environment environment;
@@ -39,12 +39,6 @@ public class WhatsAppWebhookController {
 
     @Value("${whatsapp.webhook.app-secret:}")
     private String appSecret;
-
-    public WhatsAppWebhookController(WhatsAppWebhookService webhookService, Environment environment, ObjectMapper objectMapper) {
-        this.webhookService = webhookService;
-        this.environment = environment;
-        this.objectMapper = objectMapper;
-    }
 
     /**
      * Endpoint para la verificación inicial del webhook (GET)

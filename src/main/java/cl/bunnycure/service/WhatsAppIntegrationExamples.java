@@ -2,6 +2,7 @@ package cl.bunnycure.service;
 
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.BookingRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -11,16 +12,11 @@ import org.springframework.stereotype.Component;
  * Los ejemplos muestran cómo integrar WhatsApp en los servicios existentes.
  */
 @Component
+@RequiredArgsConstructor
 public class WhatsAppIntegrationExamples {
 
     private final WhatsAppService whatsAppService;
     private final NotificationService notificationService;
-
-    public WhatsAppIntegrationExamples(WhatsAppService whatsAppService, 
-                                      NotificationService notificationService) {
-        this.whatsAppService = whatsAppService;
-        this.notificationService = notificationService;
-    }
 
     /**
      * EJEMPLO 1: Enviar confirmación de cita por email Y WhatsApp

@@ -7,6 +7,7 @@ import cl.bunnycure.web.dto.CustomerDto;
 import cl.bunnycure.web.dto.CustomerSummary;
 import cl.bunnycure.web.dto.CustomerLookupResponseDto;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,13 +15,10 @@ import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
-
-    public CustomerService(CustomerRepository customerRepository) {
-        this.customerRepository = customerRepository;
-    }
 
     public List<Customer> findAll() {
         return customerRepository.findAll();
@@ -75,7 +73,7 @@ public class CustomerService {
      */
     public CustomerLookupResponseDto findByPhoneForLookup(String phone) {
         return customerRepository.findByPhone(phone)
-                .map(customer -> new CustomerLookupResponseDto(
+                .map(customer -> CustomerLookupResponseDto.found(
                         customer.getId(),
                         customer.getFullName(),
                         customer.getPhone(),

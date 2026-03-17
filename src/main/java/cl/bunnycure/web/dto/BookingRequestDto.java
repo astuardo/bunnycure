@@ -1,10 +1,16 @@
 package cl.bunnycure.web.dto;
 
 import jakarta.validation.constraints.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.Period;
 
+@Getter
+@Setter
+@NoArgsConstructor
 public class BookingRequestDto {
 
     @NotBlank(message = "El nombre es obligatorio")
@@ -58,25 +64,4 @@ public class BookingRequestDto {
         return false;
     }
 
-    // Getters & Setters
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
-    public String getGender() { return gender; }
-    public void setGender(String gender) { this.gender = gender; }
-    public LocalDate getBirthDate() { return birthDate; }
-    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    public Long getServiceId() { return serviceId; }
-    public void setServiceId(Long serviceId) { this.serviceId = serviceId; }
-    public java.time.LocalDate getPreferredDate() { return preferredDate; }
-    public void setPreferredDate(java.time.LocalDate preferredDate) { this.preferredDate = preferredDate; }
-    public String getPreferredBlock() { return preferredBlock; }
-    public void setPreferredBlock(String preferredBlock) { this.preferredBlock = preferredBlock; }
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
-    public String getEmergencyPhone() { return emergencyPhone; }
-    public void setEmergencyPhone(String emergencyPhone) { this.emergencyPhone = emergencyPhone; }
 }

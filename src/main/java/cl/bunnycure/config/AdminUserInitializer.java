@@ -1,15 +1,14 @@
 package cl.bunnycure.config;
 
+import cl.bunnycure.domain.model.User;
+import cl.bunnycure.domain.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import cl.bunnycure.domain.repository.UserRepository;
-import cl.bunnycure.domain.model.User;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 
@@ -18,11 +17,11 @@ import java.util.Set;
  * Asegura que el usuario admin existe con la contraseña correcta
  * Se ejecuta después de que JPA está listo
  */
+@Slf4j
 @Configuration
 @Profile("heroku")
 public class AdminUserInitializer {
 
-    private static final Logger log = LoggerFactory.getLogger(AdminUserInitializer.class);
     private static final Set<String> LEGACY_DEFAULT_PASSWORDS = Set.of("changeme", "changeme-local-only");
 
     @Value("${bunnycure.admin.username:}")

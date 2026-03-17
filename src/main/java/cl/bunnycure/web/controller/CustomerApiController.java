@@ -2,18 +2,16 @@ package cl.bunnycure.web.controller;
 
 import cl.bunnycure.service.CustomerService;
 import cl.bunnycure.web.dto.CustomerLookupResponseDto;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/customers")
+@RequiredArgsConstructor
 public class CustomerApiController {
 
     private final CustomerService customerService;
-
-    public CustomerApiController(CustomerService customerService) {
-        this.customerService = customerService;
-    }
 
     /**
      * Busca una clienta existente por número de teléfono.

@@ -3,8 +3,7 @@ package cl.bunnycure.service;
 import cl.bunnycure.domain.model.User;
 import cl.bunnycure.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -14,11 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService implements UserDetailsService {
-
-    private static final Logger log = LoggerFactory.getLogger(UserService.class);
     
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;

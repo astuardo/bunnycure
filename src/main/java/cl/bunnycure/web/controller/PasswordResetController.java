@@ -1,6 +1,7 @@
 package cl.bunnycure.web.controller;
 
 import cl.bunnycure.service.PasswordResetService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,13 +11,10 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
+@RequiredArgsConstructor
 public class PasswordResetController {
 
     private final PasswordResetService passwordResetService;
-
-    public PasswordResetController(PasswordResetService passwordResetService) {
-        this.passwordResetService = passwordResetService;
-    }
 
     @GetMapping("/forgot-password")
     public String forgotPasswordPage() {

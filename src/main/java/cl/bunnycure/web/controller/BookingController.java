@@ -5,6 +5,7 @@ import cl.bunnycure.service.BookingRequestService;
 import cl.bunnycure.service.ServiceCatalogService;
 import cl.bunnycure.web.dto.BookingRequestDto;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -15,19 +16,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Controller
+@RequiredArgsConstructor
 public class BookingController {
 
     private final ServiceCatalogService serviceCatalogService;
     private final AppSettingsService    appSettingsService;
     private final BookingRequestService bookingRequestService;
-
-    public BookingController(ServiceCatalogService serviceCatalogService,
-                             AppSettingsService appSettingsService,
-                             BookingRequestService bookingRequestService) {
-        this.serviceCatalogService = serviceCatalogService;
-        this.appSettingsService    = appSettingsService;
-        this.bookingRequestService = bookingRequestService;
-    }
 
     // ── GET /reservar ────────────────────────────────────────────────────────
     @GetMapping({"/reservar", "/reservar/"})

@@ -2,8 +2,11 @@ package cl.bunnycure.config;
 
 import cl.bunnycure.domain.model.User;
 import cl.bunnycure.domain.repository.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
@@ -11,9 +14,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.Set;
@@ -22,10 +22,11 @@ import java.util.Set;
  * Manejador de éxito de autenticación que verifica si el usuario
  * debe cambiar su contraseña por defecto.
  */
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class PasswordChangeAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(PasswordChangeAuthenticationSuccessHandler.class);
     private static final Set<String> LEGACY_DEFAULT_PASSWORDS = Set.of("changeme", "changeme-local-only");
 
     private final UserRepository userRepository;
@@ -33,10 +34,6 @@ public class PasswordChangeAuthenticationSuccessHandler implements Authenticatio
     @Lazy
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    public PasswordChangeAuthenticationSuccessHandler(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, 

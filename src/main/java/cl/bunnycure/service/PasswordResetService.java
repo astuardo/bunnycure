@@ -5,8 +5,8 @@ import cl.bunnycure.domain.model.User;
 import cl.bunnycure.domain.repository.PasswordResetTokenRepository;
 import cl.bunnycure.domain.repository.UserRepository;
 import jakarta.mail.internet.MimeMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -18,10 +18,10 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class PasswordResetService {
-
-    private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
@@ -33,16 +33,6 @@ public class PasswordResetService {
 
     @Value("${bunnycure.mail.from:noreply@bunnycure.cl}")
     private String mailFrom;
-
-    public PasswordResetService(UserRepository userRepository,
-                                PasswordResetTokenRepository tokenRepository,
-                                PasswordEncoder passwordEncoder,
-                                JavaMailSender mailSender) {
-        this.userRepository = userRepository;
-        this.tokenRepository = tokenRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.mailSender = mailSender;
-    }
 
     @Transactional
     public void requestReset(String email, String appBaseUrl) {
@@ -95,12 +85,12 @@ public class PasswordResetService {
 
         String html = """
                 <html>
-                <body style=\"font-family:Arial,sans-serif;color:#1f2937;\">
-                  <h2 style=\"margin-bottom:8px;\">Recuperar contraseña</h2>
+                <body style="font-family:Arial,sans-serif;color:#1f2937;">
+                  <h2 style="margin-bottom:8px;">Recuperar contraseña</h2>
                   <p>Hola %s,</p>
                   <p>Recibimos una solicitud para restablecer tu contraseña en BunnyCure.</p>
                   <p>
-                    <a href=\"%s\" style=\"display:inline-block;padding:10px 16px;background:#8B5CF6;color:#fff;text-decoration:none;border-radius:8px;\">
+                    <a href="%s" style="display:inline-block;padding:10px 16px;background:#8B5CF6;color:#fff;text-decoration:none;border-radius:8px;">
                       Restablecer contraseña
                     </a>
                   </p>

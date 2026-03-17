@@ -4,8 +4,8 @@ import cl.bunnycure.domain.model.Customer;
 import cl.bunnycure.domain.model.CustomerServiceRecord;
 import cl.bunnycure.domain.repository.CustomerServiceRecordRepository;
 import cl.bunnycure.web.dto.WhatsAppWebhookDto;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,10 +14,11 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class CustomerServiceRecordService {
 
-    private static final Logger log = LoggerFactory.getLogger(CustomerServiceRecordService.class);
     private static final int MAX_RECORDS_PER_CUSTOMER = 3;
     // Formato etiquetado: CLIENTE: xxx / SERVICIO: yyy
     private static final Pattern CLIENT_PHONE_PATTERN  = Pattern.compile("(?im)^\\s*cliente\\s*:\\s*(.+)$");
@@ -28,14 +29,6 @@ public class CustomerServiceRecordService {
     private final CustomerServiceRecordRepository customerServiceRecordRepository;
     private final CustomerService customerService;
     private final WhatsAppService whatsAppService;
-
-    public CustomerServiceRecordService(CustomerServiceRecordRepository customerServiceRecordRepository,
-                                        CustomerService customerService,
-                                        WhatsAppService whatsAppService) {
-        this.customerServiceRecordRepository = customerServiceRecordRepository;
-        this.customerService = customerService;
-        this.whatsAppService = whatsAppService;
-    }
 
     @Transactional(readOnly = true)
     public List<CustomerServiceRecord> findLatestByCustomerId(Long customerId) {

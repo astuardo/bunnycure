@@ -3,8 +3,8 @@ package cl.bunnycure.service;
 import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.repository.AppointmentRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,25 +12,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class AppointmentReminderService {
-
-    private static final Logger log = LoggerFactory.getLogger(AppointmentReminderService.class);
 
     private final AppointmentRepository appointmentRepository;
     private final NotificationService notificationService;
     private final AppSettingsService appSettingsService;
     private final WhatsAppService whatsAppService;
-
-    public AppointmentReminderService(AppointmentRepository appointmentRepository,
-                                      NotificationService notificationService,
-                                      AppSettingsService appSettingsService,
-                                      WhatsAppService whatsAppService) {
-        this.appointmentRepository = appointmentRepository;
-        this.notificationService = notificationService;
-        this.appSettingsService = appSettingsService;
-        this.whatsAppService = whatsAppService;
-    }
 
     /**
      * Se ejecuta diariamente a las 08:00 AM (zona America/Santiago).

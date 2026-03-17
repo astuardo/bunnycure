@@ -3,8 +3,8 @@ package cl.bunnycure.service;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.BookingRequest;
 import jakarta.mail.internet.MimeMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -20,10 +20,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class NotificationService {
-
-    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
@@ -38,16 +38,6 @@ public class NotificationService {
 
     @Value("${bunnycure.whatsapp.number:56964499995}")
     private String whatsappNumber;
-
-    public NotificationService(JavaMailSender mailSender,
-                               TemplateEngine templateEngine,
-                               WhatsAppService whatsAppService,
-                               WhatsAppAdminAlertOutboxService whatsAppAdminAlertOutboxService) {
-        this.mailSender     = mailSender;
-        this.templateEngine = templateEngine;
-        this.whatsAppService = whatsAppService;
-        this.whatsAppAdminAlertOutboxService = whatsAppAdminAlertOutboxService;
-    }
 
     // ── Citas ────────────────────────────────────────────────────────────────
 

@@ -9,6 +9,7 @@ import cl.bunnycure.service.ServiceCatalogService;
 import cl.bunnycure.service.WhatsAppHandoffService;
 import cl.bunnycure.web.dto.AppointmentDto;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,76 +29,28 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/appointments")
+@RequiredArgsConstructor
 public class AppointmentController extends BaseController {
 
-    public static class CalendarDayCell {
-        private final LocalDate date;
-        private final boolean today;
-        private final boolean selected;
-        private final boolean outsideCurrentMonth;
-        private final long appointmentCount;
-
-        public CalendarDayCell(LocalDate date,
-                               boolean today,
-                               boolean selected,
-                               boolean outsideCurrentMonth,
-                               long appointmentCount) {
-            this.date = date;
-            this.today = today;
-            this.selected = selected;
-            this.outsideCurrentMonth = outsideCurrentMonth;
-            this.appointmentCount = appointmentCount;
-        }
-
-        public LocalDate getDate() {
-            return date;
-        }
-
-        public boolean isToday() {
-            return today;
-        }
-
-        public boolean isSelected() {
-            return selected;
-        }
-
-        public boolean isOutsideCurrentMonth() {
-            return outsideCurrentMonth;
-        }
-
-        public long getAppointmentCount() {
-            return appointmentCount;
-        }
-
-        public int getDotCount() {
-            return Math.max(0, (int) appointmentCount);
-        }
-
-        public String getMiniLabel() {
-            if (appointmentCount <= 0) {
-                return "";
+    public record CalendarDayCell(LocalDate date, boolean today, boolean selected, boolean outsideCurrentMonth,
+                                  long appointmentCount) {
+            public int getDotCount() {
+                return Math.max(0, (int) appointmentCount);
             }
-            return appointmentCount == 1 ? "1 cita" : appointmentCount + " citas";
+
+            public String getMiniLabel() {
+                if (appointmentCount <= 0) {
+                    return "";
+                }
+                return appointmentCount == 1 ? "1 cita" : appointmentCount + " citas";
+            }
         }
-    }
 
     private final AppointmentService appointmentService;
     private final CustomerService customerService;
     private final ServiceCatalogService serviceCatalogService; // ✅ campo declarado
     private final WhatsAppHandoffService whatsAppHandoffService;
     private final AppSettingsService appSettingsService;
-
-    public AppointmentController(AppointmentService appointmentService,
-                                 CustomerService customerService,
-                                 ServiceCatalogService serviceCatalogService,
-                                 WhatsAppHandoffService whatsAppHandoffService,
-                                 AppSettingsService appSettingsService) {
-        this.appointmentService    = appointmentService;
-        this.customerService       = customerService;
-        this.serviceCatalogService = serviceCatalogService;
-        this.whatsAppHandoffService = whatsAppHandoffService;
-        this.appSettingsService = appSettingsService;
-    }
 
     @GetMapping
     public String list(@RequestParam(required = false)

@@ -2,24 +2,18 @@ package cl.bunnycure.config;
 
 import cl.bunnycure.service.AppointmentService;
 import cl.bunnycure.service.AppSettingsService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class ReminderScheduler {
-
-    private static final Logger logger = LoggerFactory.getLogger(ReminderScheduler.class);
 
     private final AppointmentService appointmentService;
     private final AppSettingsService appSettingsService;
-
-    public ReminderScheduler(AppointmentService appointmentService,
-                             AppSettingsService appSettingsService) {
-        this.appointmentService = appointmentService;
-        this.appSettingsService = appSettingsService;
-    }
 
     /**
      * Recordatorio para citas de mañana.
@@ -29,16 +23,16 @@ public class ReminderScheduler {
     @Scheduled(cron = "0 0 9 * * *", zone = "America/Santiago")
     public void sendDayBeforeReminders() {
         if (!appSettingsService.isReminderDayBeforeEnabled()) {
-            logger.debug("[REMINDER-SCHEDULER] Recordatorio día anterior omitido (strategy={})",
+            log.debug("[REMINDER-SCHEDULER] Recordatorio día anterior omitido (strategy={})",
                     appSettingsService.getReminderStrategy());
             return;
         }
         try {
-            logger.info("[REMINDER-SCHEDULER] Iniciando recordatorios día anterior...");
+            log.info("[REMINDER-SCHEDULER] Iniciando recordatorios día anterior...");
             appointmentService.sendRemindersForUpcomingAppointments();
-            logger.info("[REMINDER-SCHEDULER] Recordatorios día anterior completados");
+            log.info("[REMINDER-SCHEDULER] Recordatorios día anterior completados");
         } catch (Exception e) {
-            logger.error("[REMINDER-SCHEDULER] Error en recordatorios día anterior", e);
+            log.error("[REMINDER-SCHEDULER] Error en recordatorios día anterior", e);
         }
     }
 
@@ -50,16 +44,16 @@ public class ReminderScheduler {
     @Scheduled(cron = "0 0 */2 * * *", zone = "America/Santiago")
     public void sendTwoHourReminders() {
         if (!appSettingsService.isReminder2HoursEnabled()) {
-            logger.debug("[REMINDER-SCHEDULER] Recordatorio 2h omitido (strategy={})",
+            log.debug("[REMINDER-SCHEDULER] Recordatorio 2h omitido (strategy={})",
                     appSettingsService.getReminderStrategy());
             return;
         }
         try {
-            logger.info("[REMINDER-SCHEDULER] Iniciando recordatorios 2h...");
+            log.info("[REMINDER-SCHEDULER] Iniciando recordatorios 2h...");
             appointmentService.sendRemindersForAppointmentsIn2Hours();
-            logger.info("[REMINDER-SCHEDULER] Recordatorios 2h completados");
+            log.info("[REMINDER-SCHEDULER] Recordatorios 2h completados");
         } catch (Exception e) {
-            logger.error("[REMINDER-SCHEDULER] Error en recordatorios 2h", e);
+            log.error("[REMINDER-SCHEDULER] Error en recordatorios 2h", e);
         }
     }
 }

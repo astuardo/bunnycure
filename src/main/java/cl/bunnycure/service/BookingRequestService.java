@@ -12,6 +12,7 @@ import cl.bunnycure.domain.repository.ServiceCatalogRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.BookingApprovalDto;
 import cl.bunnycure.web.dto.BookingRequestDto;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class BookingRequestService {
 
     private final BookingRequestRepository bookingRequestRepository;
@@ -27,18 +29,6 @@ public class BookingRequestService {
     private final CustomerRepository customerRepository;
     private final AppointmentRepository appointmentRepository;
     private final NotificationService notificationService;
-
-    public BookingRequestService(BookingRequestRepository bookingRequestRepository,
-                                 ServiceCatalogRepository serviceCatalogRepository,
-                                 CustomerRepository customerRepository,
-                                 AppointmentRepository appointmentRepository,
-                                 NotificationService notificationService) {
-        this.bookingRequestRepository = bookingRequestRepository;
-        this.serviceCatalogRepository = serviceCatalogRepository;
-        this.customerRepository = customerRepository;
-        this.appointmentRepository = appointmentRepository;
-        this.notificationService = notificationService;
-    }
 
     // ── Consultas ────────────────────────────────────────────────────────────
 

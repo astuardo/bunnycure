@@ -4,25 +4,24 @@ import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.service.AppointmentReminderService;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.Comparator;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Controller
 @RequestMapping("/admin/reminders")
 @RequiredArgsConstructor
 public class AdminRemindersController {
-
-    private static final Logger log = LoggerFactory.getLogger(AdminRemindersController.class);
 
     private final AppointmentReminderService reminderService;
     private final AppointmentRepository appointmentRepository;
@@ -36,7 +35,10 @@ public class AdminRemindersController {
         var pendingToday = appointmentRepository.findPendingRemindersFromDateByStatuses(
                 List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
                 today
-        );
+        ).stream()
+                .sorted(Comparator.comparing(cl.bunnycure.domain.model.Appointment::getAppointmentDate)
+                        .thenComparing(cl.bunnycure.domain.model.Appointment::getAppointmentTime))
+                .toList();
 
         model.addAttribute("pendingReminders", pendingToday);
         model.addAttribute("today", today);

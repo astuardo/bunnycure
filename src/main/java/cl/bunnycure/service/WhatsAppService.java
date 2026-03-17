@@ -3,8 +3,8 @@ package cl.bunnycure.service;
 import cl.bunnycure.config.WhatsAppConfig;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.BookingRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -28,19 +28,15 @@ import java.util.Optional;
  * Servicio para enviar mensajes mediante WhatsApp Cloud API.
  * Documentación: https://developers.facebook.com/docs/whatsapp/cloud-api
  */
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class WhatsAppService {
 
-    private static final Logger log = LoggerFactory.getLogger(WhatsAppService.class);
     private static final String WHATSAPP_API_URL = "https://graph.facebook.com/v22.0";
-    
+
     private final WhatsAppConfig config;
     private final RestTemplate restTemplate;
-
-    public WhatsAppService(WhatsAppConfig config, RestTemplate restTemplate) {
-        this.config = config;
-        this.restTemplate = restTemplate;
-    }
 
     public Optional<MediaDownloadResult> downloadImageByMediaId(String mediaId) {
         if (mediaId == null || mediaId.isBlank()) {

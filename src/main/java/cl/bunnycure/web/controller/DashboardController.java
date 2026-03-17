@@ -4,6 +4,7 @@ import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.service.BookingRequestService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,19 +14,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 @Controller
+@RequiredArgsConstructor
 public class DashboardController extends BaseController {
 
     private final AppointmentRepository appointmentRepository;
     private final CustomerRepository    customerRepository;
     private final BookingRequestService bookingRequestService;
-
-    public DashboardController(AppointmentRepository appointmentRepository,
-                               CustomerRepository customerRepository,
-                               BookingRequestService bookingRequestService) {
-        this.appointmentRepository = appointmentRepository;
-        this.customerRepository    = customerRepository;
-        this.bookingRequestService = bookingRequestService;
-    }
 
     @GetMapping("/dashboard")
     public String dashboard(Model model) {

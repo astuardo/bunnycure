@@ -6,12 +6,14 @@ import cl.bunnycure.domain.repository.BookingRequestRepository;
 import cl.bunnycure.domain.repository.ServiceCatalogRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.ServiceCatalogDto;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class ServiceCatalogService {
 
     public enum DeleteOutcome {
@@ -22,14 +24,6 @@ public class ServiceCatalogService {
     private final ServiceCatalogRepository repository;
     private final AppointmentRepository appointmentRepository;
     private final BookingRequestRepository bookingRequestRepository;
-
-    public ServiceCatalogService(ServiceCatalogRepository repository,
-                                 AppointmentRepository appointmentRepository,
-                                 BookingRequestRepository bookingRequestRepository) {
-        this.repository = repository;
-        this.appointmentRepository = appointmentRepository;
-        this.bookingRequestRepository = bookingRequestRepository;
-    }
 
     public List<ServiceCatalog> findAllActive() {
         return repository.findByActiveTrueOrderByDisplayOrderAsc();
