@@ -33,6 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 class WhatsAppWebhookControllerTest {
 
+    private static final int MAX_WEBHOOK_PAYLOAD_BYTES = 512 * 1024;
+
     @Mock
     private WhatsAppWebhookService webhookService;
 
@@ -117,6 +119,37 @@ class WhatsAppWebhookControllerTest {
                 .andExpect(content().string("EVENT_RECEIVED"));
 
         verify(webhookService).processWebhookNotification(any(WhatsAppWebhookDto.class));
+    }
+
+    @Test
+    void receiveNotification_WithPayloadTooLarge_ReturnsPayloadTooLarge() throws Exception {
+        byte[] payload = new byte[MAX_WEBHOOK_PAYLOAD_BYTES + 1];
+
+        mockMvc.perform(post("/api/webhooks/whatsapp")
+                        .contentType("application/json")
+                        .content(payload)
+                        .header("X-Hub-Signature-256", "sha256=does-not-matter"))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(content().string("Payload too large"));
+
+        verify(webhookService, never()).isSignatureValid(any(byte[].class), anyString(), anyString());
+        verify(webhookService, never()).processWebhookNotification(any());
+    }
+
+    @Test
+    void receiveNotification_WithMalformedJson_ReturnsEventReceivedWithoutProcessing() throws Exception {
+        byte[] payload = "{\"object\":\"whatsapp_business_account\",\"entry\":[".getBytes(StandardCharsets.UTF_8);
+        String signature = "sha256=" + hmacSha256Hex(payload, "secret123");
+        when(webhookService.isSignatureValid(any(byte[].class), eq(signature), eq("secret123"))).thenReturn(true);
+
+        mockMvc.perform(post("/api/webhooks/whatsapp")
+                        .contentType("application/json")
+                        .content(payload)
+                        .header("X-Hub-Signature-256", signature))
+                .andExpect(status().isOk())
+                .andExpect(content().string("EVENT_RECEIVED"));
+
+        verify(webhookService, never()).processWebhookNotification(any());
     }
 
     private byte[] webhookPayload() throws Exception {

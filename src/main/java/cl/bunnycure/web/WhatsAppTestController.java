@@ -236,8 +236,8 @@ public class WhatsAppTestController {
         log.info("[TEST-DIAGNOSE] Iniciando diagnóstico para número: {}", phone);
         
         Map<String, Object> diagnosticInfo = new HashMap<>();
-        diagnosticInfo.put("phoneInput", phone);
-        diagnosticInfo.put("messageInput", message);
+        diagnosticInfo.put("phoneInputMasked", maskPhone(phone));
+        diagnosticInfo.put("messageLength", message != null ? message.length() : 0);
         diagnosticInfo.put("timestamp", java.time.LocalDateTime.now().toString());
         
         // Verificar configuración
@@ -248,9 +248,11 @@ public class WhatsAppTestController {
         diagnosticInfo.put("phoneIdConfigured", phoneId != null && !phoneId.isEmpty());
         
         if (token == null || token.isEmpty() || phoneId == null || phoneId.isEmpty()) {
-            diagnosticInfo.put("status", "error");
-            diagnosticInfo.put("error", "WhatsApp no está configurado correctamente");
-            return ResponseEntity.status(500).body(diagnosticInfo);
+            return ResponseEntity.status(500).body(buildSafeDiagnosticError(
+                    "error",
+                    "WhatsApp no está configurado correctamente",
+                    null
+            ));
         }
         
         try {
@@ -316,11 +318,34 @@ public class WhatsAppTestController {
             
         } catch (Exception e) {
             log.error("[TEST-DIAGNOSE] Error: {}", e.getMessage(), e);
-            diagnosticInfo.put("status", "exception");
-            diagnosticInfo.put("error", e.getMessage());
-            diagnosticInfo.put("errorType", e.getClass().getSimpleName());
-            return ResponseEntity.status(500).body(diagnosticInfo);
+            return ResponseEntity.status(500).body(buildSafeDiagnosticError(
+                    "exception",
+                    "Error ejecutando diagnóstico de WhatsApp",
+                    e
+            ));
         }
+    }
+
+    private Map<String, Object> buildSafeDiagnosticError(String status, String errorMessage, Exception exception) {
+        Map<String, Object> safeError = new HashMap<>();
+        safeError.put("status", status);
+        safeError.put("error", errorMessage);
+        safeError.put("timestamp", java.time.LocalDateTime.now().toString());
+        if (exception != null) {
+            safeError.put("errorType", exception.getClass().getSimpleName());
+        }
+        return safeError;
+    }
+
+    private String maskPhone(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return "";
+        }
+        String digitsOnly = phone.replaceAll("\\D", "");
+        if (digitsOnly.length() <= 4) {
+            return "****";
+        }
+        return "****" + digitsOnly.substring(digitsOnly.length() - 4);
     }
 
     // DTO para la petición

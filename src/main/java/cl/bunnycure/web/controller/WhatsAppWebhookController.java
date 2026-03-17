@@ -1,10 +1,12 @@
 package cl.bunnycure.web.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import cl.bunnycure.service.WhatsAppWebhookService;
 import cl.bunnycure.web.dto.WhatsAppWebhookDto;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -27,12 +29,21 @@ import java.util.Arrays;
 @Slf4j
 @RestController
 @RequestMapping("/api/webhooks/whatsapp")
-@RequiredArgsConstructor
 public class WhatsAppWebhookController {
+
+    private static final int MAX_WEBHOOK_PAYLOAD_BYTES = 512 * 1024;
 
     private final WhatsAppWebhookService webhookService;
     private final Environment environment;
-    private final ObjectMapper objectMapper;
+    private final ObjectReader webhookReader;
+
+    public WhatsAppWebhookController(WhatsAppWebhookService webhookService,
+                                     Environment environment,
+                                     ObjectMapper objectMapper) {
+        this.webhookService = webhookService;
+        this.environment = environment;
+        this.webhookReader = buildSafeWebhookReader(objectMapper);
+    }
 
     @Value("${whatsapp.webhook.verify-token:bunnycure_webhook_token_2024}")
     private String verifyToken;
@@ -111,6 +122,11 @@ public class WhatsAppWebhookController {
         try {
             log.info("[WEBHOOK] 📥 Notificación recibida de WhatsApp");
 
+            if (isPayloadTooLarge(rawPayload)) {
+                log.warn("[WEBHOOK] ❌ Payload rejected by size limit: {} bytes", rawPayload.length);
+                return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body("Payload too large");
+            }
+
             String resolvedSignatureHeader = resolveSignatureHeader(signatureHeader, request);
 
             if (!webhookService.isSignatureValid(rawPayload, resolvedSignatureHeader, appSecret)) {
@@ -124,8 +140,13 @@ public class WhatsAppWebhookController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid signature");
             }
 
-            WhatsAppWebhookDto webhook = objectMapper.readValue(rawPayload, WhatsAppWebhookDto.class);
+            WhatsAppWebhookDto webhook = webhookReader.readValue(rawPayload);
             log.debug("[WEBHOOK] Payload completo: {}", webhook);
+
+            if (!hasMinimumWebhookStructure(webhook)) {
+                log.warn("[WEBHOOK] ⚠️ Payload JSON válido pero estructura incompleta, se omite procesamiento");
+                return ResponseEntity.ok("EVENT_RECEIVED");
+            }
 
             // Procesar la notificación de forma asíncrona (opcional pero recomendado)
             webhookService.processWebhookNotification(webhook);
@@ -133,6 +154,9 @@ public class WhatsAppWebhookController {
             // Responder inmediatamente con 200 OK
             return ResponseEntity.ok("EVENT_RECEIVED");
 
+        } catch (JsonProcessingException e) {
+            log.warn("[WEBHOOK] ⚠️ JSON inválido en notificación: {}", e.getOriginalMessage());
+            return ResponseEntity.ok("EVENT_RECEIVED");
         } catch (Exception e) {
             log.error("[WEBHOOK] ❌ Error procesando notificación: {}", e.getMessage(), e);
             
@@ -192,5 +216,22 @@ public class WhatsAppWebhookController {
         }
 
         return request.getHeader("X-Hub-Signature");
+    }
+
+    private boolean isPayloadTooLarge(byte[] rawPayload) {
+        return rawPayload != null && rawPayload.length > MAX_WEBHOOK_PAYLOAD_BYTES;
+    }
+
+    private boolean hasMinimumWebhookStructure(WhatsAppWebhookDto webhook) {
+        return webhook != null
+                && webhook.getObject() != null
+                && webhook.getEntry() != null
+                && !webhook.getEntry().isEmpty();
+    }
+
+    private ObjectReader buildSafeWebhookReader(ObjectMapper baseMapper) {
+        ObjectMapper safeMapper = baseMapper.copy();
+        safeMapper.enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+        return safeMapper.readerFor(WhatsAppWebhookDto.class);
     }
 }
