@@ -18,6 +18,19 @@ public class AdminSettingsController {
 
     @GetMapping
     public String index(Model model) {
+        // ── Branding & Identidad (Fase 1) ───────────────────────────────────
+        model.addAttribute("appName",           settingsService.getAppName());
+        model.addAttribute("appSlogan",         settingsService.getAppSlogan());
+        model.addAttribute("appEmail",          settingsService.getAppEmail());
+        model.addAttribute("appLogoUrl",        settingsService.getAppLogoUrl());
+        model.addAttribute("appPrimaryColor",   settingsService.getAppPrimaryColor());
+        model.addAttribute("appSecondaryColor", settingsService.getAppSecondaryColor());
+        model.addAttribute("appTimezone",       settingsService.getAppTimezone());
+        model.addAttribute("appLocale",         settingsService.getAppLocale());
+        model.addAttribute("appCurrency",       settingsService.getAppCurrency());
+        model.addAttribute("appServiceTip",     settingsService.getAppServiceTip());
+
+        // ── Configuración de Reservas ───────────────────────────────────────
         model.addAttribute("bookingEnabled",   settingsService.isBookingEnabled());
         model.addAttribute("whatsappNumber",   settingsService.getWhatsappNumber());
         model.addAttribute("whatsappHumanNumber", settingsService.getHumanWhatsappNumber());
@@ -48,7 +61,22 @@ public class AdminSettingsController {
                        RedirectAttributes ra) {
         String humanWhatsappNumber = params.getOrDefault("whatsappHumanNumber", params.getOrDefault("whatsappNumber", "56988873031"));
         String whatsappAdminAlertNumber = params.getOrDefault("whatsappAdminAlertNumber", "56964499995");
+        
+        // ── Guardar todas las configuraciones ────────────────────────────────
         settingsService.saveAll(Map.ofEntries(
+                // Branding & Identidad (Fase 1)
+                Map.entry("app.name", params.getOrDefault("appName", "BunnyCure")),
+                Map.entry("app.slogan", params.getOrDefault("appSlogan", "Arte en tus manos ✨")),
+                Map.entry("app.email", params.getOrDefault("appEmail", "contacto@bunnycure.cl")),
+                Map.entry("app.logo-url", params.getOrDefault("appLogoUrl", "/images/logo.png")),
+                Map.entry("app.primary-color", params.getOrDefault("appPrimaryColor", "#F472B6")),
+                Map.entry("app.secondary-color", params.getOrDefault("appSecondaryColor", "#8B5CF6")),
+                Map.entry("app.timezone", params.getOrDefault("appTimezone", "America/Santiago")),
+                Map.entry("app.locale", params.getOrDefault("appLocale", "es_CL")),
+                Map.entry("app.currency", params.getOrDefault("appCurrency", "CLP")),
+                Map.entry("app.service-tip", params.getOrDefault("appServiceTip", "Llega con las uñas limpias y sin esmalte")),
+                
+                // Configuración de Reservas
                 Map.entry("booking.enabled", params.getOrDefault("bookingEnabled", "false")),
                 Map.entry("whatsapp.number", humanWhatsappNumber),
                 Map.entry("whatsapp.human.number", humanWhatsappNumber),

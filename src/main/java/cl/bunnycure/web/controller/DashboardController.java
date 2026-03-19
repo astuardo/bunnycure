@@ -3,6 +3,7 @@ package cl.bunnycure.web.controller;
 import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.domain.repository.CustomerRepository;
+import cl.bunnycure.service.AppSettingsService;
 import cl.bunnycure.service.BookingRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -11,7 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
 @Controller
 @RequiredArgsConstructor
@@ -20,6 +20,7 @@ public class DashboardController extends BaseController {
     private final AppointmentRepository appointmentRepository;
     private final CustomerRepository    customerRepository;
     private final BookingRequestService bookingRequestService;
+    private final AppSettingsService appSettingsService;
 
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
@@ -27,7 +28,7 @@ public class DashboardController extends BaseController {
 
         // Fecha formateada en Java para evitar problemas de escape en Thymeleaf
         DateTimeFormatter formatter = DateTimeFormatter
-                .ofPattern("EEEE dd 'de' MMMM 'de' yyyy", new Locale("es", "CL"));
+                .ofPattern("EEEE dd 'de' MMMM 'de' yyyy", appSettingsService.getAppJavaLocale());
         String todayFormatted = today.format(formatter);
         todayFormatted = todayFormatted.substring(0, 1).toUpperCase() + todayFormatted.substring(1);
 

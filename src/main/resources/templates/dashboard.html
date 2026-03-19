@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="es"
       th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
 <head>
-    <title>Dashboard – BunnyCure</title>
+    <title>Dashboard – [[${appName ?: 'BunnyCure'}]]</title>
 </head>
 <body>
 <section th:fragment="content">

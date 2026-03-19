@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,6 +29,7 @@ public class AppointmentService {
     private final CustomerService customerService;
     private final NotificationService notificationService;
     private final ServiceCatalogService serviceCatalogService;
+    private final AppSettingsService appSettingsService;
 
     @Transactional
     public void updateAppointment(Long id, AppointmentDto dto) {
@@ -132,7 +135,7 @@ public class AppointmentService {
      */
     @Transactional
     public void sendRemindersForUpcomingAppointments() {
-        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        LocalDate tomorrow = getNowInConfiguredZone().toLocalDate().plusDays(1);
         List<Appointment> appointments = appointmentRepository.findPendingRemindersForDateByStatuses(
                 List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
                 tomorrow
@@ -158,8 +161,9 @@ public class AppointmentService {
      */
     @Transactional
     public void sendRemindersForAppointmentsIn2Hours() {
-        LocalDate today = LocalDate.now();
-        LocalTime now = LocalTime.now();
+        ZonedDateTime nowInZone = getNowInConfiguredZone();
+        LocalDate today = nowInZone.toLocalDate();
+        LocalTime now = nowInZone.toLocalTime();
         LocalTime inTwoHours = now.plusHours(2);
 
         List<Appointment> appointments = appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
@@ -196,5 +200,19 @@ public class AppointmentService {
     @Transactional
     public Appointment save(Appointment appointment) {
         return appointmentRepository.save(appointment);
+    }
+
+    private ZonedDateTime getNowInConfiguredZone() {
+        return ZonedDateTime.now(resolveReminderZoneId());
+    }
+
+    private ZoneId resolveReminderZoneId() {
+        String timezone = appSettingsService.getAppTimezone();
+        try {
+            return ZoneId.of(timezone);
+        } catch (Exception ex) {
+            log.warn("[REMINDER] Timezone invalida '{}' en app settings. Usando fallback America/Santiago", timezone);
+            return ZoneId.of("America/Santiago");
+        }
     }
 }

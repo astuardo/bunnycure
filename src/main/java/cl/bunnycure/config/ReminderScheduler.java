@@ -18,9 +18,12 @@ public class ReminderScheduler {
     /**
      * Recordatorio para citas de mañana.
      * Solo activo cuando reminder.strategy = "day_before".
-     * Se ejecuta diariamente a las 09:00 (zona America/Santiago).
+     * Se ejecuta con cron/zone configurables via properties.
      */
-    @Scheduled(cron = "0 0 9 * * *", zone = "America/Santiago")
+    @Scheduled(
+            cron = "${bunnycure.reminder.day-before.cron:0 0 9 * * *}",
+            zone = "${bunnycure.scheduler.timezone:America/Santiago}"
+    )
     public void sendDayBeforeReminders() {
         if (!appSettingsService.isReminderDayBeforeEnabled()) {
             log.debug("[REMINDER-SCHEDULER] Recordatorio día anterior omitido (strategy={})",
@@ -39,9 +42,12 @@ public class ReminderScheduler {
     /**
      * Recordatorio para citas dentro de las próximas 2 horas.
      * Activo cuando reminder.strategy = "2hours" o "both" (default: "2hours").
-     * Se ejecuta cada 2 horas (zona America/Santiago).
+     * Se ejecuta con cron/zone configurables via properties.
      */
-    @Scheduled(cron = "0 0 */2 * * *", zone = "America/Santiago")
+    @Scheduled(
+            cron = "${bunnycure.reminder.two-hours.cron:0 0 */2 * * *}",
+            zone = "${bunnycure.scheduler.timezone:America/Santiago}"
+    )
     public void sendTwoHourReminders() {
         if (!appSettingsService.isReminder2HoursEnabled()) {
             log.debug("[REMINDER-SCHEDULER] Recordatorio 2h omitido (strategy={})",

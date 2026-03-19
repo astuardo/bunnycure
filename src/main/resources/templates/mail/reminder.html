@@ -3,11 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'Recordatorio de Cita – ' + ${appName ?: 'BunnyCure'}">Recordatorio de Cita</title>
     <style>
+        :root {
+          --app-primary: [[${appPrimaryColor ?: '#F472B6'}]];
+          --app-secondary: [[${appSecondaryColor ?: '#8B5CF6'}]];
+          --app-grad: linear-gradient(135deg, var(--app-primary), var(--app-secondary));
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
         .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #d8b4fe 0%, #c084fc 100%); padding: 40px 20px; text-align: center; color: white; }
+        .header { background: var(--app-grad); padding: 40px 20px; text-align: center; color: white; }
         .header h1 { font-size: 28px; margin-bottom: 5px; }
         .header p { font-size: 14px; opacity: 0.9; }
         .content { padding: 40px 20px; }
@@ -18,10 +24,10 @@
         .detail-row:last-child { border-bottom: none; }
         .detail-label { color: #6b7280; font-weight: 500; }
         .detail-value { color: #111827; font-weight: 600; }
-        .action-btn { display: inline-block; background: linear-gradient(135deg, #d8b4fe 0%, #c084fc 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; margin: 10px 5px 10px 0; font-weight: 500; border: none; cursor: pointer; }
+        .action-btn { display: inline-block; background: var(--app-grad); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; margin: 10px 5px 10px 0; font-weight: 500; border: none; cursor: pointer; }
         .action-btn:hover { opacity: 0.9; }
         .footer { background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; }
-        .divider { height: 2px; background: linear-gradient(90deg, transparent, #d8b4fe, transparent); margin: 30px 0; }
+        .divider { height: 2px; background: linear-gradient(90deg, transparent, var(--app-secondary), transparent); margin: 30px 0; }
         .icon { font-size: 24px; margin-right: 8px; }
     </style>
 </head>
@@ -30,7 +36,7 @@
         <!-- Header -->
         <div class="header">
             <h1>🐰 Recordatorio de Cita</h1>
-            <p>Bunny Cure</p>
+            <p th:text="${appName ?: 'BunnyCure'}">BunnyCure</p>
         </div>
 
         <!-- Content -->
@@ -40,7 +46,7 @@
             </p>
 
             <p style="color: #374151; line-height: 1.6; margin-bottom: 25px;">
-                Te recordamos que tienes una cita programada <strong>hoy</strong> en Bunny Cure. 
+                Te recordamos que tienes una cita programada <strong>hoy</strong> en <span th:text="${appName ?: 'BunnyCure'}">BunnyCure</span>. 
                 Aquí están los detalles:
             </p>
 
@@ -90,14 +96,14 @@
             <div class="divider"></div>
 
             <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin-top: 20px;">
-                Estamos emocionadas de verte hoy en Bunny Cure. Tu comodidad y satisfacción 
+                Estamos emocionadas de verte hoy en <span th:text="${appName ?: 'BunnyCure'}">BunnyCure</span>. Tu comodidad y satisfacción 
                 son nuestras prioridades. 🐇✨
             </p>
         </div>
 
         <!-- Footer -->
         <div class="footer">
-            <p>🐰 <strong>Bunny Cure</strong> | Servicios de belleza</p>
+            <p>🐰 <strong th:text="${appName ?: 'BunnyCure'}">Bunny Cure</strong> | <span th:text="${appSlogan ?: 'Servicios de belleza'}">Servicios de belleza</span></p>
             <p style="margin-top: 10px;">Si no solicitaste este recordatorio, ignora este email.</p>
         </div>
     </div>

@@ -1,14 +1,22 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es"
       th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
-<head><title>Configuración – BunnyCure</title></head>
+<head>
+  <title>Configuración – [[${appName}]]</title>
+  <style>
+    :root {
+      --app-primary: [[${appPrimaryColor}]];
+      --app-secondary: [[${appSecondaryColor}]];
+    }
+  </style>
+</head>
 <body>
 <section th:fragment="content">
 
   <div class="d-flex align-items-center gap-2 mb-4">
     <div>
       <h4 class="fw-bold mb-0">Configuración</h4>
-      <p class="text-muted small mb-0">Ajustes del portal de reservas y WhatsApp</p>
+      <p class="text-muted small mb-0">Ajustes de identidad, portal de reservas y WhatsApp</p>
     </div>
   </div>
 
@@ -21,6 +29,109 @@
   </div>
 
   <form th:action="@{/admin/settings}" method="post">
+
+    <!-- Identidad & Branding (Fase 1) -->
+    <div class="card table-card mb-4">
+      <div class="card-header fw-semibold py-3 px-4"
+           style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
+        <i class="bi bi-palette me-2" style="color:var(--app-primary);"></i>
+        Identidad del Negocio
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Nombre del negocio</label>
+            <input type="text" name="appName" class="form-control"
+                   th:value="${appName}" placeholder="BunnyCure"
+                   maxlength="100"/>
+            <small class="text-muted">Aparece en títulos, emails y branding general</small>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Eslogan</label>
+            <input type="text" name="appSlogan" class="form-control"
+                   th:value="${appSlogan}" placeholder="Arte en tus manos ✨"
+                   maxlength="150"/>
+            <small class="text-muted">Subtítulo o tagline del negocio</small>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Email de contacto</label>
+            <input type="email" name="appEmail" class="form-control"
+                   th:value="${appEmail}" placeholder="contacto@bunnycure.cl"
+                   maxlength="100"/>
+            <small class="text-muted">Email visible en emails y footer</small>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">URL del logo</label>
+            <input type="text" name="appLogoUrl" class="form-control"
+                   th:value="${appLogoUrl}" placeholder="/images/logo.png"
+                   maxlength="255"/>
+            <small class="text-muted">Ruta relativa o URL absoluta</small>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Color primario</label>
+            <div class="input-group">
+              <input type="text" name="appPrimaryColor" class="form-control"
+                     th:value="${appPrimaryColor}" placeholder="#F472B6"
+                     pattern="^#[0-9A-Fa-f]{6}$" maxlength="7"/>
+              <input type="color" class="form-control" style="max-width:50px;"
+                     th:value="${appPrimaryColor}"
+                     onchange="document.querySelector('input[name=appPrimaryColor]').value = this.value"/>
+            </div>
+            <small class="text-muted">Formato HEX (ej: #F472B6)</small>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Color secundario</label>
+            <div class="input-group">
+              <input type="text" name="appSecondaryColor" class="form-control"
+                     th:value="${appSecondaryColor}" placeholder="#8B5CF6"
+                     pattern="^#[0-9A-Fa-f]{6}$" maxlength="7"/>
+              <input type="color" class="form-control" style="max-width:50px;"
+                     th:value="${appSecondaryColor}"
+                     onchange="document.querySelector('input[name=appSecondaryColor]').value = this.value"/>
+            </div>
+            <small class="text-muted">Formato HEX (ej: #8B5CF6)</small>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Zona horaria</label>
+            <input type="text" name="appTimezone" class="form-control"
+                   th:value="${appTimezone}" placeholder="America/Santiago"
+                   maxlength="50"/>
+            <small class="text-muted">IANA timezone (ej: America/Santiago)</small>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Locale</label>
+            <input type="text" name="appLocale" class="form-control"
+                   th:value="${appLocale}" placeholder="es_CL"
+                   maxlength="10"/>
+            <small class="text-muted">Ej: es_CL, en_US, pt_BR</small>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Moneda</label>
+            <input type="text" name="appCurrency" class="form-control"
+                   th:value="${appCurrency}" placeholder="CLP"
+                   maxlength="10"/>
+            <small class="text-muted">Ej: CLP, USD, ARS, MXN</small>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Consejo del servicio</label>
+            <input type="text" name="appServiceTip" class="form-control"
+                   th:value="${appServiceTip}" 
+                   placeholder="Llega con las uñas limpias y sin esmalte"
+                   maxlength="200"/>
+            <small class="text-muted">Visible en emails de confirmación</small>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Portal de reservas -->
     <div class="card table-card mb-4">

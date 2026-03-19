@@ -37,6 +37,7 @@ public class WhatsAppService {
 
     private final WhatsAppConfig config;
     private final RestTemplate restTemplate;
+    private final AppSettingsService appSettingsService;
 
     public Optional<MediaDownloadResult> downloadImageByMediaId(String mediaId) {
         if (mediaId == null || mediaId.isBlank()) {
@@ -190,7 +191,7 @@ public class WhatsAppService {
 
             String fechaFormateada = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime())
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
-                            new Locale("es", "CL")));
+                            resolveAppLocale()));
 
             String message = String.format(
                     "💅 *Tu cita está confirmada - BunnyCure*\n\n" +
@@ -227,7 +228,7 @@ public class WhatsAppService {
 
             String fechaFormateada = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime())
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
-                            new Locale("es", "CL")));
+                            resolveAppLocale()));
 
             String message = String.format(
                     "❌ *Cita cancelada - BunnyCure*\n\n" +
@@ -261,7 +262,7 @@ public class WhatsAppService {
 
             String fechaFormateada = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime())
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
-                            new Locale("es", "CL")));
+                            resolveAppLocale()));
 
             String message = String.format(
                     "⏰ *Recordatorio de cita - BunnyCure*\n\n" +
@@ -297,7 +298,7 @@ public class WhatsAppService {
 
             String fechaFormateada = request.getPreferredDate()
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
-                            new Locale("es", "CL")));
+                            resolveAppLocale()));
 
             String message = String.format(
                     "🐇 *Recibimos tu solicitud - BunnyCure*\n\n" +
@@ -333,7 +334,7 @@ public class WhatsAppService {
 
             String fechaFormateada = request.getPreferredDate()
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
-                            new Locale("es", "CL")));
+                            resolveAppLocale()));
 
             String message = String.format(
                     "❌ *Solicitud no disponible - BunnyCure*\n\n" +
@@ -506,7 +507,7 @@ public class WhatsAppService {
         }
 
         String fecha = request.getPreferredDate() != null
-                ? request.getPreferredDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")))
+                ? request.getPreferredDate().format(shortDateFormatter())
                 : "-";
         String servicio = request.getService() != null && request.getService().getName() != null
                 ? request.getService().getName()
@@ -567,7 +568,7 @@ public class WhatsAppService {
         }
 
         String fecha = appointment.getAppointmentDate()
-                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")));
+                .format(shortDateFormatter());
         String hora = appointment.getAppointmentTime()
                 .format(DateTimeFormatter.ofPattern("HH:mm"));
         String servicio = appointment.getService().getName();
@@ -602,7 +603,7 @@ public class WhatsAppService {
         }
 
         String fecha = appointment.getAppointmentDate()
-                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")));
+                .format(shortDateFormatter());
         String hora = appointment.getAppointmentTime()
                 .format(DateTimeFormatter.ofPattern("HH:mm"));
         String servicio = appointment.getService().getName();
@@ -636,7 +637,7 @@ public class WhatsAppService {
         }
 
         String fecha = appointment.getAppointmentDate()
-                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")));
+                .format(shortDateFormatter());
         String hora = appointment.getAppointmentTime()
                 .format(DateTimeFormatter.ofPattern("HH:mm"));
         String servicio = appointment.getService().getName();
@@ -669,7 +670,7 @@ public class WhatsAppService {
         }
 
         String fecha = request.getPreferredDate()
-                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")));
+                .format(shortDateFormatter());
         String servicio = request.getService().getName();
         String cliente = request.getFullName();
         String bloque = request.getPreferredBlock();
@@ -701,7 +702,7 @@ public class WhatsAppService {
         }
 
         String fecha = request.getPreferredDate()
-                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")));
+                .format(shortDateFormatter());
         String servicio = request.getService().getName();
         String cliente = request.getFullName();
         String bloque = request.getPreferredBlock();
@@ -754,7 +755,7 @@ public class WhatsAppService {
                 ? request.getService().getName()
                 : "(sin servicio)";
         String preferredDate = request.getPreferredDate() != null
-                ? request.getPreferredDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy", new Locale("es", "CL")))
+                ? request.getPreferredDate().format(shortDateFormatter())
                 : "(sin fecha)";
         String preferredBlock = formatPreferredBlock(request.getPreferredBlock());
         String notes = request.getNotes() != null && !request.getNotes().isBlank()
@@ -815,6 +816,19 @@ public class WhatsAppService {
 
     private String safeValue(String value) {
         return (value == null || value.isBlank()) ? "-" : value.trim();
+    }
+
+    private Locale resolveAppLocale() {
+        try {
+            return appSettingsService.getAppJavaLocale();
+        } catch (Exception ex) {
+            log.warn("[WHATSAPP] No se pudo resolver app.locale, usando fallback es_CL", ex);
+            return new Locale("es", "CL");
+        }
+    }
+
+    private DateTimeFormatter shortDateFormatter() {
+        return DateTimeFormatter.ofPattern("dd/MM/yyyy", resolveAppLocale());
     }
 
     public record MediaDownloadResult(byte[] content, String mimeType, String sha256) {

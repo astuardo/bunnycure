@@ -37,6 +37,15 @@ public class DataInitializer implements CommandLineRunner {
     @Value("${bunnycure.admin.password:changeme-local-only}")
     private String adminPassword;
 
+    @Value("${bunnycure.admin.full-name:Administrador Local}")
+    private String adminFullName;
+
+    @Value("${bunnycure.admin.email:admin@local.test}")
+    private String adminEmail;
+
+    @Value("${bunnycure.demo.customers.enabled:true}")
+    private boolean demoCustomersEnabled;
+
     @Override
     public void run(String ... args) {
 
@@ -49,8 +58,8 @@ public class DataInitializer implements CommandLineRunner {
             adminUser = User.builder()
                     .username(adminUsername)
                     .password(passwordEncoder.encode(adminPassword))
-                    .fullName("Administrador")
-                    .email("admin@bunnycure.local")
+                    .fullName(adminFullName)
+                    .email(adminEmail)
                     .enabled(true)
                     .role("ADMIN")
                     .build();
@@ -139,26 +148,44 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         // ── Clientes de prueba ───────────────────────────────────────────────
-        if (customerRepository.count() == 0) {
+        if (demoCustomersEnabled && customerRepository.count() == 0) {
             customerRepository.saveAll(List.of(
-                    new Customer("María González",   "+56912345678", "astuardobonilla@gmail.com"),
-                    new Customer("Valentina López",  "+56987654321", "astuardobonilla@test.com"),
-                    new Customer("Javiera Muñoz",    "+56911223344", "astuardobonilla@test2.com")
+                    new Customer("Cliente Demo 1", "+56990000001", "demo1@local.test"),
+                    new Customer("Cliente Demo 2", "+56990000002", "demo2@local.test"),
+                    new Customer("Cliente Demo 3", "+56990000003", "demo3@local.test")
             ));
             log.info("✅ Clientes de prueba inicializados");
+        } else if (!demoCustomersEnabled) {
+            log.info("ℹ️ Seed de clientes demo deshabilitado por configuración");
         }
 
         // ── Settings por defecto ─────────────────────────────────────────────
         if (appSettingsRepository.count() == 0) {
             appSettingsRepository.saveAll(List.of(
                     new AppSettings("booking.enabled",                  "true",  "Portal de reservas habilitado"),
-                    new AppSettings("whatsapp.number",                  "56988873031", "Número WhatsApp humano (legacy)"),
-                    new AppSettings("whatsapp.human.number",            "56988873031", "Número WhatsApp atención humana"),
-                    new AppSettings("whatsapp.admin-alert.number",      "56964499995", "Número WhatsApp alertas internas de reservas"),
-                    new AppSettings("whatsapp.human.display-name",      "Equipo BunnyCure", "Nombre visible atención humana"),
+                    new AppSettings("whatsapp.number",                  "56990000010", "Número WhatsApp humano (legacy)"),
+                    new AppSettings("whatsapp.human.number",            "56990000010", "Número WhatsApp atención humana"),
+                    new AppSettings("whatsapp.admin-alert.number",      "56990000011", "Número WhatsApp alertas internas de reservas"),
+                    new AppSettings("whatsapp.human.display-name",      "Equipo de soporte", "Nombre visible atención humana"),
                     new AppSettings("whatsapp.handoff.enabled",         "true", "Habilita derivación a atención humana"),
                     new AppSettings("whatsapp.handoff.client-message",  "Si necesitas ayuda personalizada, escríbenos al WhatsApp de atención humana: {numero}.", "Mensaje de derivación al cliente"),
-                    new AppSettings("whatsapp.handoff.admin-prefill",   "Hola {nombre}, te escribe BunnyCure por tu solicitud o cita. Te contacto para ayudarte personalmente.", "Mensaje prellenado para atención manual"),
+                    new AppSettings("whatsapp.handoff.admin-prefill",   "Hola {nombre}, te escribimos por tu solicitud o cita. Te contacto para ayudarte personalmente.", "Mensaje prellenado para atención manual"),
+                    new AppSettings("whatsapp.template.confirmation.name", "confirmacion_cita", "Template WhatsApp para confirmación de cita"),
+                    new AppSettings("whatsapp.template.reminder.name", "recordatorio_cita", "Template WhatsApp para recordatorio de cita"),
+                    new AppSettings("whatsapp.template.cancellation.name", "cancelacion_cita", "Template WhatsApp para cancelación de cita"),
+                    new AppSettings("whatsapp.template.booking-review.name", "agenda_en_revision", "Template WhatsApp para agenda en revisión"),
+                    new AppSettings("whatsapp.template.booking-rejected.name", "solicitud_rechazada", "Template WhatsApp para solicitud rechazada"),
+                    new AppSettings("whatsapp.template.admin-alert.name", "", "Template WhatsApp para alertas internas al admin"),
+                    new AppSettings("whatsapp.template.language", "es_CL", "Idioma default para templates WhatsApp"),
+                    new AppSettings("whatsapp.template.admin-alert.language", "es_CL", "Idioma para template de alerta admin"),
+                    new AppSettings("whatsapp.template.confirmation.enabled", "true", "Habilita template de confirmación"),
+                    new AppSettings("whatsapp.template.reminder.enabled", "true", "Habilita template de recordatorio"),
+                    new AppSettings("whatsapp.template.cancellation.enabled", "true", "Habilita template de cancelación"),
+                    new AppSettings("whatsapp.template.booking-review.enabled", "true", "Habilita template de agenda en revisión"),
+                    new AppSettings("whatsapp.template.booking-rejected.enabled", "true", "Habilita template de solicitud rechazada"),
+                    new AppSettings("whatsapp.template.admin-alert.enabled", "false", "Habilita template de alerta admin"),
+                    new AppSettings("whatsapp.admin.booking-requests.url", "", "URL del panel admin para solicitudes de reserva"),
+                    new AppSettings("whatsapp.business.name", "Negocio Demo", "Nombre del negocio para contexto WhatsApp"),
                     new AppSettings("booking.message.template",
                             "Hola Bunny Cure! [conejo]\nMe gustar\u00EDa reservar una cita:\n\u2022 Servicio: {servicio}\n\u2022 Fecha: {fecha}\n\u2022 Bloque: {bloque}\n\u2022 Nombre: {nombre}\n\u2022 Tel\u00E9fono: {telefono}\n\u00BFTienen disponibilidad?",
                             "Template mensaje WhatsApp"),

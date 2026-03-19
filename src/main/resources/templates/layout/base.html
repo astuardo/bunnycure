@@ -21,6 +21,9 @@
             --bc-purple: #8B5CF6;
             --bc-pink:   #EC4899;
             --bc-grad:   linear-gradient(135deg, #8B5CF6, #EC4899);
+            --app-primary: [[${appPrimaryColor ?: '#F472B6'}]];
+            --app-secondary: [[${appSecondaryColor ?: '#8B5CF6'}]];
+            --app-grad: linear-gradient(135deg, var(--app-secondary), var(--app-primary));
         }
 
         body { background-color: #F9FAFB; font-family: 'Segoe UI', sans-serif; }
@@ -29,7 +32,7 @@
         .sidebar {
             width: 240px;
             min-height: 100vh;
-            background: var(--bc-grad);
+            background: var(--app-grad);
             position: fixed;
             top: 0; left: 0;
             display: flex;
@@ -177,10 +180,10 @@
             <div style="font-size:1.6rem; line-height:1;">🐰</div>
             <div>
                 <div class="fw-bold text-white" style="font-size:1rem; letter-spacing:-.2px;">
-                    Bunny Cure
+                    <span th:text="${appName ?: 'BunnyCure'}">BunnyCure</span>
                 </div>
                 <div class="text-white" style="font-size:.68rem; opacity:.75; line-height:1.2;">
-                    Arte en tus manos ✨
+                    <span th:text="${appSlogan ?: 'Arte en tus manos ✨'}">Arte en tus manos ✨</span>
                 </div>
             </div>
         </div>

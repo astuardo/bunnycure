@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -136,5 +137,88 @@ public class AppSettingsService {
     /** true cuando la estrategia activa el recordatorio del día anterior a las 09:00 */
     public boolean isReminderDayBeforeEnabled() {
         return REMINDER_STRATEGY_DAY_BEFORE.equals(getReminderStrategy());
+    }
+
+    // ── Identidad & Branding (Fase 1) ───────────────────────────────────────
+
+    /** Nombre del negocio. Default: "BunnyCure" */
+    public String getAppName() {
+        return get("app.name", "BunnyCure");
+    }
+
+    /** Eslogan del negocio. Default: "Arte en tus manos ✨" */
+    public String getAppSlogan() {
+        return get("app.slogan", "Arte en tus manos ✨");
+    }
+
+    /** Email del negocio. Default: "contacto@bunnycure.cl" */
+    public String getAppEmail() {
+        return get("app.email", "contacto@bunnycure.cl");
+    }
+
+    /** URL del logo del negocio */
+    public String getAppLogoUrl() {
+        return get("app.logo-url", "/images/logo.png");
+    }
+
+    /** Color primario en formato HEX. Default: "#F472B6" (rosa BunnyCure) */
+    public String getAppPrimaryColor() {
+        return get("app.primary-color", "#F472B6");
+    }
+
+    /** Color secundario en formato HEX. Default: "#8B5CF6" (púrpura BunnyCure) */
+    public String getAppSecondaryColor() {
+        return get("app.secondary-color", "#8B5CF6");
+    }
+
+    /** Zona horaria del negocio. Default: "America/Santiago" */
+    public String getAppTimezone() {
+        return get("app.timezone", "America/Santiago");
+    }
+
+    /** Locale del negocio (ej: "es_CL"). Default: "es_CL" */
+    public String getAppLocale() {
+        return get("app.locale", "es_CL");
+    }
+
+    /**
+     * Locale del negocio parseado para uso en Java.
+     * Acepta formatos "es_CL", "es-CL" y language tags BCP-47.
+     */
+    public Locale getAppJavaLocale() {
+        String configured = getAppLocale();
+        if (configured == null || configured.isBlank()) {
+            return new Locale("es", "CL");
+        }
+
+        String normalized = configured.trim().replace('-', '_');
+
+        try {
+            if (normalized.contains("_")) {
+                String[] parts = normalized.split("_", 3);
+                if (parts.length >= 2 && !parts[0].isBlank() && !parts[1].isBlank()) {
+                    return new Locale(parts[0].toLowerCase(Locale.ROOT), parts[1].toUpperCase(Locale.ROOT));
+                }
+            }
+
+            Locale fromTag = Locale.forLanguageTag(configured.replace('_', '-'));
+            if (fromTag.getLanguage() != null && !fromTag.getLanguage().isBlank()) {
+                return fromTag;
+            }
+        } catch (Exception ignored) {
+            // Keep fallback below when locale format is invalid.
+        }
+
+        return new Locale("es", "CL");
+    }
+
+    /** Moneda del negocio (ej: "CLP"). Default: "CLP" */
+    public String getAppCurrency() {
+        return get("app.currency", "CLP");
+    }
+
+    /** Consejo personalizado para el servicio del negocio (se usa en emails) */
+    public String getAppServiceTip() {
+        return get("app.service-tip", "Llega con las uñas limpias y sin esmalte");
     }
 }

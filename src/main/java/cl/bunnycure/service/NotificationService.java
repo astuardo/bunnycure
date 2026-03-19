@@ -29,6 +29,7 @@ public class NotificationService {
     private final TemplateEngine templateEngine;
     private final WhatsAppService whatsAppService;
     private final WhatsAppAdminAlertOutboxService whatsAppAdminAlertOutboxService;
+    private final AppSettingsService appSettingsService;
 
     @Value("${bunnycure.mail.enabled:false}")
     private boolean mailEnabled;
@@ -93,10 +94,9 @@ public class NotificationService {
         if (mailEnabled && request != null && request.getEmail() != null && !request.getEmail().isBlank()) {
             try {
                 String fechaFormateada = request.getPreferredDate()
-                        .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
-                                new Locale("es", "CL")));
+                        .format(longDateFormatter());
 
-                Context ctx = new Context(new Locale("es", "CL"));
+                Context ctx = new Context(resolveAppLocale());
                 ctx.setVariable("request",          request);
                 ctx.setVariable("customerName",     request.getFullName());
                 ctx.setVariable("serviceName",      request.getService().getName());
@@ -127,7 +127,7 @@ public class NotificationService {
         // Enviar email si está configurado
         if (mailEnabled && request != null && request.getEmail() != null && !request.getEmail().isBlank()) {
             try {
-                Context ctx = new Context(new Locale("es", "CL"));
+                Context ctx = new Context(resolveAppLocale());
                 ctx.setVariable("request",          request);
                 ctx.setVariable("customerName",     request.getFullName());
                 ctx.setVariable("serviceName",      request.getService().getName());
@@ -181,7 +181,7 @@ public class NotificationService {
      */
     public String buildWhatsAppConfirmationUrl(Appointment appointment) {
         DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern(
-                "EEEE dd 'de' MMMM 'de' yyyy", new Locale("es", "CL"));
+                "EEEE dd 'de' MMMM 'de' yyyy", resolveAppLocale());
         DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
 
         String msg = "\u00a1Hola " + appointment.getCustomer().getFullName() + "! \uD83D\uDC30\n"
@@ -220,10 +220,9 @@ public class NotificationService {
             }
 
             String fechaFormateada = appointment.getAppointmentDate()
-                    .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
-                            new Locale("es", "CL")));
+                    .format(longDateFormatter());
 
-            Context ctx = new Context(new Locale("es", "CL"));
+            Context ctx = new Context(resolveAppLocale());
             ctx.setVariable("appointment",     appointment);
             ctx.setVariable("customer",        appointment.getCustomer());
             ctx.setVariable("fechaFormateada", fechaFormateada);
@@ -360,6 +359,19 @@ public class NotificationService {
             log.error("[REMINDER-ERROR] Error al enviar recordatorio para cita ID {}: {}", 
                 appointment.getId(), e.getMessage());
         }
+    }
+
+    private Locale resolveAppLocale() {
+        try {
+            return appSettingsService.getAppJavaLocale();
+        } catch (Exception ex) {
+            log.warn("[MAIL] No se pudo resolver app.locale, usando fallback es_CL", ex);
+            return new Locale("es", "CL");
+        }
+    }
+
+    private DateTimeFormatter longDateFormatter() {
+        return DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy", resolveAppLocale());
     }
 
 }

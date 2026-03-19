@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,6 +40,9 @@ class AppointmentServiceTest {
     @Mock
     private ServiceCatalogService serviceCatalogService;
 
+    @Mock
+    private AppSettingsService appSettingsService;
+
     private AppointmentService appointmentService;
 
     @BeforeEach
@@ -48,7 +52,8 @@ class AppointmentServiceTest {
                 bookingRequestRepository,
                 customerService,
                 notificationService,
-                serviceCatalogService
+                serviceCatalogService,
+                appSettingsService
         );
     }
 
@@ -186,5 +191,29 @@ class AppointmentServiceTest {
 
         assertTrue(appointment.isReminderSent(),
                 "reminderSent no debe cambiar si la fecha y hora son las mismas");
+    }
+
+    @Test
+    void sendRemindersForUpcomingAppointments_shouldFallbackWhenTimezoneIsInvalid() {
+        when(appSettingsService.getAppTimezone()).thenReturn("invalid/timezone");
+        when(appointmentRepository.findPendingRemindersForDateByStatuses(anyList(), any(LocalDate.class)))
+                .thenReturn(List.of());
+
+        assertDoesNotThrow(() -> appointmentService.sendRemindersForUpcomingAppointments());
+
+        verify(appointmentRepository).findPendingRemindersForDateByStatuses(anyList(), any(LocalDate.class));
+    }
+
+    @Test
+    void sendRemindersForAppointmentsIn2Hours_shouldFallbackWhenTimezoneIsInvalid() {
+        when(appSettingsService.getAppTimezone()).thenReturn("invalid/timezone");
+        when(appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
+                anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
+                .thenReturn(List.of());
+
+        assertDoesNotThrow(() -> appointmentService.sendRemindersForAppointmentsIn2Hours());
+
+        verify(appointmentRepository).findPendingRemindersForDateAndTimeWindowByStatuses(
+                anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class));
     }
 }

@@ -19,7 +19,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
+import java.time.DayOfWeek;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -60,6 +62,7 @@ public class AppointmentController extends BaseController {
         LocalDate today = LocalDate.now();
         LocalDate base = (date != null) ? date : today;
         String viewMode = normalizeViewMode(view);
+        Locale appLocale = appSettingsService.getAppJavaLocale();
 
         LocalDate rangeStart;
         LocalDate rangeEnd;
@@ -72,21 +75,21 @@ public class AppointmentController extends BaseController {
             rangeEnd = base;
             prevDate = base.minusDays(1);
             nextDate = base.plusDays(1);
-            rangeLabel = base.format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM yyyy", new Locale("es", "CL")));
+            rangeLabel = base.format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM yyyy", appLocale));
         } else if ("month".equals(viewMode)) {
             rangeStart = base.withDayOfMonth(1);
             rangeEnd = rangeStart.with(TemporalAdjusters.lastDayOfMonth());
             prevDate = rangeStart.minusMonths(1);
             nextDate = rangeStart.plusMonths(1);
-            rangeLabel = rangeStart.format(DateTimeFormatter.ofPattern("MMMM yyyy", new Locale("es", "CL")));
+            rangeLabel = rangeStart.format(DateTimeFormatter.ofPattern("MMMM yyyy", appLocale));
         } else {
             rangeStart = base.with(java.time.DayOfWeek.MONDAY);
             rangeEnd = rangeStart.plusDays(6);
             prevDate = rangeStart.minusWeeks(1);
             nextDate = rangeStart.plusWeeks(1);
             rangeLabel = String.format("%s - %s",
-                    rangeStart.format(DateTimeFormatter.ofPattern("dd MMM", new Locale("es", "CL"))),
-                    rangeEnd.format(DateTimeFormatter.ofPattern("dd MMM yyyy", new Locale("es", "CL"))));
+                    rangeStart.format(DateTimeFormatter.ofPattern("dd MMM", appLocale)),
+                    rangeEnd.format(DateTimeFormatter.ofPattern("dd MMM yyyy", appLocale)));
         }
 
         List<Appointment> appointments = appointmentService.findByDateRange(rangeStart, rangeEnd);
@@ -149,7 +152,7 @@ public class AppointmentController extends BaseController {
             model.addAttribute("appointmentCountByDate", appointmentCountByDate);
             model.addAttribute("calendarDayCells", calendarDayCells);
             model.addAttribute("selectedDayAppointments", selectedDayAppointments);
-            model.addAttribute("weekDayNames", List.of("Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"));
+            model.addAttribute("weekDayNames", buildWeekDayNames(appLocale));
             model.addAttribute("monthStart", rangeStart);
         }
 
@@ -165,6 +168,21 @@ public class AppointmentController extends BaseController {
             case "month" -> "month";
             default -> "week";
         };
+    }
+
+    private List<String> buildWeekDayNames(Locale locale) {
+        return List.of(
+                DayOfWeek.MONDAY,
+                DayOfWeek.TUESDAY,
+                DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY,
+                DayOfWeek.FRIDAY,
+                DayOfWeek.SATURDAY,
+                DayOfWeek.SUNDAY
+        ).stream().map(day -> {
+            String shortName = day.getDisplayName(TextStyle.SHORT, locale);
+            return shortName.replace(".", "");
+        }).toList();
     }
 
     @GetMapping("/new-from-wa")

@@ -36,6 +36,9 @@ class WhatsAppServiceTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    private AppSettingsService appSettingsService;
+
     @Captor
     private ArgumentCaptor<HttpEntity<Map<String, Object>>> requestCaptor;
 
@@ -46,7 +49,7 @@ class WhatsAppServiceTest {
 
     @BeforeEach
     void setUp() {
-        whatsAppService = new WhatsAppService(config, restTemplate);
+        whatsAppService = new WhatsAppService(config, restTemplate, appSettingsService);
     }
 
     @Test
@@ -114,6 +117,7 @@ class WhatsAppServiceTest {
     void sendAppointmentConfirmation_Success() {
         // Arrange
         Appointment appointment = createTestAppointment();
+        when(appSettingsService.getAppJavaLocale()).thenReturn(java.util.Locale.forLanguageTag("es-CL"));
         when(config.isUseTemplateForConfirmation()).thenReturn(false);
         when(config.getToken()).thenReturn("test-token");
         when(config.getPhoneId()).thenReturn("123456789");
@@ -207,6 +211,7 @@ class WhatsAppServiceTest {
     void sendBookingRequestReceived_Success() {
         // Arrange
         BookingRequest request = createTestBookingRequest();
+        when(appSettingsService.getAppJavaLocale()).thenReturn(java.util.Locale.forLanguageTag("es-CL"));
         when(config.getToken()).thenReturn("test-token");
         when(config.getPhoneId()).thenReturn("123456789");
         
@@ -232,6 +237,7 @@ class WhatsAppServiceTest {
     @Test
     void sendAdminBookingAlertSync_UsesPersonalizedTextByDefault() {
         BookingRequest request = createTestBookingRequest();
+        when(appSettingsService.getAppJavaLocale()).thenReturn(java.util.Locale.forLanguageTag("es-CL"));
         when(config.getToken()).thenReturn("test-token");
         when(config.getPhoneId()).thenReturn("123456789");
         when(config.isUseTemplateForAdminAlert()).thenReturn(false);
@@ -265,6 +271,7 @@ class WhatsAppServiceTest {
     @Test
     void sendAdminBookingAlertSync_WhenTextFails_UsesCustomerTemplateAsFallback() {
         BookingRequest request = createTestBookingRequest();
+        when(appSettingsService.getAppJavaLocale()).thenReturn(java.util.Locale.forLanguageTag("es-CL"));
         when(config.getToken()).thenReturn("test-token");
         when(config.getPhoneId()).thenReturn("123456789");
         when(config.isUseTemplateForAdminAlert()).thenReturn(false);

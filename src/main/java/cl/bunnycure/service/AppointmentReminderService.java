@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Slf4j
@@ -23,11 +25,14 @@ public class AppointmentReminderService {
     private final WhatsAppService whatsAppService;
 
     /**
-     * Se ejecuta diariamente a las 08:00 AM (zona America/Santiago).
+     * Se ejecuta diariamente con cron/zone configurables via properties.
      * Solo activo cuando reminder.strategy = "morning" o "both".
      * Envía recordatorios de citas para hoy a los clientes.
      */
-    @Scheduled(cron = "0 0 8 * * *", zone = "America/Santiago")
+    @Scheduled(
+            cron = "${bunnycure.reminder.morning.cron:0 0 8 * * *}",
+            zone = "${bunnycure.scheduler.timezone:America/Santiago}"
+    )
     @Transactional
     public void sendDailyReminders() {
         if (!appSettingsService.isReminderMorningEnabled()) {
@@ -38,7 +43,7 @@ public class AppointmentReminderService {
 
         log.info("[REMINDER] Iniciando envío de recordatorios diarios...");
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = getNowInConfiguredZone().toLocalDate();
         List<Appointment> pendingReminders = appointmentRepository.findPendingRemindersForDateByStatuses(
                 List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
                 today
@@ -174,5 +179,19 @@ public class AppointmentReminderService {
         appointmentRepository.save(appointment);
 
         log.info("[REMINDER] ✅ Recordatorio manual enviado exitosamente para cita ID: {}", appointmentId);
+    }
+
+    private ZonedDateTime getNowInConfiguredZone() {
+        return ZonedDateTime.now(resolveReminderZoneId());
+    }
+
+    private ZoneId resolveReminderZoneId() {
+        String timezone = appSettingsService.getAppTimezone();
+        try {
+            return ZoneId.of(timezone);
+        } catch (Exception ex) {
+            log.warn("[REMINDER] Timezone invalida '{}' en app settings. Usando fallback America/Santiago", timezone);
+            return ZoneId.of("America/Santiago");
+        }
     }
 }

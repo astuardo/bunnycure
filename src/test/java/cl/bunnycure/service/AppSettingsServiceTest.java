@@ -8,6 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Locale;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -97,5 +98,38 @@ class AppSettingsServiceTest {
         assertTrue(appSettingsService.isReminderDayBeforeEnabled());
         assertFalse(appSettingsService.isReminderMorningEnabled());
         assertFalse(appSettingsService.isReminder2HoursEnabled());
+    }
+
+    @Test
+    void getAppJavaLocale_UsesUnderscoreFormat() {
+        when(repository.findById("app.locale"))
+                .thenReturn(Optional.of(new AppSettings("app.locale", "es_CL", null)));
+
+        Locale locale = appSettingsService.getAppJavaLocale();
+
+        assertEquals("es", locale.getLanguage());
+        assertEquals("CL", locale.getCountry());
+    }
+
+    @Test
+    void getAppJavaLocale_UsesLanguageTagFormat() {
+        when(repository.findById("app.locale"))
+                .thenReturn(Optional.of(new AppSettings("app.locale", "en-US", null)));
+
+        Locale locale = appSettingsService.getAppJavaLocale();
+
+        assertEquals("en", locale.getLanguage());
+        assertEquals("US", locale.getCountry());
+    }
+
+    @Test
+    void getAppJavaLocale_FallsBackWhenInvalid() {
+        when(repository.findById("app.locale"))
+                .thenReturn(Optional.of(new AppSettings("app.locale", "", null)));
+
+        Locale locale = appSettingsService.getAppJavaLocale();
+
+        assertEquals("es", locale.getLanguage());
+        assertEquals("CL", locale.getCountry());
     }
 }
