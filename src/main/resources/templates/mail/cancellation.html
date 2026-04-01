@@ -92,11 +92,13 @@
   <div class="footer">
     <strong th:text="${appName ?: 'BunnyCure'} + ' 🐰'">Bunny Cure 🐰</strong><br/>
     <span th:text="${appSlogan ?: 'Arte en tus manos'} + ' · Manicure especializada en uña natural'"></span><br/>
-    <a href="https://www.instagram.com/bunny.cure"
-       style="color:var(--app-secondary);text-decoration:none;">@bunny.cure</a>
+    <a th:href="${appInstagramUrl}" href="https://www.instagram.com/bunny.cure"
+       style="color:var(--app-secondary);text-decoration:none;"
+       th:text="${appInstagramHandle}">@bunny.cure</a>
     ·
-    <a href="https://www.bunnycure.cl"
-       style="color:var(--app-secondary);text-decoration:none;">bunnycure.cl</a>
+    <a th:href="${appWebsiteUrl}" href="https://www.bunnycure.cl"
+       style="color:var(--app-secondary);text-decoration:none;"
+       th:text="${appWebsiteUrl}">bunnycure.cl</a>
     <br/><br/>
     <span style="font-size:11px;">
             Este mensaje fue enviado automáticamente por [[${appName ?: 'BunnyCure'}]], por favor no respondas este correo.

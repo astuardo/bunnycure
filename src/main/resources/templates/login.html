@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>BunnyCure – Login</title>
+    <title th:text="${appName != null ? appName + ' – Login' : 'BunnyCure – Login'}">BunnyCure – Login</title>
     <link rel="icon" type="image/png" th:href="@{/images/logo.png}" href="/images/logo.png"/>
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
@@ -16,7 +16,7 @@
 <div class="card p-4" style="width: 380px;">
 
     <div class="text-center mb-4">
-        <h2 class="fw-bold">🐇 BunnyCure</h2>
+        <h2 class="fw-bold">🐇 <span th:text="${appName ?: 'BunnyCure'}">BunnyCure</span></h2>
         <p class="text-muted small">Panel Administrativo</p>
     </div>
 

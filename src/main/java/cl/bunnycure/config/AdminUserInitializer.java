@@ -30,6 +30,12 @@ public class AdminUserInitializer {
     @Value("${bunnycure.admin.password:}")
     private String adminPassword;
 
+    @Value("${bunnycure.admin.full-name:Administrador}")
+    private String adminFullName;
+
+    @Value("${bunnycure.admin.email:admin@bunnycure.cl}")
+    private String adminEmail;
+
     @Bean
     public CommandLineRunner initAdminUser(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
@@ -67,13 +73,13 @@ public class AdminUserInitializer {
                     User adminNewUser = User.builder()
                             .username(adminUsername)
                             .password(passwordEncoder.encode(adminPassword))
-                            .fullName("Administrador")
-                            .email("admin@bunnycure.cl")
+                            .fullName(adminFullName)
+                            .email(adminEmail)
                             .enabled(true)
                             .role("ADMIN")
                             .build();
                     userRepository.save(adminNewUser);
-                    log.info("[INIT] Admin user '{}' created successfully", adminUsername);
+                    log.info("[INIT] Admin user '{}' created successfully with email {}", adminUsername, adminEmail);
                 }
             } catch (Exception e) {
                 log.error("[INIT] Error initializing admin user", e);

@@ -141,9 +141,9 @@
       @bunny.cure
     </a>
     ·
-    <a href="https://www.bunnycure.cl"
+    <a th:href="${appWebsiteUrl}" href="https://www.bunnycure.cl"
        style="color:var(--app-secondary);text-decoration:none;">
-      bunnycure.cl
+      <span th:text="${#strings.replace(appWebsiteUrl, 'https://www.', '')}">bunnycure.cl</span>
     </a>
     <br/><br/>
     <span style="font-size:11px;">

@@ -43,5 +43,11 @@ public class BrandingModelAttributeInterceptor implements HandlerInterceptor {
         modelAndView.addObject("appLocale", settingsService.getAppLocale());
         modelAndView.addObject("appCurrency", settingsService.getAppCurrency());
         modelAndView.addObject("appServiceTip", settingsService.getAppServiceTip());
+
+        // ── Variables de Contacto & Redes (Fase 2) ────────────────────────────
+        modelAndView.addObject("appWebsiteUrl", settingsService.getAppWebsiteUrl());
+        modelAndView.addObject("appInstagramUrl", settingsService.getAppInstagramUrl());
+        modelAndView.addObject("appInstagramHandle", settingsService.getAppInstagramHandle());
+        modelAndView.addObject("appPhoneDisplay", settingsService.getAppPhoneDisplay());
     }
 }

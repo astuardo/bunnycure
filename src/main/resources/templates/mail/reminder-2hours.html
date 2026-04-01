@@ -170,15 +170,17 @@
             Si no puedes asistir, avísanos ahora mismo
         </p>
         <p style="text-align: center;">
-            <a href="https://bunnycure.cl" class="action-button">Ir a Bunny Cure</a>
+            <a th:href="${appWebsiteUrl}" href="https://bunnycure.cl" class="action-button">
+                Ir a <span th:text="${appName}">Bunny Cure</span>
+            </a>
         </p>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-        <p><strong>Bunny Cure</strong> - Salón de Belleza</p>
-        <p>📞 +56 9 6449 9995</p>
-        <p>📧 contacto@bunnycure.cl</p>
+        <p><strong th:text="${appName}">Bunny Cure</strong> - <span th:text="${appSlogan}">Salón de Belleza</span></p>
+        <p>📞 <span th:text="${appPhoneDisplay}">+56 9 6449 9995</span></p>
+        <p>📧 <span th:text="${appEmail}">contacto@bunnycure.cl</span></p>
         <p style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
             Este es un email automático. Por favor no responder a este mensaje.
         </p>

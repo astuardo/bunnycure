@@ -221,4 +221,26 @@ public class AppSettingsService {
     public String getAppServiceTip() {
         return get("app.service-tip", "Llega con las uñas limpias y sin esmalte");
     }
+
+    // ── Contacto & Redes Sociales (Fase 2) ───────────────────────────────────
+
+    /** URL del sitio web principal. Default: "https://www.bunnycure.cl" */
+    public String getAppWebsiteUrl() {
+        return get("app.website.url", "https://www.bunnycure.cl");
+    }
+
+    /** URL de Instagram. Default: "https://www.instagram.com/bunny.cure" */
+    public String getAppInstagramUrl() {
+        return get("app.instagram.url", "https://www.instagram.com/bunny.cure");
+    }
+
+    /** Handle de Instagram. Default: "@bunny.cure" */
+    public String getAppInstagramHandle() {
+        return get("app.instagram.handle", "@bunny.cure");
+    }
+
+    /** Teléfono para display (humano). Default: "+56 9 6449 9995" */
+    public String getAppPhoneDisplay() {
+        return get("app.phone.display", "+56 9 6449 9995");
+    }
 }
