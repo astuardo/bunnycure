@@ -75,7 +75,8 @@ public class AppointmentService {
                 .build();
         var saved = appointmentRepository.save(appointment);
 
-        notificationService.sendConfirmation(saved);
+        // Enviar notificaciones respetando preferencias del cliente + notificar admin
+        notificationService.sendAppointmentConfirmation(saved);
         saved.setNotificationSent(true);
         appointmentRepository.save(saved);
     }
