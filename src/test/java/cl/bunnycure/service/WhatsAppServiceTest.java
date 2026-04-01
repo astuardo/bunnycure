@@ -39,6 +39,9 @@ class WhatsAppServiceTest {
     @Mock
     private AppSettingsService appSettingsService;
 
+    @Mock
+    private CalendarService calendarService;
+
     @Captor
     private ArgumentCaptor<HttpEntity<Map<String, Object>>> requestCaptor;
 
@@ -49,7 +52,7 @@ class WhatsAppServiceTest {
 
     @BeforeEach
     void setUp() {
-        whatsAppService = new WhatsAppService(config, restTemplate, appSettingsService);
+        whatsAppService = new WhatsAppService(config, restTemplate, appSettingsService, calendarService);
     }
 
     @Test
