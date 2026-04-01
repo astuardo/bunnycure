@@ -45,6 +45,7 @@
                             Cliente <span class="text-danger">*</span>
                         </label>
                         <select th:field="*{customerId}"
+                                id="customerSelect"
                                 th:classappend="${#fields.hasErrors('customerId')} ? 'is-invalid' : ''"
                                 class="form-select">
                             <option value="">Selecciona un cliente...</option>
@@ -54,6 +55,13 @@
                             </option>
                         </select>
                         <div class="invalid-feedback" th:errors="*{customerId}"></div>
+                        <div class="form-text">
+                            <i class="bi bi-info-circle"></i>
+                            ¿Cliente no está en la lista? 
+                            <a href="/customers/new" target="_blank" class="text-decoration-none">
+                                <i class="bi bi-plus-circle"></i> Crear nuevo cliente
+                            </a>
+                        </div>
                     </div>
 
                     <!-- Tipo de servicio -->

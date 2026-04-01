@@ -58,7 +58,13 @@ public class BookingRequestService {
 
         // Guarda o actualiza ficha del cliente desde el primer registro de reserva.
         Customer customer = customerRepository.findByPhone(dto.getPhone())
-                .orElseGet(() -> customerRepository.save(new Customer(dto.getFullName(), dto.getPhone(), dto.getEmail())));
+                .orElseGet(() -> {
+                    var newCustomer = new Customer(dto.getFullName(), dto.getPhone(), dto.getEmail());
+                    newCustomer.setNotificationPreference(dto.getNotificationPreference() != null 
+                        ? dto.getNotificationPreference() 
+                        : cl.bunnycure.domain.enums.NotificationPreference.BOTH);
+                    return customerRepository.save(newCustomer);
+                });
         syncCustomerFromRequest(customer, dto);
         customerRepository.save(customer);
 
@@ -73,6 +79,7 @@ public class BookingRequestService {
                 .preferredBlock(dto.getPreferredBlock())
                 .notes(dto.getNotes())
                 .emergencyPhone(dto.getEmergencyPhone())
+                .notificationPreference(dto.getNotificationPreference())
                 .status(BookingRequestStatus.PENDING)
                 .build();
 
@@ -115,6 +122,12 @@ public class BookingRequestService {
                             request.getPhone(),
                             email
                     );
+                    // Establecer preferencia desde BookingRequest
+                    if (request.getNotificationPreference() != null) {
+                        newCustomer.setNotificationPreference(request.getNotificationPreference());
+                    } else {
+                        newCustomer.setNotificationPreference(cl.bunnycure.domain.enums.NotificationPreference.BOTH);
+                    }
                     return customerRepository.save(newCustomer);
                 });
 
@@ -193,6 +206,11 @@ public class BookingRequestService {
         if (requestNotes != null) {
             customer.setHealthNotes(requestNotes);
         }
+        
+        // Actualizar preferencia de notificación
+        if (request.getNotificationPreference() != null) {
+            customer.setNotificationPreference(request.getNotificationPreference());
+        }
     }
 
     private void syncCustomerFromRequest(Customer customer, BookingRequestDto dto) {
@@ -207,6 +225,11 @@ public class BookingRequestService {
         String requestNotes = normalizeNullable(dto.getNotes());
         if (requestNotes != null) {
             customer.setHealthNotes(requestNotes);
+        }
+        
+        // Actualizar preferencia de notificación
+        if (dto.getNotificationPreference() != null) {
+            customer.setNotificationPreference(dto.getNotificationPreference());
         }
     }
 

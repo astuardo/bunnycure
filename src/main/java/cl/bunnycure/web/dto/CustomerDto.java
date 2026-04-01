@@ -1,5 +1,6 @@
 package cl.bunnycure.web.dto;
 
+import cl.bunnycure.domain.enums.NotificationPreference;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,9 +29,8 @@ public class CustomerDto {
     @Pattern(regexp = "^\\+?[0-9]{8,15}$", message = "Formato de teléfono inválido")
     private String phone;
 
-    @NotBlank(message = "El email es obligatorio")
     @Email(message = "Email inválido")
-    private String email;
+    private String email;  // Ahora es opcional
 
     @Pattern(regexp = "^$|^(?i)(MASCULINO|FEMENINO)$", message = "El género debe ser Masculino o Femenino")
     private String gender;
@@ -45,4 +45,7 @@ public class CustomerDto {
 
     @Size(max = 500)
     private String notes;
+
+    @NotNull(message = "La preferencia de notificación es obligatoria")
+    private NotificationPreference notificationPreference;
 }

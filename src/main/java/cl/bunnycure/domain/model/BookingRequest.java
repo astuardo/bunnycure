@@ -1,6 +1,7 @@
 package cl.bunnycure.domain.model;
 
 import cl.bunnycure.domain.enums.BookingRequestStatus;
+import cl.bunnycure.domain.enums.NotificationPreference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -54,6 +55,11 @@ public class BookingRequest {
 
     @Column(name = "emergency_phone", length = 15)
     private String emergencyPhone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "notification_preference", length = 20)
+    @Builder.Default
+    private NotificationPreference notificationPreference = NotificationPreference.BOTH;
 
     // ── Estado ───────────────────────────────────────────────
     @Enumerated(EnumType.STRING)

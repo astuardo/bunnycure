@@ -1,5 +1,6 @@
 package cl.bunnycure.web.dto;
 
+import cl.bunnycure.domain.enums.NotificationPreference;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -45,6 +46,9 @@ public class BookingRequestDto {
 
     @Pattern(regexp = "^$|^\\+56[0-9]{9}$", message = "El teléfono de emergencia debe ser +56 seguido de 9 dígitos")
     private String emergencyPhone;
+
+    @NotNull(message = "La preferencia de notificación es obligatoria")
+    private NotificationPreference notificationPreference = NotificationPreference.BOTH;
 
     @AssertTrue(message = "La edad mínima es 16 años para género masculino y 14 años para género femenino")
     public boolean isMinimumAgeValidByGender() {

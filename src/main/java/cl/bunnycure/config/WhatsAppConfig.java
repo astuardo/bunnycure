@@ -32,6 +32,7 @@ public class WhatsAppConfig {
     private String agendaEnRevisionTemplateName = "agenda_en_revision";
     private String solicitudRechazadaTemplateName = "solicitud_rechazada";
     private String adminBookingAlertTemplateName = "";
+    private String adminAppointmentAlertTemplateName = "confirmacion_hora";
 
     // Language
     private String citaConfirmadaLanguageCode = "es_CL";
@@ -44,6 +45,7 @@ public class WhatsAppConfig {
     private boolean useTemplateForBookingRequest = true;
     private boolean useTemplateForBookingRejection = true;
     private boolean useTemplateForAdminAlert = false;
+    private boolean useTemplateForAdminAppointmentAlert = true;
     private String adminBookingRequestsUrl = "";
 
     private String businessName = "BunnyCure";
@@ -58,7 +60,8 @@ public class WhatsAppConfig {
         log.info("[WHATSAPP-CONFIG]   - Cancelacion: {} (enabled={})", getCancelacionCitaTemplateName(), isUseTemplateForCancellation());
         log.info("[WHATSAPP-CONFIG]   - Agenda en revision: {} (enabled={})", getAgendaEnRevisionTemplateName(), isUseTemplateForBookingRequest());
         log.info("[WHATSAPP-CONFIG]   - Solicitud rechazada: {} (enabled={})", getSolicitudRechazadaTemplateName(), isUseTemplateForBookingRejection());
-        log.info("[WHATSAPP-CONFIG]   - Alerta admin: {} (enabled={})", getAdminBookingAlertTemplateName(), isUseTemplateForAdminAlert());
+        log.info("[WHATSAPP-CONFIG]   - Alerta admin (booking): {} (enabled={})", getAdminBookingAlertTemplateName(), isUseTemplateForAdminAlert());
+        log.info("[WHATSAPP-CONFIG]   - Alerta admin (cita creada): {} (enabled={})", getAdminAppointmentAlertTemplateName(), isUseTemplateForAdminAppointmentAlert());
         log.info("[WHATSAPP-CONFIG] Language: {}", getCitaConfirmadaLanguageCode());
         log.info("[WHATSAPP-CONFIG] Admin alert language: {}", getAdminBookingAlertLanguageCode());
         log.info("[WHATSAPP-CONFIG] Admin booking requests URL: {}", getAdminBookingRequestsUrl());
@@ -87,6 +90,10 @@ public class WhatsAppConfig {
 
     public String getAdminBookingAlertTemplateName() {
         return getDynamicSetting("whatsapp.template.admin-alert.name", adminBookingAlertTemplateName);
+    }
+
+    public String getAdminAppointmentAlertTemplateName() {
+        return getDynamicSetting("whatsapp.template.admin-appointment-alert.name", adminAppointmentAlertTemplateName);
     }
 
     public String getCitaConfirmadaLanguageCode() {
@@ -119,6 +126,10 @@ public class WhatsAppConfig {
 
     public boolean isUseTemplateForAdminAlert() {
         return getDynamicBooleanSetting("whatsapp.template.admin-alert.enabled", useTemplateForAdminAlert);
+    }
+
+    public boolean isUseTemplateForAdminAppointmentAlert() {
+        return getDynamicBooleanSetting("whatsapp.template.admin-appointment-alert.enabled", useTemplateForAdminAppointmentAlert);
     }
 
     public String getAdminBookingRequestsUrl() {

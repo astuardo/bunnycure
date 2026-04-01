@@ -68,7 +68,7 @@
                     <!-- Email -->
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">
-                            Email <span class="text-danger">*</span>
+                            Email <span class="text-muted small">(opcional)</span>
                         </label>
                         <input type="email"
                                th:field="*{email}"
@@ -83,6 +83,26 @@
                              class="form-text text-muted">
                             <i class="bi bi-info-circle"></i>
                             El email no puede modificarse.
+                        </div>
+                    </div>
+
+                    <!-- Preferencia de Notificación -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Preferencia de Notificación <span class="text-danger">*</span>
+                        </label>
+                        <select th:field="*{notificationPreference}" 
+                                class="form-select"
+                                th:classappend="${#fields.hasErrors('notificationPreference')} ? 'is-invalid'">
+                            <option value="BOTH">📧 📱 Email y WhatsApp</option>
+                            <option value="EMAIL_ONLY">📧 Solo Email</option>
+                            <option value="WHATSAPP_ONLY">📱 Solo WhatsApp</option>
+                            <option value="NONE">🔕 Sin notificaciones</option>
+                        </select>
+                        <div class="invalid-feedback" th:errors="*{notificationPreference}"></div>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            Cómo quiere recibir recordatorios y confirmaciones
                         </div>
                     </div>
 

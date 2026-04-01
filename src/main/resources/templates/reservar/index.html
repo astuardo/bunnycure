@@ -191,7 +191,7 @@
         </a>
         <p class="text-muted small mt-2 mb-0"
            th:if="${whatsappHandoffEnabled}"
-           th:text="'Atención humana por ' + ${whatsappHumanDisplayName} + ': +' + ${whatsappHumanNumber}">
+           th:text="'Atención por ' + ${whatsappHumanDisplayName} + ': +' + ${whatsappHumanNumber}">
             Atención humana por WhatsApp
         </p>
         <a href="https://instagram.com/bunny.cure"
@@ -313,6 +313,16 @@
                    data-customer-found="false"/>
             <small id="emailNote" class="text-muted d-block mt-1"></small>
         </div>
+        <div class="col-12">
+            <label class="form-label fw-semibold">¿Cómo quieres recibir las notificaciones? *</label>
+            <select id="clientNotificationPreference" class="form-select" required>
+                <option value="BOTH">📧 📱 Email y WhatsApp (recomendado)</option>
+                <option value="WHATSAPP_ONLY">📱 Solo WhatsApp</option>
+                <option value="EMAIL_ONLY">📧 Solo Email</option>
+                <option value="NONE">🔕 Sin notificaciones</option>
+            </select>
+            <small class="text-muted d-block mt-1">Recibirás recordatorios y confirmaciones de tus citas por el medio que elijas</small>
+        </div>
     </div>
 
     <hr class="my-3" style="border-color:#E9D5FF;">
@@ -405,6 +415,7 @@
         <input type="hidden" name="gender"         id="hGender"/>
         <input type="hidden" name="birthDate"      id="hBirthDate"/>
         <input type="hidden" name="email"          id="hEmail"/>
+        <input type="hidden" name="notificationPreference" id="hNotificationPreference"/>
         <input type="hidden" name="serviceId"      id="hServiceId"/>
         <input type="hidden" name="preferredDate"  id="hDate"/>
         <input type="hidden" name="preferredBlock" id="hBlock"/>
@@ -726,6 +737,7 @@
         const birthDate = document.getElementById('clientBirthDate').value;
         const emergencyPhone = document.getElementById('clientEmergencyPhone').value.trim();
         const email = document.getElementById('clientEmail').value.trim();
+        const notificationPreference = document.getElementById('clientNotificationPreference').value;
         const date  = document.getElementById('bookingDate').value;
         const notes = document.getElementById('clientNotes').value.trim();
 
@@ -762,6 +774,12 @@
             return;
         }
 
+        // Validar preferencia de notificación
+        if (!notificationPreference) {
+            alert('Por favor selecciona una preferencia de notificación');
+            return;
+        }
+
         // Validar servicio, fecha y bloque
         if (!selectedService || !date || !selectedBlock) {
             alert('Por favor completa todos los campos requeridos');
@@ -777,6 +795,7 @@
         document.getElementById('hGender').value    = gender;
         document.getElementById('hBirthDate').value = birthDate;
         document.getElementById('hEmail').value     = email;
+        document.getElementById('hNotificationPreference').value = notificationPreference;
         document.getElementById('hServiceId').value = selectedService.id;
         document.getElementById('hDate').value      = date;
         document.getElementById('hBlock').value     = selectedBlock;

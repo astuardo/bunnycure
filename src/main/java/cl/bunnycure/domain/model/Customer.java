@@ -1,5 +1,6 @@
 package cl.bunnycure.domain.model;
 
+import cl.bunnycure.domain.enums.NotificationPreference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -50,6 +51,10 @@ public class Customer {
 
     @Column(length = 500)
     private String notes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "notification_preference", nullable = false, length = 20)
+    private NotificationPreference notificationPreference = NotificationPreference.BOTH;
 
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Appointment> appointments = new ArrayList<>();

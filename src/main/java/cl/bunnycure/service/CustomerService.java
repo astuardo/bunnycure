@@ -111,15 +111,19 @@ public class CustomerService {
 
     @Transactional
     public Customer create(CustomerDto dto) {
-        if (customerRepository.existsByEmail(dto.getEmail())) {
+        // Validar email solo si se proporciona
+        if (dto.getEmail() != null && !dto.getEmail().isBlank() && customerRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("Ya existe un cliente con el email: " + dto.getEmail());
         }
-        var customer = new Customer(dto.getFullName(), dto.getPhone(), dto.getEmail());
+        var customer = new Customer(dto.getFullName(), dto.getPhone(), normalizeNullable(dto.getEmail()));
         customer.setGender(normalizeNullable(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
         customer.setEmergencyPhone(normalizeNullable(dto.getEmergencyPhone()));
         customer.setHealthNotes(normalizeNullable(dto.getHealthNotes()));
         customer.setNotes(dto.getNotes());
+        customer.setNotificationPreference(dto.getNotificationPreference() != null 
+            ? dto.getNotificationPreference() 
+            : cl.bunnycure.domain.enums.NotificationPreference.BOTH);
         return customerRepository.save(customer);
     }
 
@@ -128,12 +132,15 @@ public class CustomerService {
         var customer = findById(id);
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());
+        customer.setEmail(normalizeNullable(dto.getEmail()));
         customer.setGender(normalizeNullable(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
         customer.setEmergencyPhone(normalizeNullable(dto.getEmergencyPhone()));
         customer.setHealthNotes(normalizeNullable(dto.getHealthNotes()));
         customer.setNotes(dto.getNotes());
-        // Email no se actualiza para evitar duplicados silenciosos
+        if (dto.getNotificationPreference() != null) {
+            customer.setNotificationPreference(dto.getNotificationPreference());
+        }
         return customerRepository.save(customer);
     }
 
@@ -142,11 +149,15 @@ public class CustomerService {
         var customer = findByPublicId(publicId);
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());
+        customer.setEmail(normalizeNullable(dto.getEmail()));
         customer.setGender(normalizeNullable(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
         customer.setEmergencyPhone(normalizeNullable(dto.getEmergencyPhone()));
         customer.setHealthNotes(normalizeNullable(dto.getHealthNotes()));
         customer.setNotes(dto.getNotes());
+        if (dto.getNotificationPreference() != null) {
+            customer.setNotificationPreference(dto.getNotificationPreference());
+        }
         return customerRepository.save(customer);
     }
 

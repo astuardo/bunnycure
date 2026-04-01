@@ -38,6 +38,7 @@ public class WhatsAppService {
     private final WhatsAppConfig config;
     private final RestTemplate restTemplate;
     private final AppSettingsService appSettingsService;
+    private final CalendarService calendarService;
 
     public Optional<MediaDownloadResult> downloadImageByMediaId(String mediaId) {
         if (mediaId == null || mediaId.isBlank()) {
@@ -650,6 +651,52 @@ public class WhatsAppService {
                 cliente,
                 Arrays.asList(servicio, fecha, hora)
         );
+    }
+
+    /**
+     * Envía notificación al admin cuando se crea una cita desde el dashboard.
+     * Template: confirmacion_hora
+     * HEADER {{1}}=nombre_dueña, BODY {{1}}=cliente, {{2}}=servicio, {{3}}=fecha, {{4}}=hora, {{5}}=whatsapp_url, {{6}}=calendar_url
+     */
+    @Async
+    public void sendAdminAppointmentCreatedAlert(Appointment appointment) {
+        if (!config.isUseTemplateForAdminAppointmentAlert()) {
+            log.info("[WHATSAPP-SKIP] Template de alerta admin para cita creada está deshabilitado");
+            return;
+        }
+
+        String adminPhone = appSettingsService.getAdminAlertWhatsappNumber(null);
+        if (adminPhone == null || adminPhone.isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Número de teléfono del admin no está configurado para alertas de citas");
+            return;
+        }
+
+        String fecha = appointment.getAppointmentDate()
+                .format(shortDateFormatter());
+        String hora = appointment.getAppointmentTime()
+                .format(DateTimeFormatter.ofPattern("HH:mm"));
+        String servicio = appointment.getService().getName();
+        String cliente = appointment.getCustomer().getFullName();
+        
+        // Generar URLs para los botones/links
+        String whatsappUrl = calendarService.generateWhatsAppUrl(appointment.getCustomer().getPhone());
+        String calendarUrl = calendarService.generateGoogleCalendarUrl(appointment);
+        
+        // El nombre de la dueña puede venir de configuración o usar un valor por defecto
+        String nombreDuena = appSettingsService.get("app.owner.name", "Dueña");
+
+        sendTemplate(
+                adminPhone,
+                config.getAdminAppointmentAlertTemplateName(),
+                config.getCitaConfirmadaLanguageCode(),
+                nombreDuena,  // HEADER {{1}}
+                Arrays.asList(cliente, servicio, fecha, hora, whatsappUrl, calendarUrl)  // BODY {{1}}, {{2}}, {{3}}, {{4}}, {{5}}, {{6}}
+        );
+        
+        log.info("[WHATSAPP-ADMIN] ✅ Alerta de cita creada enviada a admin {} con links: WA={}, Cal={}", 
+                normalizePhoneNumber(adminPhone), 
+                whatsappUrl != null && !whatsappUrl.isEmpty() ? "OK" : "N/A",
+                calendarUrl != null && !calendarUrl.isEmpty() ? "OK" : "N/A");
     }
 
     /**

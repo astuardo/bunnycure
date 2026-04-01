@@ -2,6 +2,7 @@ package cl.bunnycure.service;
 
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.BookingRequest;
+import cl.bunnycure.domain.model.Customer;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,29 +57,49 @@ public class NotificationService {
     // Compatibility alias used by booking approval flow.
     @Async
     public void sendAppointmentConfirmation(Appointment appointment) {
-        // Enviar email
-        sendConfirmation(appointment);
+        if (appointment == null || appointment.getCustomer() == null) {
+            return;
+        }
         
-        // Enviar WhatsApp con template
-        if (appointment != null && appointment.getCustomer() != null && appointment.getCustomer().getPhone() != null) {
+        Customer customer = appointment.getCustomer();
+        cl.bunnycure.domain.enums.NotificationPreference pref = customer.getNotificationPreference();
+        
+        // Enviar email solo si la preferencia lo permite
+        if (pref != null && pref.allowsEmail()) {
+            sendConfirmation(appointment);
+        }
+        
+        // Enviar WhatsApp solo si la preferencia lo permite
+        if (pref != null && pref.allowsWhatsApp() && customer.getPhone() != null) {
             log.info("[NOTIFICATION] Enviando confirmación de cita por WhatsApp a {}", 
-                    appointment.getCustomer().getPhone());
+                    customer.getPhone());
             whatsAppService.sendCitaConfirmadaTemplate(appointment);
         }
+        
+        // Siempre enviar notificación al admin/dueña
+        log.info("[NOTIFICATION] Enviando alerta de nueva cita al admin");
+        whatsAppService.sendAdminAppointmentCreatedAlert(appointment);
     }
 
     @Async
     public void sendCancellationNotice(Appointment appointment) {
-        // Enviar email si está configurado
-        if (mailEnabled) {
+        if (appointment == null || appointment.getCustomer() == null) {
+            return;
+        }
+        
+        Customer customer = appointment.getCustomer();
+        cl.bunnycure.domain.enums.NotificationPreference pref = customer.getNotificationPreference();
+        
+        // Enviar email solo si está configurado Y la preferencia lo permite
+        if (mailEnabled && pref != null && pref.allowsEmail()) {
             send(appointment, "mail/cancellation",
                     "Tu cita ha sido cancelada – BunnyCure");
         }
         
-        // Enviar WhatsApp con template
-        if (appointment != null && appointment.getCustomer() != null && appointment.getCustomer().getPhone() != null) {
+        // Enviar WhatsApp solo si la preferencia lo permite
+        if (pref != null && pref.allowsWhatsApp() && customer.getPhone() != null) {
             log.info("[NOTIFICATION] Enviando notificación de cancelación por WhatsApp a {}", 
-                    appointment.getCustomer().getPhone());
+                    customer.getPhone());
             whatsAppService.sendCancelacionCitaTemplate(appointment);
         }
     }
@@ -90,8 +111,15 @@ public class NotificationService {
      */
     @Async
     public void sendBookingRequestReceived(BookingRequest request) {
-        // Enviar email si está configurado
-        if (mailEnabled && request != null && request.getEmail() != null && !request.getEmail().isBlank()) {
+        if (request == null) {
+            return;
+        }
+        
+        cl.bunnycure.domain.enums.NotificationPreference pref = request.getNotificationPreference();
+        
+        // Enviar email solo si está configurado, tiene email Y la preferencia lo permite
+        if (mailEnabled && pref != null && pref.allowsEmail() 
+                && request.getEmail() != null && !request.getEmail().isBlank()) {
             try {
                 String fechaFormateada = request.getPreferredDate()
                         .format(longDateFormatter());
@@ -111,8 +139,9 @@ public class NotificationService {
             }
         }
         
-        // Enviar WhatsApp con template
-        if (request != null && request.getPhone() != null && !request.getPhone().isBlank()) {
+        // Enviar WhatsApp solo si tiene teléfono Y la preferencia lo permite
+        if (pref != null && pref.allowsWhatsApp() 
+                && request.getPhone() != null && !request.getPhone().isBlank()) {
             log.info("[NOTIFICATION] Enviando confirmación de recepción por WhatsApp a {}", 
                     request.getPhone());
             whatsAppService.sendAgendaEnRevisionTemplate(request);
@@ -124,8 +153,15 @@ public class NotificationService {
      */
     @Async
     public void sendBookingRequestRejected(BookingRequest request) {
-        // Enviar email si está configurado
-        if (mailEnabled && request != null && request.getEmail() != null && !request.getEmail().isBlank()) {
+        if (request == null) {
+            return;
+        }
+        
+        cl.bunnycure.domain.enums.NotificationPreference pref = request.getNotificationPreference();
+        
+        // Enviar email solo si está configurado, tiene email Y la preferencia lo permite
+        if (mailEnabled && pref != null && pref.allowsEmail() 
+                && request.getEmail() != null && !request.getEmail().isBlank()) {
             try {
                 Context ctx = new Context(resolveAppLocale());
                 ctx.setVariable("request",          request);
@@ -142,8 +178,9 @@ public class NotificationService {
             }
         }
         
-        // Enviar WhatsApp con template
-        if (request != null && request.getPhone() != null && !request.getPhone().isBlank()) {
+        // Enviar WhatsApp solo si tiene teléfono Y la preferencia lo permite
+        if (pref != null && pref.allowsWhatsApp() 
+                && request.getPhone() != null && !request.getPhone().isBlank()) {
             log.info("[NOTIFICATION] Enviando rechazo de solicitud por WhatsApp a {}", 
                     request.getPhone());
             whatsAppService.sendSolicitudRechazadaTemplate(request);
@@ -311,10 +348,13 @@ public class NotificationService {
         }
 
         try {
-            String customerName = appointment.getCustomer().getFirstName();
+            Customer customer = appointment.getCustomer();
+            cl.bunnycure.domain.enums.NotificationPreference pref = customer.getNotificationPreference();
+            
+            String customerName = customer.getFirstName();
             String serviceName = appointment.getService().getName();
-            String email = appointment.getCustomer().getEmail();
-            String phone = appointment.getCustomer().getPhone();
+            String email = customer.getEmail();
+            String phone = customer.getPhone();
             String appointmentTime = appointment.getAppointmentTime() != null ? 
                     appointment.getAppointmentTime().toString() : "";
             String appointmentDate = appointment.getAppointmentDate().toString();
@@ -333,21 +373,23 @@ public class NotificationService {
                 templateName = "mail/reminder";
             }
 
-            // Enviar email
-            try {
-                Context context = new Context();
-                context.setVariable("firstName", customerName);
-                context.setVariable("serviceName", serviceName);
-                context.setVariable("appointmentTime", appointmentTime);
-                context.setVariable("appointmentDate", appointmentDate);
-                String html = templateEngine.process(templateName, context);
-                sendEmail(email, subject, html);
-            } catch (Exception e) {
-                log.warn("[MAIL-WARN] No se pudo enviar email recordatorio: {}", e.getMessage());
+            // Enviar email solo si la preferencia lo permite
+            if (pref != null && pref.allowsEmail()) {
+                try {
+                    Context context = new Context();
+                    context.setVariable("firstName", customerName);
+                    context.setVariable("serviceName", serviceName);
+                    context.setVariable("appointmentTime", appointmentTime);
+                    context.setVariable("appointmentDate", appointmentDate);
+                    String html = templateEngine.process(templateName, context);
+                    sendEmail(email, subject, html);
+                } catch (Exception e) {
+                    log.warn("[MAIL-WARN] No se pudo enviar email recordatorio: {}", e.getMessage());
+                }
             }
 
-            // Enviar WhatsApp con template
-            if (phone != null && !phone.isEmpty()) {
+            // Enviar WhatsApp solo si tiene teléfono Y la preferencia lo permite
+            if (pref != null && pref.allowsWhatsApp() && phone != null && !phone.isEmpty()) {
                 try {
                     whatsAppService.sendRecordatorioCitaTemplate(appointment);
                 } catch (Exception e) {
