@@ -269,21 +269,51 @@
 
     <!-- Datos personales (se activan después de validar teléfono) -->
     <div id="personalDataSection" class="row g-3 mb-4" style="opacity: 0.5; pointer-events: none;">
-        <div class="col-md-6">
-            <label class="form-label fw-semibold">Genero *</label>
-            <select id="clientGender" class="form-select" required>
-                <option value="">Selecciona una opcion</option>
+        <!-- Email - campo dinámico -->
+        <div class="col-12" th:if="${fieldEmailMode != 'HIDDEN'}">
+            <label class="form-label fw-semibold">
+                Tu email
+                <span th:if="${fieldEmailMode == 'REQUIRED'}" class="text-danger">*</span>
+                <span th:if="${fieldEmailMode == 'OPTIONAL'}" class="text-muted">(opcional)</span>
+            </label>
+            <input type="email" id="clientEmail" class="form-control"
+                   th:placeholder="${fieldEmailMode == 'REQUIRED' ? 'Tu email *' : 'Tu email (opcional, para confirmación por correo)'}"
+                   th:required="${fieldEmailMode == 'REQUIRED'}"
+                   maxlength="150"
+                   data-customer-found="false"/>
+            <small id="emailNote" class="text-muted d-block mt-1"></small>
+        </div>
+
+        <!-- Género - campo dinámico -->
+        <div class="col-md-6" th:if="${fieldGenderMode != 'HIDDEN'}">
+            <label class="form-label fw-semibold">
+                Género
+                <span th:if="${fieldGenderMode == 'REQUIRED'}" class="text-danger">*</span>
+                <span th:if="${fieldGenderMode == 'OPTIONAL'}" class="text-muted">(opcional)</span>
+            </label>
+            <select id="clientGender" class="form-select"
+                    th:required="${fieldGenderMode == 'REQUIRED'}">
+                <option value="">Selecciona una opción</option>
                 <option value="FEMENINO">Femenino</option>
                 <option value="MASCULINO">Masculino</option>
             </select>
-            <small class="text-muted d-block mt-1">Se usa solo para validar la edad minima.</small>
+            <small class="text-muted d-block mt-1" th:if="${fieldGenderMode == 'REQUIRED'}">Se usa solo para validar la edad mínima.</small>
         </div>
-        <div class="col-md-6">
-            <label class="form-label fw-semibold">Fecha de nacimiento *</label>
-            <input type="date" id="clientBirthDate" class="form-control" required/>
-            <small id="birthDateAgeError" class="text-danger d-none">Edad no valida para el genero seleccionado.</small>
-            <small class="text-muted d-block mt-1">Minimo: 16 si es masculino, 14 si es femenino.</small>
+
+        <!-- Fecha de nacimiento - campo dinámico -->
+        <div th:class="${fieldGenderMode != 'HIDDEN' ? 'col-md-6' : 'col-12'}"
+             th:if="${fieldBirthDateMode != 'HIDDEN'}">
+            <label class="form-label fw-semibold">
+                Fecha de nacimiento
+                <span th:if="${fieldBirthDateMode == 'REQUIRED'}" class="text-danger">*</span>
+                <span th:if="${fieldBirthDateMode == 'OPTIONAL'}" class="text-muted">(opcional)</span>
+            </label>
+            <input type="date" id="clientBirthDate" class="form-control"
+                   th:required="${fieldBirthDateMode == 'REQUIRED'}"/>
+            <small id="birthDateAgeError" class="text-danger d-none">Edad no válida para el género seleccionado.</small>
+            <small class="text-muted d-block mt-1" th:if="${fieldBirthDateMode == 'REQUIRED'}">Mínimo: 16 si es masculino, 14 si es femenino.</small>
         </div>
+
         <div class="col-12">
             <label class="form-label fw-semibold">Tu nombre *</label>
             <div class="input-group">
@@ -297,22 +327,24 @@
             </div>
             <small id="nameNote" class="text-muted d-block mt-1"></small>
         </div>
-        <div class="col-12">
-            <label class="form-label fw-semibold">Telefono de emergencia (opcional)</label>
+
+        <!-- Teléfono de emergencia - campo dinámico -->
+        <div class="col-12" th:if="${fieldEmergencyPhoneMode != 'HIDDEN'}">
+            <label class="form-label fw-semibold">
+                Teléfono de emergencia
+                <span th:if="${fieldEmergencyPhoneMode == 'REQUIRED'}" class="text-danger">*</span>
+                <span th:if="${fieldEmergencyPhoneMode == 'OPTIONAL'}" class="text-muted">(opcional)</span>
+            </label>
             <div class="input-group">
                 <span class="input-group-text" style="border-radius:10px 0 0 10px;">+56</span>
                 <input type="tel" id="clientEmergencyPhone" class="form-control"
-                       placeholder="9 digitos" maxlength="9" pattern="[0-9]{9}" inputmode="numeric"
+                       th:placeholder="${fieldEmergencyPhoneMode == 'REQUIRED' ? '9 dígitos *' : '9 dígitos'}"
+                       th:required="${fieldEmergencyPhoneMode == 'REQUIRED'}"
+                       maxlength="9" pattern="[0-9]{9}" inputmode="numeric"
                        style="border-radius:0 10px 10px 0;"/>
             </div>
         </div>
-        <div class="col-12">
-            <label class="form-label fw-semibold">Tu email (opcional)</label>
-            <input type="email" id="clientEmail" class="form-control"
-                   placeholder="Tu email (opcional, para confirmación por correo)" maxlength="150"
-                   data-customer-found="false"/>
-            <small id="emailNote" class="text-muted d-block mt-1"></small>
-        </div>
+
         <div class="col-12">
             <label class="form-label fw-semibold">¿Cómo quieres recibir las notificaciones? *</label>
             <select id="clientNotificationPreference" class="form-select" required>
@@ -381,11 +413,33 @@
 
     <hr class="my-3" style="border-color:#E9D5FF;">
 
-    <!-- Notas adicionales -->
-    <div class="step-label"><i class="bi bi-chat-left-text me-1"></i>Notas de salud (opcional)</div>
-    <textarea id="clientNotes" class="form-control mb-4" rows="2"
-              placeholder="Si tienes alguna enfermedad cronica o tomas medicamento a diario, escribelo aqui.">
-    </textarea>
+    <!-- Notas de salud - campo dinámico -->
+    <div th:if="${fieldHealthNotesMode != 'HIDDEN'}">
+        <div class="step-label">
+            <i class="bi bi-chat-left-text me-1"></i>
+            Notas de salud
+            <span th:if="${fieldHealthNotesMode == 'REQUIRED'}" class="text-danger">*</span>
+            <span th:if="${fieldHealthNotesMode == 'OPTIONAL'}" class="text-muted">(opcional)</span>
+        </div>
+        <textarea id="clientHealthNotes" class="form-control mb-4" rows="2"
+                  th:placeholder="${fieldHealthNotesMode == 'REQUIRED' ? 'Escribe tus condiciones de salud, alergias o medicamentos *' : 'Si tienes alguna enfermedad crónica o tomas medicamento a diario, escríbelo aquí.'}"
+                  th:required="${fieldHealthNotesMode == 'REQUIRED'}">
+        </textarea>
+    </div>
+
+    <!-- Notas generales - campo dinámico -->
+    <div th:if="${fieldGeneralNotesMode != 'HIDDEN'}">
+        <div class="step-label">
+            <i class="bi bi-pencil me-1"></i>
+            Notas adicionales
+            <span th:if="${fieldGeneralNotesMode == 'REQUIRED'}" class="text-danger">*</span>
+            <span th:if="${fieldGeneralNotesMode == 'OPTIONAL'}" class="text-muted">(opcional)</span>
+        </div>
+        <textarea id="clientNotes" class="form-control mb-4" rows="2"
+                  th:placeholder="${fieldGeneralNotesMode == 'REQUIRED' ? 'Comentarios o preferencias *' : 'Cualquier comentario o preferencia que quieras compartir'}"
+                  th:required="${fieldGeneralNotesMode == 'REQUIRED'}">
+        </textarea>
+    </div>
 
     <!-- ══ Botón principal: enviar solicitud al sistema ══ -->
     <button type="button" class="btn-bc mb-2" id="btnSubmit" disabled onclick="submitRequest()">

@@ -53,6 +53,20 @@ public class AdminSettingsController {
                 java.util.Map.entry("day_before", "Solo aviso día anterior (09:00)"),
                 java.util.Map.entry("both",       "Mañana del día + 2 horas antes")
         ));
+
+        // ── Configuración de Campos Dinámicos (Fase 3) ──────────────────────
+        model.addAttribute("fieldEmailMode",          settingsService.getFieldEmailMode());
+        model.addAttribute("fieldGenderMode",         settingsService.getFieldGenderMode());
+        model.addAttribute("fieldBirthDateMode",      settingsService.getFieldBirthDateMode());
+        model.addAttribute("fieldEmergencyPhoneMode", settingsService.getFieldEmergencyPhoneMode());
+        model.addAttribute("fieldHealthNotesMode",    settingsService.getFieldHealthNotesMode());
+        model.addAttribute("fieldGeneralNotesMode",   settingsService.getFieldGeneralNotesMode());
+        model.addAttribute("fieldModeOptions", java.util.List.of(
+                java.util.Map.entry("REQUIRED", "Obligatorio"),
+                java.util.Map.entry("OPTIONAL", "Opcional"),
+                java.util.Map.entry("HIDDEN",   "Oculto")
+        ));
+
         return "admin/settings/index";
     }
 
@@ -92,7 +106,15 @@ public class AdminSettingsController {
                 Map.entry("booking.block.morning.enabled", params.getOrDefault("morningEnabled", "false")),
                 Map.entry("booking.block.afternoon.enabled", params.getOrDefault("afternoonEnabled", "false")),
                 Map.entry("booking.block.night.enabled", params.getOrDefault("nightEnabled", "false")),
-                Map.entry("reminder.strategy", params.getOrDefault("reminderStrategy", "2hours"))
+                Map.entry("reminder.strategy", params.getOrDefault("reminderStrategy", "2hours")),
+
+                // Campos Dinámicos (Fase 3)
+                Map.entry("field.email.mode", params.getOrDefault("fieldEmailMode", "OPTIONAL")),
+                Map.entry("field.gender.mode", params.getOrDefault("fieldGenderMode", "OPTIONAL")),
+                Map.entry("field.birth-date.mode", params.getOrDefault("fieldBirthDateMode", "OPTIONAL")),
+                Map.entry("field.emergency-phone.mode", params.getOrDefault("fieldEmergencyPhoneMode", "HIDDEN")),
+                Map.entry("field.health-notes.mode", params.getOrDefault("fieldHealthNotesMode", "HIDDEN")),
+                Map.entry("field.general-notes.mode", params.getOrDefault("fieldGeneralNotesMode", "OPTIONAL"))
         ));
         ra.addFlashAttribute("successMsg", "Configuración guardada ✅");
         return "redirect:/admin/settings";

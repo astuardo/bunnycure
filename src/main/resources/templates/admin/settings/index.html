@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es"
-      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section}, _)}">
 <head>
   <title>Configuración – [[${appName}]]</title>
   <style>
@@ -316,6 +316,86 @@
           <strong>2 horas antes</strong>: el sistema revisa cada 2 horas y avisa cuando la cita está próxima.<br>
           Usar <em>Solo 2 horas antes</em> evita que lleguen dos avisos muy seguidos (ej. cita a las 11:00 → aviso 08:00 y luego 09:00).
         </small>
+      </div>
+    </div>
+
+    <!-- Configuración de Campos del Formulario (Fase 3) -->
+    <div class="card table-card mb-4">
+      <div class="card-header fw-semibold py-3 px-4"
+           style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
+        <i class="bi bi-sliders me-2" style="color:#8B5CF6;"></i>
+        Campos del Formulario de Reserva
+      </div>
+      <div class="card-body p-4">
+        <p class="text-muted small mb-3">
+          Configura qué campos mostrar en el formulario público de reservas. 
+          <strong>Obligatorio:</strong> el cliente debe completarlo. 
+          <strong>Opcional:</strong> se muestra pero no es requerido. 
+          <strong>Oculto:</strong> no aparece en el formulario.
+        </p>
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">📧 Email</label>
+            <select name="fieldEmailMode" class="form-select">
+              <option value="REQUIRED" th:selected="${fieldEmailMode == 'REQUIRED'}">Obligatorio</option>
+              <option value="OPTIONAL" th:selected="${fieldEmailMode == 'OPTIONAL'}">Opcional</option>
+              <option value="HIDDEN" th:selected="${fieldEmailMode == 'HIDDEN'}">Oculto</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">⚧ Género</label>
+            <select name="fieldGenderMode" class="form-select">
+              <option value="REQUIRED" th:selected="${fieldGenderMode == 'REQUIRED'}">Obligatorio</option>
+              <option value="OPTIONAL" th:selected="${fieldGenderMode == 'OPTIONAL'}">Opcional</option>
+              <option value="HIDDEN" th:selected="${fieldGenderMode == 'HIDDEN'}">Oculto</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">🎂 Fecha de Nacimiento</label>
+            <select name="fieldBirthDateMode" class="form-select">
+              <option value="REQUIRED" th:selected="${fieldBirthDateMode == 'REQUIRED'}">Obligatorio</option>
+              <option value="OPTIONAL" th:selected="${fieldBirthDateMode == 'OPTIONAL'}">Opcional</option>
+              <option value="HIDDEN" th:selected="${fieldBirthDateMode == 'HIDDEN'}">Oculto</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">🚨 Teléfono de Emergencia</label>
+            <select name="fieldEmergencyPhoneMode" class="form-select">
+              <option value="REQUIRED" th:selected="${fieldEmergencyPhoneMode == 'REQUIRED'}">Obligatorio</option>
+              <option value="OPTIONAL" th:selected="${fieldEmergencyPhoneMode == 'OPTIONAL'}">Opcional</option>
+              <option value="HIDDEN" th:selected="${fieldEmergencyPhoneMode == 'HIDDEN'}">Oculto</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">💊 Notas de Salud</label>
+            <select name="fieldHealthNotesMode" class="form-select">
+              <option value="REQUIRED" th:selected="${fieldHealthNotesMode == 'REQUIRED'}">Obligatorio</option>
+              <option value="OPTIONAL" th:selected="${fieldHealthNotesMode == 'OPTIONAL'}">Opcional</option>
+              <option value="HIDDEN" th:selected="${fieldHealthNotesMode == 'HIDDEN'}">Oculto</option>
+            </select>
+            <small class="text-muted">Alergias, condiciones médicas, medicamentos</small>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">📝 Notas Generales</label>
+            <select name="fieldGeneralNotesMode" class="form-select">
+              <option value="REQUIRED" th:selected="${fieldGeneralNotesMode == 'REQUIRED'}">Obligatorio</option>
+              <option value="OPTIONAL" th:selected="${fieldGeneralNotesMode == 'OPTIONAL'}">Opcional</option>
+              <option value="HIDDEN" th:selected="${fieldGeneralNotesMode == 'HIDDEN'}">Oculto</option>
+            </select>
+            <small class="text-muted">Preferencias, comentarios adicionales</small>
+          </div>
+        </div>
+
+        <div class="alert alert-info mt-3 mb-0" style="background:#E0F2FE;border-color:#7DD3FC;">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Nota:</strong> Los campos <strong>Nombre</strong>, <strong>Teléfono</strong>, <strong>Servicio</strong> y <strong>Fecha/Bloque</strong> siempre son obligatorios.
+        </div>
       </div>
     </div>
 

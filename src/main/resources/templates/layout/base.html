@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
-      th:fragment="layout(title, content)"
+      th:fragment="layout(title, content, script)"
       lang="es">
 <head>
     <meta charset="UTF-8"/>
@@ -331,6 +331,9 @@
     checkDesktop();
     window.addEventListener('resize', checkDesktop);
 </script>
+
+<!-- Custom scripts placeholder -->
+<th:block th:replace="${script} ?: ~{}"></th:block>
 
 </body>
 </html>

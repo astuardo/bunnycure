@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es"
-      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section}, _)}">
 <head><title>Servicios – Bunny Cure</title></head>
 <body>
 <section th:fragment="content">
@@ -63,7 +63,7 @@
               </span>
           </td>
           <td class="fw-semibold">
-            $<span th:text="${#numbers.formatInteger(s.price, 0, 'POINT')}"></span>
+            $<span th:text="${s.price}"></span>
           </td>
           <td>
             <form th:action="@{/admin/services/{id}/toggle(id=${s.id})}"
@@ -134,7 +134,7 @@
       <!-- Fila inferior: precio + acciones -->
       <div class="d-flex justify-content-between align-items-center mt-1">
         <span class="fw-bold" style="font-size:1.1rem;color:#111;">
-          $<span th:text="${#numbers.formatInteger(s.price, 0, 'POINT')}"></span>
+          $<span th:text="${s.price}"></span>
         </span>
         <div class="d-flex gap-2">
           <a th:href="@{/admin/services/{id}/edit(id=${s.id})}"

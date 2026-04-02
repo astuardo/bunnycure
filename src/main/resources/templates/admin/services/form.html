@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es"
-      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section}, ~{::script})}">
 <head><title>Servicio – Bunny Cure</title></head>
 <body>
 <section th:fragment="content">
@@ -41,8 +41,11 @@
             <label class="form-label fw-semibold">Orden de aparición</label>
             <input type="number"
                    th:field="*{displayOrder}"
+                   th:classappend="${#fields.hasErrors('displayOrder')} ? 'is-invalid'"
                    class="form-control"
-                   min="0" placeholder="0"/>
+                   min="0" max="9999" placeholder="0"/>
+            <div class="form-text text-muted">Menor valor = aparece primero</div>
+            <div class="invalid-feedback" th:errors="*{displayOrder}"></div>
           </div>
 
           <div class="col-md-6">
@@ -86,8 +89,14 @@
             </label>
             <input type="text"
                    th:field="*{description}"
+                   th:classappend="${#fields.hasErrors('description')} ? 'is-invalid'"
                    class="form-control"
-                   placeholder="Breve descripción que verán las clientas"/>
+                   placeholder="Breve descripción que verán las clientas"
+                   maxlength="300"/>
+            <div class="form-text text-muted">
+              <span id="descriptionCharCount">0/300 caracteres</span>
+            </div>
+            <div class="invalid-feedback" th:errors="*{description}"></div>
           </div>
 
           <div th:unless="${isNew}" class="col-12">
@@ -118,5 +127,8 @@
   </div>
 
 </section>
+
+<script th:fragment="script" th:src="@{/js/service-validation.js}"></script>
+
 </body>
 </html>

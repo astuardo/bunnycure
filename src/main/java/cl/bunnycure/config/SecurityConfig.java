@@ -41,6 +41,9 @@ public class SecurityConfig {
 			// Cambio de contraseña (requiere autenticación pero no puede ser bloqueado)
 			auth.requestMatchers("/admin/change-password").authenticated();
 			
+			// Admin section: require ADMIN role
+			auth.requestMatchers("/admin/**").hasRole("ADMIN");
+			
 			// Portal público: GET y POST de reservas
 			auth.requestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit").permitAll();
 			

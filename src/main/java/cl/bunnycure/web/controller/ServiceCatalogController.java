@@ -35,6 +35,8 @@ public class ServiceCatalogController extends BaseController {
     public String create(@Valid @ModelAttribute("service") ServiceCatalogDto dto,
                          BindingResult result, Model model,
                          RedirectAttributes flash) {
+        validateServiceBusinessRules(dto, result);
+        
         if (result.hasErrors()) {
             model.addAttribute("isNew", true);
             return "admin/services/form";
@@ -65,6 +67,8 @@ public class ServiceCatalogController extends BaseController {
                          @Valid @ModelAttribute("service") ServiceCatalogDto dto,
                          BindingResult result, Model model,
                          RedirectAttributes flash) {
+        validateServiceBusinessRules(dto, result);
+        
         if (result.hasErrors()) {
             model.addAttribute("isNew", false);
             return "admin/services/form";
@@ -95,5 +99,36 @@ public class ServiceCatalogController extends BaseController {
             flash.addFlashAttribute("errorMsg", "No se puede eliminar el servicio porque está en uso. Se recomienda ocultarlo.");
         }
         return "redirect:/admin/services";
+    }
+
+    private void validateServiceBusinessRules(ServiceCatalogDto dto, BindingResult result) {
+        // Validar que el nombre no esté duplicado (ignorando mayúsculas/minúsculas)
+        if (dto.getName() != null) {
+            String trimmedName = dto.getName().trim();
+            var existingServices = service.findAll();
+            boolean isDuplicate = existingServices.stream()
+                .anyMatch(s -> !s.getId().equals(dto.getId()) && 
+                              s.getName().trim().equalsIgnoreCase(trimmedName));
+            if (isDuplicate) {
+                result.rejectValue("name", "duplicate", 
+                    "Ya existe un servicio con este nombre");
+            }
+        }
+
+        // Validar que la duración sea múltiplo de 15 (para facilitar agendamiento)
+        if (dto.getDurationMinutes() != null && dto.getDurationMinutes() % 15 != 0) {
+            result.rejectValue("durationMinutes", "notMultiple", 
+                "La duración debe ser múltiplo de 15 minutos para facilitar el agendamiento");
+        }
+
+        // Validar coherencia precio-duración (advertencia si el precio por minuto es muy bajo)
+        if (dto.getPrice() != null && dto.getDurationMinutes() != null && 
+            dto.getDurationMinutes() > 0) {
+            double pricePerMinute = dto.getPrice().doubleValue() / dto.getDurationMinutes();
+            if (pricePerMinute < 50) { // Menos de $50 por minuto
+                result.rejectValue("price", "tooLow", 
+                    "El precio parece muy bajo para la duración especificada (menos de $50 por minuto). Verifique el valor.");
+            }
+        }
     }
 }

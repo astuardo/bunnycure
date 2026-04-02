@@ -243,4 +243,51 @@ public class AppSettingsService {
     public String getAppPhoneDisplay() {
         return get("app.phone.display", "+56 9 6449 9995");
     }
+
+    // ── Configuración de Campos Dinámicos (Fase 3) ─────────────────────────
+
+    /** Valores válidos para field mode */
+    public static final String FIELD_MODE_REQUIRED = "REQUIRED";
+    public static final String FIELD_MODE_OPTIONAL = "OPTIONAL";
+    public static final String FIELD_MODE_HIDDEN = "HIDDEN";
+
+    /** Modo del campo email. Default: OPTIONAL */
+    public String getFieldEmailMode() {
+        return get("field.email.mode", FIELD_MODE_OPTIONAL);
+    }
+
+    /** Modo del campo género. Default: OPTIONAL */
+    public String getFieldGenderMode() {
+        return get("field.gender.mode", FIELD_MODE_OPTIONAL);
+    }
+
+    /** Modo del campo fecha de nacimiento. Default: OPTIONAL */
+    public String getFieldBirthDateMode() {
+        return get("field.birth-date.mode", FIELD_MODE_OPTIONAL);
+    }
+
+    /** Modo del campo teléfono de emergencia. Default: HIDDEN */
+    public String getFieldEmergencyPhoneMode() {
+        return get("field.emergency-phone.mode", FIELD_MODE_HIDDEN);
+    }
+
+    /** Modo del campo notas de salud. Default: HIDDEN */
+    public String getFieldHealthNotesMode() {
+        return get("field.health-notes.mode", FIELD_MODE_HIDDEN);
+    }
+
+    /** Modo del campo notas generales. Default: OPTIONAL */
+    public String getFieldGeneralNotesMode() {
+        return get("field.general-notes.mode", FIELD_MODE_OPTIONAL);
+    }
+
+    /** Verifica si un campo está visible (no HIDDEN) */
+    public boolean isFieldVisible(String fieldMode) {
+        return !FIELD_MODE_HIDDEN.equals(fieldMode);
+    }
+
+    /** Verifica si un campo es requerido */
+    public boolean isFieldRequired(String fieldMode) {
+        return FIELD_MODE_REQUIRED.equals(fieldMode);
+    }
 }

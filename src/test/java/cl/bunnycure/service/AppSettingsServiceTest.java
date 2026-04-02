@@ -132,4 +132,87 @@ class AppSettingsServiceTest {
         assertEquals("es", locale.getLanguage());
         assertEquals("CL", locale.getCountry());
     }
+
+    // ── Field Modes (Fase 3) ──────────────────────────────────────────────────
+
+    @Test
+    void getFieldEmailMode_DefaultsToOptional() {
+        when(repository.findById("field.email.mode")).thenReturn(Optional.empty());
+
+        assertEquals(AppSettingsService.FIELD_MODE_OPTIONAL, appSettingsService.getFieldEmailMode());
+    }
+
+    @Test
+    void getFieldGenderMode_DefaultsToOptional() {
+        when(repository.findById("field.gender.mode")).thenReturn(Optional.empty());
+
+        assertEquals(AppSettingsService.FIELD_MODE_OPTIONAL, appSettingsService.getFieldGenderMode());
+    }
+
+    @Test
+    void getFieldBirthDateMode_DefaultsToOptional() {
+        when(repository.findById("field.birth-date.mode")).thenReturn(Optional.empty());
+
+        assertEquals(AppSettingsService.FIELD_MODE_OPTIONAL, appSettingsService.getFieldBirthDateMode());
+    }
+
+    @Test
+    void getFieldEmergencyPhoneMode_DefaultsToHidden() {
+        when(repository.findById("field.emergency-phone.mode")).thenReturn(Optional.empty());
+
+        assertEquals(AppSettingsService.FIELD_MODE_HIDDEN, appSettingsService.getFieldEmergencyPhoneMode());
+    }
+
+    @Test
+    void getFieldHealthNotesMode_DefaultsToHidden() {
+        when(repository.findById("field.health-notes.mode")).thenReturn(Optional.empty());
+
+        assertEquals(AppSettingsService.FIELD_MODE_HIDDEN, appSettingsService.getFieldHealthNotesMode());
+    }
+
+    @Test
+    void getFieldGeneralNotesMode_DefaultsToOptional() {
+        when(repository.findById("field.general-notes.mode")).thenReturn(Optional.empty());
+
+        assertEquals(AppSettingsService.FIELD_MODE_OPTIONAL, appSettingsService.getFieldGeneralNotesMode());
+    }
+
+    @Test
+    void isFieldVisible_ReturnsTrueForRequiredAndOptional() {
+        assertTrue(appSettingsService.isFieldVisible(AppSettingsService.FIELD_MODE_REQUIRED));
+        assertTrue(appSettingsService.isFieldVisible(AppSettingsService.FIELD_MODE_OPTIONAL));
+    }
+
+    @Test
+    void isFieldVisible_ReturnsFalseForHidden() {
+        assertFalse(appSettingsService.isFieldVisible(AppSettingsService.FIELD_MODE_HIDDEN));
+    }
+
+    @Test
+    void isFieldRequired_ReturnsTrueOnlyForRequired() {
+        assertTrue(appSettingsService.isFieldRequired(AppSettingsService.FIELD_MODE_REQUIRED));
+        assertFalse(appSettingsService.isFieldRequired(AppSettingsService.FIELD_MODE_OPTIONAL));
+        assertFalse(appSettingsService.isFieldRequired(AppSettingsService.FIELD_MODE_HIDDEN));
+    }
+
+    @Test
+    void getFieldEmailMode_ReturnsConfiguredValue() {
+        when(repository.findById("field.email.mode"))
+                .thenReturn(Optional.of(new AppSettings("field.email.mode", "REQUIRED", null)));
+
+        assertEquals(AppSettingsService.FIELD_MODE_REQUIRED, appSettingsService.getFieldEmailMode());
+    }
+
+    @Test
+    void getFieldGenderMode_SupportsAllModes() {
+        // REQUIRED
+        when(repository.findById("field.gender.mode"))
+                .thenReturn(Optional.of(new AppSettings("field.gender.mode", "REQUIRED", null)));
+        assertEquals(AppSettingsService.FIELD_MODE_REQUIRED, appSettingsService.getFieldGenderMode());
+
+        // HIDDEN
+        when(repository.findById("field.gender.mode"))
+                .thenReturn(Optional.of(new AppSettings("field.gender.mode", "HIDDEN", null)));
+        assertEquals(AppSettingsService.FIELD_MODE_HIDDEN, appSettingsService.getFieldGenderMode());
+    }
 }

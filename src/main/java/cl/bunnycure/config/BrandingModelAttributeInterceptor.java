@@ -32,6 +32,12 @@ public class BrandingModelAttributeInterceptor implements HandlerInterceptor {
             return;
         }
 
+        // Skip processing for redirects to avoid polluting redirect URLs
+        String viewName = modelAndView.getViewName();
+        if (viewName != null && viewName.startsWith("redirect:")) {
+            return;
+        }
+
         // ── Variables de Branding ────────────────────────────────────────────
         modelAndView.addObject("appName", settingsService.getAppName());
         modelAndView.addObject("appSlogan", settingsService.getAppSlogan());

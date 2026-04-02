@@ -43,6 +43,14 @@ public class BookingController {
                         .filter(s -> s.isActive()).toList());
         model.addAttribute("timeBlocks",      buildTimeBlocks());
         
+        // Configuración de campos dinámicos (Fase 3)
+        model.addAttribute("fieldEmailMode", appSettingsService.getFieldEmailMode());
+        model.addAttribute("fieldGenderMode", appSettingsService.getFieldGenderMode());
+        model.addAttribute("fieldBirthDateMode", appSettingsService.getFieldBirthDateMode());
+        model.addAttribute("fieldEmergencyPhoneMode", appSettingsService.getFieldEmergencyPhoneMode());
+        model.addAttribute("fieldHealthNotesMode", appSettingsService.getFieldHealthNotesMode());
+        model.addAttribute("fieldGeneralNotesMode", appSettingsService.getFieldGeneralNotesMode());
+        
         // submitted attribute comes from flash (redirect after form submission)
         if (!model.containsAttribute("submitted")) {
             model.addAttribute("submitted", false);
