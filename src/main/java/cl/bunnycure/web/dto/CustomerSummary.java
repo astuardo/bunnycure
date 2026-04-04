@@ -9,7 +9,7 @@ public class CustomerSummary {
     private final Customer customer;
     private final long appointmentCount;
 
-    // Delegados para Thymeleaf
+    // Delegados para Thymeleaf y API REST
     private final Long id;
     private final String publicId;
     private final String fullName;

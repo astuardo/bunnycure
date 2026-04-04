@@ -6,12 +6,16 @@ import cl.bunnycure.domain.repository.BookingRequestRepository;
 import cl.bunnycure.domain.repository.ServiceCatalogRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.ServiceCatalogDto;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 import java.util.List;
 
 @Service
+@Validated
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ServiceCatalogService {
@@ -41,7 +45,7 @@ public class ServiceCatalogService {
     }
 
     @Transactional
-    public ServiceCatalog save(ServiceCatalogDto dto) {
+    public ServiceCatalog save(@Valid @NotNull ServiceCatalogDto dto) {
         ServiceCatalog s;
         if (dto.getId() != null) {
             s = findById(dto.getId());

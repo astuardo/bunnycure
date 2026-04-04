@@ -11,6 +11,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 import java.util.Arrays;
 
@@ -21,11 +22,15 @@ public class SecurityConfig {
 
 	private final Environment env;
 	private final PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler;
+	private final CorsConfigurationSource corsConfigurationSource;
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
 		boolean isLocal = Arrays.asList(env.getActiveProfiles()).contains("local");
+
+		// ── CORS ──────────────────────────────────────────────────────────────
+		http.cors(cors -> cors.configurationSource(corsConfigurationSource));
 
 		// ── Autorización ──────────────────────────────────────────────────────
 		http.authorizeHttpRequests(auth -> {
@@ -33,6 +38,11 @@ public class SecurityConfig {
 			auth.requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll();
 			auth.requestMatchers("/favicon.ico", "/.well-known/**").permitAll();
 			auth.requestMatchers("/error").permitAll();
+			
+			// Swagger/OpenAPI documentation (solo en local para desarrollo)
+			if (isLocal) {
+				auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll();
+			}
 			
 			// Login
 			auth.requestMatchers("/login", "/login/**").permitAll();
@@ -49,6 +59,15 @@ public class SecurityConfig {
 			
 			// API pública: búsqueda de clientes por teléfono
 			auth.requestMatchers("/api/customers/lookup").permitAll();
+			
+			// API pública: servicios (para portal de reservas)
+			auth.requestMatchers(HttpMethod.GET, "/api/services").permitAll();
+			
+			// API REST endpoints (requieren autenticación)
+			auth.requestMatchers("/api/appointments/**").authenticated();
+			auth.requestMatchers("/api/customers/**").authenticated(); // excepto /lookup que ya está permitido arriba
+			auth.requestMatchers("/api/services/**").authenticated(); // excepto GET /services que ya está permitido arriba
+			auth.requestMatchers("/api/booking-requests/**").authenticated();
 			
 			// Webhook de WhatsApp (solo endpoint oficial público)
 			auth.requestMatchers(HttpMethod.GET, "/api/webhooks/whatsapp").permitAll();
@@ -95,15 +114,15 @@ public class SecurityConfig {
 		// ── Headers según perfil ──────────────────────────────────────────────
 		if (isLocal) {
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup", "/api/test/**", "/api/webhooks/whatsapp")
+					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit", "/api/**")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.sameOrigin())
 			);
 		} else {
-			// Disable CSRF for public booking portal to avoid session creation issues
+			// Disable CSRF for public booking portal and API endpoints
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit", "/api/customers/lookup", "/api/webhooks/whatsapp")
+					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit", "/api/**")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.deny())

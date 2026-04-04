@@ -12,14 +12,18 @@ import cl.bunnycure.domain.repository.ServiceCatalogRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.BookingApprovalDto;
 import cl.bunnycure.web.dto.BookingRequestDto;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@Validated
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class BookingRequestService {
@@ -52,7 +56,7 @@ public class BookingRequestService {
     // ── Crear solicitud (desde portal público) ───────────────────────────────
 
     @Transactional
-    public BookingRequest create(BookingRequestDto dto) {
+    public BookingRequest create(@Valid @NotNull BookingRequestDto dto) {
         var service = serviceCatalogRepository.findById(dto.getServiceId())
                 .orElseThrow(() -> new ResourceNotFoundException("Servicio no encontrado"));
 
@@ -99,7 +103,7 @@ public class BookingRequestService {
     // ── Aprobar solicitud ────────────────────────────────────────────────────
 
     @Transactional
-    public Appointment approve(Long requestId, BookingApprovalDto approval) {
+    public Appointment approve(@NotNull Long requestId, @Valid @NotNull BookingApprovalDto approval) {
         var request = findById(requestId);
 
         if (approval.getAppointmentDate() != null && approval.getAppointmentDate().isBefore(java.time.LocalDate.now())) {

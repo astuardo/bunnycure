@@ -7,13 +7,17 @@ import cl.bunnycure.web.dto.CustomerDto;
 import cl.bunnycure.web.dto.CustomerSummary;
 import cl.bunnycure.web.dto.CustomerLookupResponseDto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 
 @Service
+@Validated
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class CustomerService {
@@ -110,7 +114,7 @@ public class CustomerService {
     }
 
     @Transactional
-    public Customer create(CustomerDto dto) {
+    public Customer create(@Valid @NotNull CustomerDto dto) {
         // Validar email solo si se proporciona
         if (dto.getEmail() != null && !dto.getEmail().isBlank() && customerRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("Ya existe un cliente con el email: " + dto.getEmail());
@@ -128,7 +132,7 @@ public class CustomerService {
     }
 
     @Transactional
-    public Customer update(Long id, CustomerDto dto) {
+    public Customer update(@NotNull Long id, @Valid @NotNull CustomerDto dto) {
         var customer = findById(id);
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());
@@ -145,7 +149,7 @@ public class CustomerService {
     }
 
     @Transactional
-    public Customer updateByPublicId(String publicId, CustomerDto dto) {
+    public Customer updateByPublicId(@NotNull String publicId, @Valid @NotNull CustomerDto dto) {
         var customer = findByPublicId(publicId);
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());

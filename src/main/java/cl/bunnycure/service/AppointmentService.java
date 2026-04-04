@@ -6,10 +6,13 @@ import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.domain.repository.BookingRequestRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.AppointmentDto;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -20,6 +23,7 @@ import java.util.Optional;
 
 @Slf4j
 @Service
+@Validated
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class AppointmentService {
@@ -32,7 +36,7 @@ public class AppointmentService {
     private final AppSettingsService appSettingsService;
 
     @Transactional
-    public void updateAppointment(Long id, AppointmentDto dto) {
+    public void updateAppointment(@NotNull Long id, @Valid @NotNull AppointmentDto dto) {
         var appointment = findById(id);
         var customer    = customerService.findById(dto.getCustomerId());
         var service     = serviceCatalogService.findById(dto.getServiceId());
@@ -62,7 +66,7 @@ public class AppointmentService {
     }
 
     @Transactional
-    public void createAppointment(AppointmentDto dto) {
+    public void createAppointment(@Valid @NotNull AppointmentDto dto) {
         var customer = customerService.findById(dto.getCustomerId());
         var service  = serviceCatalogService.findById(dto.getServiceId()); // ✅
 
