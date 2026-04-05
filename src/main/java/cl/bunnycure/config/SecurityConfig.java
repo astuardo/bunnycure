@@ -64,6 +64,7 @@ public class SecurityConfig {
 			auth.requestMatchers(HttpMethod.GET, "/api/services").permitAll();
 			
 			// API REST endpoints (requieren autenticación)
+			auth.requestMatchers("/api/auth/**").authenticated(); // endpoints de autenticación
 			auth.requestMatchers("/api/appointments/**").authenticated();
 			auth.requestMatchers("/api/customers/**").authenticated(); // excepto /lookup que ya está permitido arriba
 			auth.requestMatchers("/api/services/**").authenticated(); // excepto GET /services que ya está permitido arriba
