@@ -120,12 +120,12 @@ public class AuthApiController {
             log.warn("[API] Login fallido para usuario: {} - Credenciales inválidas", 
                 loginRequest.getUsername());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Credenciales inválidas"));
+                    .body(ApiResponse.error("Credenciales inválidas", "INVALID_CREDENTIALS"));
         } catch (Exception e) {
             log.error("[API] Error durante login para usuario: {}", 
                 loginRequest.getUsername(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error durante el login"));
+                    .body(ApiResponse.error("Error durante el login", "LOGIN_ERROR"));
         }
     }
 
@@ -184,7 +184,7 @@ public class AuthApiController {
         if (authentication == null || !authentication.isAuthenticated() || 
             "anonymousUser".equals(authentication.getPrincipal())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("No autenticado"));
+                    .body(ApiResponse.error("No autenticado", "NOT_AUTHENTICATED"));
         }
 
         String username = authentication.getName();
