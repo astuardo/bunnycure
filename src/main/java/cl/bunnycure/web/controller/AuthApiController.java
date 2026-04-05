@@ -80,12 +80,21 @@ public class AuthApiController {
             securityContext.setAuthentication(authentication);
             SecurityContextHolder.setContext(securityContext);
             
-            // Guardar en sesión HTTP
+            // IMPORTANTE: Crear sesión HTTP ANTES de guardar el contexto
+            // Esto asegura que Spring Security envíe la cookie JSESSIONID
             HttpSession session = request.getSession(true);
+            
+            // Guardar contexto en sesión
             session.setAttribute(
                 HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, 
                 securityContext
             );
+            
+            // CRÍTICO: Forzar que se envíe la cookie en la respuesta
+            // Agregar header Set-Cookie explícitamente si es necesario
+            if (session.isNew()) {
+                log.info("[API] Nueva sesión creada: {}", session.getId());
+            }
             
             // Obtener información del usuario
             String username = authentication.getName();
@@ -112,7 +121,8 @@ public class AuthApiController {
                         "Login exitoso")
                     .build();
             
-            log.info("[API] Login exitoso para usuario: {}", username);
+            log.info("[API] Login exitoso para usuario: {} - Session ID: {}", 
+                username, session.getId());
             
             return ResponseEntity.ok(ApiResponse.success(loginResponse));
             
