@@ -70,6 +70,8 @@ public class SecurityConfig {
 			
 			// API REST endpoints (requieren autenticación)
 			auth.requestMatchers("/api/auth/**").authenticated(); // otros endpoints de autenticación
+			auth.requestMatchers("/api/users/**").hasRole("ADMIN"); // gestión de usuarios solo para ADMIN
+			auth.requestMatchers("/api/settings/**").hasRole("ADMIN"); // configuración del sistema solo para ADMIN
 			auth.requestMatchers("/api/appointments/**").authenticated();
 			auth.requestMatchers("/api/customers/**").authenticated(); // excepto /lookup que ya está permitido arriba
 			auth.requestMatchers("/api/services/**").authenticated(); // excepto GET /services que ya está permitido arriba

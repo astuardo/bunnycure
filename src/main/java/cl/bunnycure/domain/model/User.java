@@ -44,6 +44,10 @@ public class User {
     @Builder.Default
     private String role = "ADMIN";
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean passwordChangeRequired = false;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

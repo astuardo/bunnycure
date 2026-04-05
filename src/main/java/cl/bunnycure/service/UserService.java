@@ -61,6 +61,7 @@ public class UserService implements UserDetailsService {
                 .email(email)
                 .enabled(true)
                 .role("ADMIN")
+                .passwordChangeRequired(true) // Por defecto requiere cambio
                 .build();
 
         User saved = userRepository.save(user);
@@ -96,8 +97,17 @@ public class UserService implements UserDetailsService {
         }
         
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordChangeRequired(false); // Ya cambió la contraseña
         userRepository.save(user);
         log.info("[USER] Contraseña actualizada para: {}", username);
+    }
+
+    @Transactional
+    public void markPasswordChangeRequired(Long userId) {
+        User user = findById(userId);
+        user.setPasswordChangeRequired(true);
+        userRepository.save(user);
+        log.info("[USER] Marcado cambio de contraseña requerido para: {}", user.getUsername());
     }
 
     @Transactional

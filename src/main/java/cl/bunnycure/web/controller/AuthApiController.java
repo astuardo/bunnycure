@@ -3,6 +3,7 @@ package cl.bunnycure.web.controller;
 import cl.bunnycure.domain.model.User;
 import cl.bunnycure.service.UserService;
 import cl.bunnycure.web.dto.ApiResponse;
+import cl.bunnycure.web.dto.ChangePasswordRequest;
 import cl.bunnycure.web.dto.LoginRequest;
 import cl.bunnycure.web.dto.LoginResponse;
 import cl.bunnycure.web.dto.UserDto;
@@ -110,8 +111,7 @@ public class AuthApiController {
                     .build();
             
             // Verificar si requiere cambio de contraseña
-            // TODO: Implementar campo passwordChangeRequired en User cuando se implemente la funcionalidad
-            boolean requiresPasswordChange = false; // user.isPasswordChangeRequired();
+            boolean requiresPasswordChange = user.isPasswordChangeRequired();
             
             LoginResponse loginResponse = LoginResponse.builder()
                     .user(userDto)
@@ -210,5 +210,91 @@ public class AuthApiController {
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
+    @Operation(
+            summary = "Cambiar contraseña",
+            description = "Permite al usuario autenticado cambiar su contraseña.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Contraseña actualizada exitosamente"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "Errores de validación"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "No autenticado o contraseña actual incorrecta"
+            )
+    })
+    @PutMapping("/change-password")
+    public ResponseEntity<ApiResponse<String>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+        
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated() || 
+            "anonymousUser".equals(authentication.getPrincipal())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("No autenticado", "NOT_AUTHENTICATED"));
+        }
+
+        String username = authentication.getName();
+        
+        try {
+            // Validación: confirmPassword debe coincidir con newPassword
+            if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error(
+                            "Las contraseñas no coinciden", 
+                            "PASSWORDS_NOT_MATCH"));
+            }
+            
+            // Validación: newPassword no debe ser igual a currentPassword
+            User user = userService.findByUsername(username);
+            if (request.getCurrentPassword().equals(request.getNewPassword())) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error(
+                            "La nueva contraseña debe ser diferente a la actual", 
+                            "PASSWORD_SAME"));
+            }
+            
+            // Validación: contraseñas débiles comunes
+            String[] weakPasswords = {"changeme", "admin", "password"};
+            String newPasswordLower = request.getNewPassword().toLowerCase();
+            for (String weak : weakPasswords) {
+                if (newPasswordLower.equals(weak)) {
+                    return ResponseEntity.badRequest()
+                            .body(ApiResponse.error(
+                                "No puede usar '" + weak + "' como contraseña", 
+                                "WEAK_PASSWORD"));
+                }
+            }
+            
+            // Cambiar contraseña (este método ya valida currentPassword)
+            userService.changePassword(username, request.getCurrentPassword(), request.getNewPassword());
+            
+            log.info("[API] Contraseña actualizada exitosamente para usuario: {}", username);
+            
+            return ResponseEntity.ok(ApiResponse.success("Contraseña actualizada exitosamente"));
+            
+        } catch (RuntimeException e) {
+            // Si es error de contraseña incorrecta
+            if (e.getMessage().contains("incorrecta")) {
+                log.warn("[API] Intento de cambio de contraseña con contraseña actual incorrecta: {}", username);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error(
+                            "La contraseña actual es incorrecta", 
+                            "INVALID_PASSWORD"));
+            }
+            
+            log.error("[API] Error al cambiar contraseña para usuario: {}", username, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(
+                        "Error al cambiar contraseña: " + e.getMessage(), 
+                        "PASSWORD_CHANGE_ERROR"));
+        }
     }
 }
