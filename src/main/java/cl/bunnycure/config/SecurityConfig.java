@@ -115,7 +115,7 @@ public class SecurityConfig {
 		// ── Headers según perfil ──────────────────────────────────────────────
 		if (isLocal) {
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit", "/api/**")
+					.ignoringRequestMatchers("/h2-console/**", "/", "/reservar", "/reservar/**", "/reservar/submit", "/api/**", "/login", "/logout")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.sameOrigin())
@@ -123,7 +123,7 @@ public class SecurityConfig {
 		} else {
 			// Disable CSRF for public booking portal and API endpoints
 			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit", "/api/**")
+					.ignoringRequestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit", "/api/**", "/login", "/logout")
 			);
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.deny())
