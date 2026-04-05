@@ -5,6 +5,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -63,8 +65,11 @@ public class SecurityConfig {
 			// API pública: servicios (para portal de reservas)
 			auth.requestMatchers(HttpMethod.GET, "/api/services").permitAll();
 			
+			// API de autenticación pública
+			auth.requestMatchers("/api/auth/login", "/api/auth/logout").permitAll();
+			
 			// API REST endpoints (requieren autenticación)
-			auth.requestMatchers("/api/auth/**").authenticated(); // endpoints de autenticación
+			auth.requestMatchers("/api/auth/**").authenticated(); // otros endpoints de autenticación
 			auth.requestMatchers("/api/appointments/**").authenticated();
 			auth.requestMatchers("/api/customers/**").authenticated(); // excepto /lookup que ya está permitido arriba
 			auth.requestMatchers("/api/services/**").authenticated(); // excepto GET /services que ya está permitido arriba
@@ -140,6 +145,11 @@ public class SecurityConfig {
 	// ── UserDetails ───────────────────────────────────────────────────────────
 	// Nota: UserDetailsService se obtiene automáticamente desde UserService
 	// que implementa UserDetailsService y carga usuarios desde BD
+
+	@Bean
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+		return authConfig.getAuthenticationManager();
+	}
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
