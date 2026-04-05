@@ -1,11 +1,13 @@
 package cl.bunnycure.web.dto;
 
 import cl.bunnycure.domain.model.Customer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 
 @Getter
 public class CustomerSummary {
 
+    @JsonIgnore
     private final Customer customer;
     private final long appointmentCount;
 

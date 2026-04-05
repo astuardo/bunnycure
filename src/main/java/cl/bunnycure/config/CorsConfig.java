@@ -75,6 +75,8 @@ public class CorsConfig {
         source.registerCorsConfiguration("/api/**", configuration);
         source.registerCorsConfiguration("/login", configuration);
         source.registerCorsConfiguration("/logout", configuration);
+        source.registerCorsConfiguration("/dashboard", configuration);
+        source.registerCorsConfiguration("/admin/**", configuration);
         source.registerCorsConfiguration("/reservar/**", configuration);
         source.registerCorsConfiguration("/forgot-password", configuration);
         source.registerCorsConfiguration("/reset-password", configuration);

@@ -120,9 +120,9 @@ public class CustomerService {
             throw new IllegalArgumentException("Ya existe un cliente con el email: " + dto.getEmail());
         }
         var customer = new Customer(dto.getFullName(), dto.getPhone(), normalizeNullable(dto.getEmail()));
-        customer.setGender(normalizeNullable(dto.getGender()));
+        customer.setGender(normalizeGender(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
-        customer.setEmergencyPhone(normalizeNullable(dto.getEmergencyPhone()));
+        customer.setEmergencyPhone(normalizePhone(dto.getEmergencyPhone()));
         customer.setHealthNotes(normalizeNullable(dto.getHealthNotes()));
         customer.setNotes(dto.getNotes());
         customer.setNotificationPreference(dto.getNotificationPreference() != null 
@@ -137,9 +137,9 @@ public class CustomerService {
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());
         customer.setEmail(normalizeNullable(dto.getEmail()));
-        customer.setGender(normalizeNullable(dto.getGender()));
+        customer.setGender(normalizeGender(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
-        customer.setEmergencyPhone(normalizeNullable(dto.getEmergencyPhone()));
+        customer.setEmergencyPhone(normalizePhone(dto.getEmergencyPhone()));
         customer.setHealthNotes(normalizeNullable(dto.getHealthNotes()));
         customer.setNotes(dto.getNotes());
         if (dto.getNotificationPreference() != null) {
@@ -154,15 +154,53 @@ public class CustomerService {
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());
         customer.setEmail(normalizeNullable(dto.getEmail()));
-        customer.setGender(normalizeNullable(dto.getGender()));
+        customer.setGender(normalizeGender(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
-        customer.setEmergencyPhone(normalizeNullable(dto.getEmergencyPhone()));
+        customer.setEmergencyPhone(normalizePhone(dto.getEmergencyPhone()));
         customer.setHealthNotes(normalizeNullable(dto.getHealthNotes()));
         customer.setNotes(dto.getNotes());
         if (dto.getNotificationPreference() != null) {
             customer.setNotificationPreference(dto.getNotificationPreference());
         }
         return customerRepository.save(customer);
+    }
+
+    /**
+     * Normaliza el género aceptando formatos cortos (M, F) o completos (MASCULINO, FEMENINO)
+     */
+    private String normalizeGender(String gender) {
+        if (gender == null || gender.isBlank()) {
+            return null;
+        }
+        String normalized = gender.trim().toUpperCase();
+        return switch (normalized) {
+            case "M", "MALE" -> "MASCULINO";
+            case "F", "FEMALE" -> "FEMENINO";
+            default -> normalized; // Ya es MASCULINO o FEMENINO
+        };
+    }
+
+    /**
+     * Normaliza el teléfono de emergencia agregando +56 si solo tiene 9 dígitos
+     */
+    private String normalizePhone(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return null;
+        }
+        String digits = phone.replaceAll("[^0-9]", "");
+        
+        // Si tiene exactamente 9 dígitos (número chileno sin código país), agregar +56
+        if (digits.length() == 9) {
+            return "+56" + digits;
+        }
+        
+        // Si tiene 11 dígitos y empieza con 56, agregar +
+        if (digits.length() == 11 && digits.startsWith("56")) {
+            return "+" + digits;
+        }
+        
+        // Si ya tiene formato correcto o es de otro país, devolver como está
+        return phone.trim();
     }
 
     private String normalizeNullable(String value) {

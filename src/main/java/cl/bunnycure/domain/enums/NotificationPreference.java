@@ -1,5 +1,7 @@
 package cl.bunnycure.domain.enums;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 /**
  * Preferencia de notificación del cliente.
  * Define qué canal(es) de comunicación prefiere el cliente para recibir notificaciones.
@@ -8,11 +10,13 @@ public enum NotificationPreference {
     /**
      * Recibir notificaciones solo por email.
      */
+    @JsonAlias("EMAIL")
     EMAIL_ONLY("Solo Email"),
     
     /**
      * Recibir notificaciones solo por WhatsApp.
      */
+    @JsonAlias("WHATSAPP")
     WHATSAPP_ONLY("Solo WhatsApp"),
     
     /**

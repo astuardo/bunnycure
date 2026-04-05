@@ -32,12 +32,12 @@ public class CustomerDto {
     @Email(message = "Email inválido")
     private String email;  // Ahora es opcional
 
-    @Pattern(regexp = "^$|^(?i)(MASCULINO|FEMENINO)$", message = "El género debe ser Masculino o Femenino")
+    @Pattern(regexp = "^$|^(?i)(M|F|MASCULINO|FEMENINO|MALE|FEMALE)$", message = "El género debe ser M, F, Masculino o Femenino")
     private String gender;
 
     private LocalDate birthDate;
 
-    @Pattern(regexp = "^$|^\\+56[0-9]{9}$", message = "El teléfono de emergencia debe ser +56 seguido de 9 dígitos")
+    @Pattern(regexp = "^$|^\\+?[0-9]{8,15}$", message = "Formato de teléfono de emergencia inválido")
     private String emergencyPhone;
 
     @Size(max = 500)
