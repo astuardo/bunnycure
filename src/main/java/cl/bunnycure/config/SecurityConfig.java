@@ -25,6 +25,7 @@ public class SecurityConfig {
 	private final Environment env;
 	private final PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler;
 	private final CorsConfigurationSource corsConfigurationSource;
+	private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -97,6 +98,12 @@ public class SecurityConfig {
 		// ── Sesiones: crear solo cuando sea necesario ──────────────────────────
 		http.sessionManagement(session -> session
 				.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+		);
+
+		// ── Exception Handling ────────────────────────────────────────────────
+		// Usar custom entry point para retornar JSON 401 en APIs en vez de redirect HTML
+		http.exceptionHandling(ex -> ex
+				.authenticationEntryPoint(restAuthenticationEntryPoint)
 		);
 
 		// ── Login ─────────────────────────────────────────────────────────────
