@@ -22,6 +22,9 @@ public class CorsConfig {
     @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:4173,http://localhost:3000}")
     private String allowedOriginsConfig;
     
+    @Value("${cors.allowed-origin-patterns:}")
+    private String allowedOriginPatternsConfig;
+    
     @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,PATCH,OPTIONS}")
     private String allowedMethodsConfig;
     
@@ -41,9 +44,16 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // Orígenes permitidos (frontend URLs)
+        // Orígenes permitidos (frontend URLs específicas)
         List<String> origins = Arrays.asList(allowedOriginsConfig.split(","));
         configuration.setAllowedOrigins(origins);
+        
+        // Patrones de origen permitidos (para preview deployments)
+        // Ejemplo: https://*.vercel.app permite todos los preview deployments
+        if (!allowedOriginPatternsConfig.isEmpty()) {
+            List<String> patterns = Arrays.asList(allowedOriginPatternsConfig.split(","));
+            configuration.setAllowedOriginPatterns(patterns);
+        }
         
         // Métodos HTTP permitidos
         List<String> methods = Arrays.asList(allowedMethodsConfig.split(","));
