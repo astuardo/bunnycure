@@ -157,4 +157,16 @@ public class SecurityConfig {
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
 	}
+
+	/**
+	 * NOTA: La configuración de cookies de sesión se maneja en application-heroku.properties:
+	 * - server.servlet.session.timeout=8h
+	 * - server.servlet.session.cookie.max-age=28800
+	 * - server.servlet.session.cookie.same-site=none
+	 * - server.servlet.session.cookie.secure=true
+	 * - server.servlet.session.cookie.http-only=true
+	 * 
+	 * Estas propiedades configuran automáticamente la cookie JSESSIONID
+	 * con persistencia de 8 horas y soporte cross-origin para PWA móvil.
+	 */
 }
