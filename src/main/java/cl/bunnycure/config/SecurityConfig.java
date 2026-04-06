@@ -26,6 +26,7 @@ public class SecurityConfig {
 	private final PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler;
 	private final CorsConfigurationSource corsConfigurationSource;
 	private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -105,6 +106,11 @@ public class SecurityConfig {
 		http.exceptionHandling(ex -> ex
 				.authenticationEntryPoint(restAuthenticationEntryPoint)
 		);
+
+		// ── JWT Filter ───────────────────────────────────────────────────
+		// Agregar filtro JWT antes del UsernamePasswordAuthenticationFilter
+		// Permite autenticación dual: JWT (móvil) + Session Cookie (desktop)
+		http.addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
 		// ── Login ─────────────────────────────────────────────────────────────
 		http.formLogin(form -> form

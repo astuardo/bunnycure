@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * DTO para respuesta de login exitoso.
+ * Incluye JWT para autenticación móvil.
  */
 @Data
 @Builder
@@ -18,6 +19,13 @@ public class LoginResponse {
      * Información del usuario autenticado.
      */
     private UserDto user;
+    
+    /**
+     * Token JWT para autenticación en requests subsiguientes.
+     * El cliente móvil debe enviar este token en el header:
+     * Authorization: Bearer {token}
+     */
+    private String token;
     
     /**
      * Indica si el usuario debe cambiar su contraseña.
