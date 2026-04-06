@@ -3,6 +3,7 @@ package cl.bunnycure.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -26,6 +27,10 @@ public class SecurityConfig {
 	private final PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler;
 	private final CorsConfigurationSource corsConfigurationSource;
 	private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+	
+	// @Lazy rompe la referencia circular:
+	// SecurityConfig → JwtAuthenticationFilter → UserService → PasswordEncoder → SecurityConfig
+	@Lazy
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
 	@Bean
