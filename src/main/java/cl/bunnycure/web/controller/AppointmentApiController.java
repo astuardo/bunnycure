@@ -73,14 +73,18 @@ public class AppointmentApiController {
         } else if (startDate != null) {
             appointments = appointmentService.findByDateRange(startDate, startDate);
         } else {
-            // Por defecto, citas de hoy
-            appointments = appointmentService.findTodayAppointments();
+            // Por defecto, retornar últimos 3 meses + próximos 3 meses para el calendario
+            LocalDate defaultStart = LocalDate.now().minusMonths(3);
+            LocalDate defaultEnd = LocalDate.now().plusMonths(3);
+            log.debug("[API] No date filters provided, using default range: {} to {}", defaultStart, defaultEnd);
+            appointments = appointmentService.findByDateRange(defaultStart, defaultEnd);
         }
         
         List<AppointmentResponseDto> dtos = appointments.stream()
                 .map(this::toResponseDto)
                 .collect(Collectors.toList());
         
+        log.debug("[API] Returning {} appointments", dtos.size());
         return ResponseEntity.ok(ApiResponse.success(dtos));
     }
 
