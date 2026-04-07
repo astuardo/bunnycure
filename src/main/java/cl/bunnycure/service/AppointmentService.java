@@ -207,6 +207,34 @@ public class AppointmentService {
         return appointmentRepository.save(appointment);
     }
 
+    /**
+     * Encuentra citas próximas en una ventana de tiempo.
+     * Retorna solo citas confirmadas que NO tienen reminderSent = true.
+     * Útil para notificaciones push automáticas desde el frontend.
+     * 
+     * @param hours Ventana de tiempo en horas desde ahora
+     * @return Lista de citas en la ventana especificada
+     */
+    public List<Appointment> findUpcomingAppointmentsInWindow(int hours) {
+        ZonedDateTime nowInZone = getNowInConfiguredZone();
+        LocalDate today = nowInZone.toLocalDate();
+        LocalTime now = nowInZone.toLocalTime();
+        LocalTime endTime = now.plusHours(hours);
+
+        log.debug("[APPOINTMENT] Buscando citas entre {} y {} (ventana de {}h)", now, endTime, hours);
+
+        // Buscar citas de hoy en la ventana de tiempo especificada
+        List<Appointment> appointments = appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
+                List.of(AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING),
+                today,
+                now,
+                endTime
+        );
+
+        log.info("[APPOINTMENT] Encontradas {} citas en ventana de {}h", appointments.size(), hours);
+        return appointments;
+    }
+
     private ZonedDateTime getNowInConfiguredZone() {
         return ZonedDateTime.now(resolveReminderZoneId());
     }

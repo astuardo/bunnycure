@@ -4,6 +4,7 @@ import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.exception.ValidationException;
 import cl.bunnycure.service.AppointmentService;
+import cl.bunnycure.service.WhatsAppHandoffService;
 import cl.bunnycure.web.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -21,7 +22,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +39,7 @@ import java.util.stream.Collectors;
 public class AppointmentApiController {
 
     private final AppointmentService appointmentService;
+    private final WhatsAppHandoffService whatsAppHandoffService;
 
     @Operation(
             summary = "Listar citas",
@@ -269,6 +273,71 @@ public class AppointmentApiController {
         appointmentService.deleteAppointment(id);
         
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "WhatsApp Handoff - Transferir a agente humano",
+            description = "Genera URL de WhatsApp pre-llenada para transferir conversación a agente humano.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "URL generada exitosamente"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "Cita no encontrada"
+            )
+    })
+    @PostMapping("/{id}/whatsapp-handoff")
+    public ResponseEntity<Map<String, String>> whatsappHandoff(
+            @Parameter(description = "ID de la cita", required = true)
+            @PathVariable Long id) {
+        
+        log.info("[API] WhatsApp handoff requested for appointment {}", id);
+        
+        Appointment appointment = appointmentService.findById(id);
+        String url = whatsAppHandoffService.buildAdminToCustomerLinkFromAppointment(appointment);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("url", url);
+        
+        log.info("[API] WhatsApp handoff URL generated: {}", url);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Obtener citas próximas en ventana de tiempo",
+            description = """
+                    Obtiene citas confirmadas que ocurrirán en las próximas N horas.
+                    Útil para notificaciones push automáticas.
+                    Solo retorna citas que aún no tienen reminderSent = true.
+                    """)
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Lista de citas próximas obtenida exitosamente",
+                    content = @Content(
+                            mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = AppointmentResponseDto.class))
+                    )
+            )
+    })
+    @GetMapping("/upcoming-in-window")
+    public ResponseEntity<ApiResponse<List<AppointmentResponseDto>>> getUpcomingInWindow(
+            @Parameter(description = "Ventana de tiempo en horas (default: 2)")
+            @RequestParam(required = false, defaultValue = "2") int hours) {
+        
+        log.debug("[API] Getting appointments in next {} hours without reminder sent", hours);
+        
+        // Obtener citas en la ventana de tiempo especificada
+        List<Appointment> upcomingAppointments = appointmentService.findUpcomingAppointmentsInWindow(hours);
+        
+        List<AppointmentResponseDto> dtos = upcomingAppointments.stream()
+                .map(this::toResponseDto)
+                .collect(Collectors.toList());
+        
+        log.info("[API] Found {} appointments in next {} hours", dtos.size(), hours);
+        return ResponseEntity.ok(ApiResponse.success(dtos));
     }
 
     /**
