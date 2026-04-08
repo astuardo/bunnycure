@@ -50,7 +50,7 @@ public class ReminderScheduler {
      * (máximo 30 minutos de espera) en lugar de esperar hasta la próxima
      * ejecución de cada 2 horas.
      * 
-     * El método verifica citas en ventana de 2h hacia adelante, pero se ejecuta
+     * El metodo verifica citas en ventana de 2h hacia adelante, pero se ejecuta
      * frecuentemente para no perder citas agendadas "last minute".
      */
     @Scheduled(
