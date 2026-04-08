@@ -21,6 +21,7 @@ public class AppSettingsDto {
     private BookingSettings booking;
     private ReminderSettings reminders;
     private FieldSettings fields;
+    private NotificationTemplateSettings notificationTemplates;
     
     @Data
     @Builder
@@ -93,5 +94,16 @@ public class AppSettingsDto {
         private String emergencyPhoneMode;
         private String healthNotesMode;
         private String generalNotesMode;
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class NotificationTemplateSettings {
+        private String defaultTitle;
+        private String defaultBody;
+        private String twoHourTitle;
+        private String twoHourBody;
     }
 }

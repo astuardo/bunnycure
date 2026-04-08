@@ -49,7 +49,10 @@ public class SettingsApiController {
             "reminder.strategy",
             // Field Modes
             "field.email.mode", "field.gender.mode", "field.birth-date.mode",
-            "field.emergency-phone.mode", "field.health-notes.mode", "field.general-notes.mode"
+            "field.emergency-phone.mode", "field.health-notes.mode", "field.general-notes.mode",
+            // Notification Templates
+            "notification.template.default.title", "notification.template.default.body",
+            "notification.template.2hour.title", "notification.template.2hour.body"
     );
 
     private static final Set<String> VALID_REMINDER_STRATEGIES = Set.of(
@@ -84,6 +87,7 @@ public class SettingsApiController {
                 .booking(getBookingSettings())
                 .reminders(getReminderSettings())
                 .fields(getFieldSettings())
+                .notificationTemplates(getNotificationTemplateSettings())
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(dto));
@@ -312,7 +316,13 @@ public class SettingsApiController {
                 Map.entry("field.birth-date.mode", "OPTIONAL"),
                 Map.entry("field.emergency-phone.mode", "HIDDEN"),
                 Map.entry("field.health-notes.mode", "HIDDEN"),
-                Map.entry("field.general-notes.mode", "OPTIONAL")
+                Map.entry("field.general-notes.mode", "OPTIONAL"),
+
+                // Notification Templates
+                Map.entry("notification.template.default.title", "Recordatorio de Cita"),
+                Map.entry("notification.template.default.body", "Hola {customerName}, tienes una cita de {serviceName} el {date} a las {time}."),
+                Map.entry("notification.template.2hour.title", "¡Tu cita es pronto!"),
+                Map.entry("notification.template.2hour.body", "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). ¡Te esperamos!")
         );
 
         settingsService.saveAll(defaults);
@@ -384,6 +394,15 @@ public class SettingsApiController {
                 .emergencyPhoneMode(settingsService.getFieldEmergencyPhoneMode())
                 .healthNotesMode(settingsService.getFieldHealthNotesMode())
                 .generalNotesMode(settingsService.getFieldGeneralNotesMode())
+                .build();
+    }
+
+    private AppSettingsDto.NotificationTemplateSettings getNotificationTemplateSettings() {
+        return AppSettingsDto.NotificationTemplateSettings.builder()
+                .defaultTitle(settingsService.getNotificationDefaultTitle())
+                .defaultBody(settingsService.getNotificationDefaultBody())
+                .twoHourTitle(settingsService.getNotificationTwoHourTitle())
+                .twoHourBody(settingsService.getNotificationTwoHourBody())
                 .build();
     }
 

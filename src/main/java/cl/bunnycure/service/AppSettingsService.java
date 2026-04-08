@@ -290,4 +290,28 @@ public class AppSettingsService {
     public boolean isFieldRequired(String fieldMode) {
         return FIELD_MODE_REQUIRED.equals(fieldMode);
     }
+
+    // ── Templates de Notificaciones PWA (Fase 4) ────────────────────────────
+
+    /** Título por defecto para notificaciones. Default: "Recordatorio de Cita" */
+    public String getNotificationDefaultTitle() {
+        return get("notification.template.default.title", "Recordatorio de Cita");
+    }
+
+    /** Cuerpo por defecto para notificaciones. Default con variables */
+    public String getNotificationDefaultBody() {
+        return get("notification.template.default.body",
+                "Hola {customerName}, tienes una cita de {serviceName} el {date} a las {time}.");
+    }
+
+    /** Título para notificaciones 2h antes. Default: "¡Tu cita es pronto!" */
+    public String getNotificationTwoHourTitle() {
+        return get("notification.template.2hour.title", "¡Tu cita es pronto!");
+    }
+
+    /** Cuerpo para notificaciones 2h antes. Default con variables */
+    public String getNotificationTwoHourBody() {
+        return get("notification.template.2hour.body",
+                "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). ¡Te esperamos!");
+    }
 }
