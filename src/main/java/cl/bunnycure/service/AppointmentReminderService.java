@@ -23,6 +23,7 @@ public class AppointmentReminderService {
     private final NotificationService notificationService;
     private final AppSettingsService appSettingsService;
     private final WhatsAppService whatsAppService;
+    private final WebPushNotificationService webPushNotificationService;
 
     /**
      * Se ejecuta diariamente con cron/zone configurables via properties.
@@ -101,6 +102,9 @@ public class AppointmentReminderService {
         } else {
             log.warn("[REMINDER] Sin email para enviar recordatorio");
         }
+
+        // Push para admin/dueña (PWA)
+        webPushNotificationService.sendAdminAppointmentReminder(appointment, "manual");
     }
 
     /**

@@ -31,6 +31,7 @@ public class NotificationService {
     private final WhatsAppService whatsAppService;
     private final WhatsAppAdminAlertOutboxService whatsAppAdminAlertOutboxService;
     private final AppSettingsService appSettingsService;
+    private final WebPushNotificationService webPushNotificationService;
 
     @Value("${bunnycure.mail.enabled:false}")
     private boolean mailEnabled;
@@ -396,6 +397,9 @@ public class NotificationService {
                     log.warn("[WHATSAPP-WARN] No se pudo enviar WhatsApp recordatorio: {}", e.getMessage());
                 }
             }
+
+            // Notificación push para admin/dueña (PWA)
+            webPushNotificationService.sendAdminAppointmentReminder(appointment, type);
 
         } catch (Exception e) {
             log.error("[REMINDER-ERROR] Error al enviar recordatorio para cita ID {}: {}", 
