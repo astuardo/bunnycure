@@ -31,7 +31,6 @@ public class AppointmentCreateRequestDto {
     private Long serviceId;
     
     @NotNull(message = "La fecha de la cita es requerida")
-    @Future(message = "La fecha de la cita debe ser futura")
     @Schema(description = "Fecha de la cita", example = "2024-04-15", required = true)
     private LocalDate appointmentDate;
     
