@@ -183,6 +183,7 @@ NOTES.md
 ##############################################################
 # Scripts de utilidades locales
 *.bat
+*.md
 *.ps1
 
 # Permitir scripts esenciales de Maven

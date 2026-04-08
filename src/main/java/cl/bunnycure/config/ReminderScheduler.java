@@ -43,9 +43,18 @@ public class ReminderScheduler {
      * Recordatorio para citas dentro de las próximas 2 horas.
      * Activo cuando reminder.strategy = "2hours" o "both" (default: "2hours").
      * Se ejecuta con cron/zone configurables via properties.
+     * 
+     * IMPORTANTE: Se ejecuta cada 30 minutos (no cada 2 horas) para detectar
+     * citas agendadas recientemente. Ejemplo: si se agenda una cita a las 11:15
+     * para las 12:00, el recordatorio se enviará en la siguiente ejecución 
+     * (máximo 30 minutos de espera) en lugar de esperar hasta la próxima
+     * ejecución de cada 2 horas.
+     * 
+     * El método verifica citas en ventana de 2h hacia adelante, pero se ejecuta
+     * frecuentemente para no perder citas agendadas "last minute".
      */
     @Scheduled(
-            cron = "${bunnycure.reminder.two-hours.cron:0 0 */2 * * *}",
+            cron = "${bunnycure.reminder.two-hours.cron:0 */30 * * * *}",
             zone = "${bunnycure.scheduler.timezone:America/Santiago}"
     )
     public void sendTwoHourReminders() {
