@@ -22,9 +22,11 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,6 +62,8 @@ class WhatsAppAdminAlertOutboxServiceTest {
         ReflectionTestUtils.setField(service, "batchSize", 20);
         ReflectionTestUtils.setField(service, "maxAttempts", 6);
         ReflectionTestUtils.setField(service, "retryBaseSeconds", 30);
+        lenient().when(appSettingsService.isWhatsappAdminAlertEnabled(anyBoolean()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test

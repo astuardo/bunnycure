@@ -48,6 +48,7 @@ public class AppSettingsDto {
         private String number;
         private String humanNumber;
         private String adminAlertNumber;
+        private Boolean adminAlertEnabled;
         private String humanDisplayName;
         private Boolean handoffEnabled;
         private String handoffClientMessage;
@@ -101,6 +102,7 @@ public class AppSettingsDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class NotificationTemplateSettings {
+        private Boolean emailEnabled;
         private String defaultTitle;
         private String defaultBody;
         private String twoHourTitle;

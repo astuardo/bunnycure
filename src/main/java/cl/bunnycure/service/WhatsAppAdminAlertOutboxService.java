@@ -159,7 +159,7 @@ public class WhatsAppAdminAlertOutboxService {
     }
 
     private boolean isAlertActive() {
-        if (!adminAlertEnabled) {
+        if (!appSettingsService.isWhatsappAdminAlertEnabled(adminAlertEnabled)) {
             return false;
         }
         String resolved = resolveAdminAlertNumber();

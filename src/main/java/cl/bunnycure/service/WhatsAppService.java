@@ -5,6 +5,7 @@ import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.BookingRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -39,6 +40,9 @@ public class WhatsAppService {
     private final RestTemplate restTemplate;
     private final AppSettingsService appSettingsService;
     private final CalendarService calendarService;
+
+    @Value("${bunnycure.whatsapp.admin-alert.enabled:true}")
+    private boolean adminAlertEnabledFallback;
 
     public Optional<MediaDownloadResult> downloadImageByMediaId(String mediaId) {
         if (mediaId == null || mediaId.isBlank()) {
@@ -660,6 +664,11 @@ public class WhatsAppService {
      */
     @Async
     public void sendAdminAppointmentCreatedAlert(Appointment appointment) {
+        if (!appSettingsService.isWhatsappAdminAlertEnabled(adminAlertEnabledFallback)) {
+            log.info("[WHATSAPP-SKIP] Alertas WhatsApp admin deshabilitadas por configuración");
+            return;
+        }
+
         if (!config.isUseTemplateForAdminAppointmentAlert()) {
             log.info("[WHATSAPP-SKIP] Template de alerta admin para cita creada está deshabilitado");
             return;

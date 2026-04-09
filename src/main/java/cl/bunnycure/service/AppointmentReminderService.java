@@ -136,8 +136,7 @@ public class AppointmentReminderService {
         try {
             log.info("[REMINDER-EMAIL] Intentando enviar recordatorio a: {}", email);
             
-            boolean emailEnabled = Boolean.parseBoolean(
-                    appSettingsService.get("email.enabled", "true"));
+            boolean emailEnabled = appSettingsService.isMailEnabled(true);
 
             log.info("[REMINDER-EMAIL] Email habilitado: {}", emailEnabled);
 

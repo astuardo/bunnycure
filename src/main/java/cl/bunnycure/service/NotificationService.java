@@ -33,7 +33,7 @@ public class NotificationService {
     private final AppSettingsService appSettingsService;
     private final WebPushNotificationService webPushNotificationService;
 
-    @Value("${bunnycure.mail.enabled:false}")
+    @Value("${bunnycure.mail.enabled:true}")
     private boolean mailEnabled;
 
     @Value("${bunnycure.mail.from:noreply@bunnycure.cl}")
@@ -46,7 +46,7 @@ public class NotificationService {
 
     @Async
     public void sendConfirmation(Appointment appointment) {
-        if (!mailEnabled) {
+        if (!isMailEnabled()) {
             log.info("[MAIL-SKIP] Confirmación para {} (mail deshabilitado)",
                     appointment.getCustomer().getEmail());
             return;
@@ -92,7 +92,7 @@ public class NotificationService {
         cl.bunnycure.domain.enums.NotificationPreference pref = customer.getNotificationPreference();
         
         // Enviar email solo si está configurado Y la preferencia lo permite
-        if (mailEnabled && pref != null && pref.allowsEmail()) {
+        if (isMailEnabled() && pref != null && pref.allowsEmail()) {
             send(appointment, "mail/cancellation",
                     "Tu cita ha sido cancelada – BunnyCure");
         }
@@ -119,7 +119,7 @@ public class NotificationService {
         cl.bunnycure.domain.enums.NotificationPreference pref = request.getNotificationPreference();
         
         // Enviar email solo si está configurado, tiene email Y la preferencia lo permite
-        if (mailEnabled && pref != null && pref.allowsEmail() 
+        if (isMailEnabled() && pref != null && pref.allowsEmail() 
                 && request.getEmail() != null && !request.getEmail().isBlank()) {
             try {
                 String fechaFormateada = request.getPreferredDate()
@@ -161,7 +161,7 @@ public class NotificationService {
         cl.bunnycure.domain.enums.NotificationPreference pref = request.getNotificationPreference();
         
         // Enviar email solo si está configurado, tiene email Y la preferencia lo permite
-        if (mailEnabled && pref != null && pref.allowsEmail() 
+        if (isMailEnabled() && pref != null && pref.allowsEmail() 
                 && request.getEmail() != null && !request.getEmail().isBlank()) {
             try {
                 Context ctx = new Context(resolveAppLocale());
@@ -276,6 +276,11 @@ public class NotificationService {
     }
 
     private void sendHtml(String to, String subject, String html) throws Exception {
+        if (!isMailEnabled()) {
+            log.info("[MAIL-SKIP] {} (mail deshabilitado globalmente)", subject);
+            return;
+        }
+
         int maxRetries = 3;
         int delayMs = 1000;
         
@@ -316,7 +321,7 @@ public class NotificationService {
     public void sendReminder(String email, String firstName, String serviceName, 
                             String appointmentTime, String appointmentDate,
                             Appointment appointment) {
-        if (!mailEnabled) {
+        if (!isMailEnabled()) {
             log.info("[MAIL-SKIP] Recordatorio para {} (mail deshabilitado)", email);
             return;
         }
@@ -375,7 +380,7 @@ public class NotificationService {
             }
 
             // Enviar email solo si la preferencia lo permite
-            if (pref != null && pref.allowsEmail()) {
+            if (isMailEnabled() && pref != null && pref.allowsEmail()) {
                 try {
                     Context context = new Context();
                     context.setVariable("firstName", customerName);
@@ -418,6 +423,10 @@ public class NotificationService {
 
     private DateTimeFormatter longDateFormatter() {
         return DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy", resolveAppLocale());
+    }
+
+    private boolean isMailEnabled() {
+        return appSettingsService.isMailEnabled(mailEnabled);
     }
 
 }

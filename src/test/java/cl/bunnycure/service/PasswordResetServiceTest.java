@@ -39,11 +39,14 @@ class PasswordResetServiceTest {
     @Mock
     private JavaMailSender mailSender;
 
+    @Mock
+    private AppSettingsService appSettingsService;
+
     private PasswordResetService passwordResetService;
 
     @BeforeEach
     void setUp() {
-        passwordResetService = new PasswordResetService(userRepository, tokenRepository, passwordEncoder, mailSender);
+        passwordResetService = new PasswordResetService(userRepository, tokenRepository, passwordEncoder, mailSender, appSettingsService);
         ReflectionTestUtils.setField(passwordResetService, "mailEnabled", false);
         ReflectionTestUtils.setField(passwordResetService, "mailFrom", "noreply@bunnycure.cl");
     }

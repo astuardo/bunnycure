@@ -27,6 +27,7 @@ public class PasswordResetService {
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
+    private final AppSettingsService appSettingsService;
 
     @Value("${bunnycure.mail.enabled:true}")
     private boolean mailEnabled;
@@ -76,7 +77,7 @@ public class PasswordResetService {
     }
 
     private void sendResetEmail(User user, String token, String appBaseUrl) {
-        if (!mailEnabled) {
+        if (!appSettingsService.isMailEnabled(mailEnabled)) {
             log.info("[RESET-PASSWORD] Mail deshabilitado, no se envía correo a {}", user.getEmail());
             return;
         }

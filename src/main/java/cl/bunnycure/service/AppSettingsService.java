@@ -71,6 +71,22 @@ public class AppSettingsService {
         return fallbackValue;
     }
 
+    public boolean isWhatsappAdminAlertEnabled() {
+        return isWhatsappAdminAlertEnabled(true);
+    }
+
+    public boolean isWhatsappAdminAlertEnabled(boolean defaultValue) {
+        return getBoolean("whatsapp.admin-alert.enabled", defaultValue);
+    }
+
+    public boolean isMailEnabled() {
+        return isMailEnabled(true);
+    }
+
+    public boolean isMailEnabled(boolean defaultValue) {
+        return getBoolean("mail.enabled", defaultValue);
+    }
+
     public boolean isWhatsappHandoffEnabled() {
         return getBoolean("whatsapp.handoff.enabled", true);
     }

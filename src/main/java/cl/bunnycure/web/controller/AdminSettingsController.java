@@ -35,8 +35,10 @@ public class AdminSettingsController {
         model.addAttribute("whatsappNumber",   settingsService.getWhatsappNumber());
         model.addAttribute("whatsappHumanNumber", settingsService.getHumanWhatsappNumber());
         model.addAttribute("whatsappAdminAlertNumber", settingsService.getAdminAlertWhatsappNumber("56964499995"));
+        model.addAttribute("whatsappAdminAlertEnabled", settingsService.isWhatsappAdminAlertEnabled());
         model.addAttribute("whatsappHumanDisplayName", settingsService.getHumanWhatsappDisplayName());
         model.addAttribute("whatsappHandoffEnabled", settingsService.isWhatsappHandoffEnabled());
+        model.addAttribute("mailEnabled", settingsService.isMailEnabled());
         model.addAttribute("whatsappHandoffClientMessage", settingsService.getWhatsappHandoffClientMessage());
         model.addAttribute("whatsappHandoffAdminPrefill", settingsService.getWhatsappHandoffAdminPrefill());
         model.addAttribute("msgTemplate",      settingsService.getBookingMessageTemplate());
@@ -95,8 +97,10 @@ public class AdminSettingsController {
                 Map.entry("whatsapp.number", humanWhatsappNumber),
                 Map.entry("whatsapp.human.number", humanWhatsappNumber),
                 Map.entry("whatsapp.admin-alert.number", whatsappAdminAlertNumber),
+                Map.entry("whatsapp.admin-alert.enabled", params.getOrDefault("whatsappAdminAlertEnabled", "false")),
                 Map.entry("whatsapp.human.display-name", params.getOrDefault("whatsappHumanDisplayName", "Equipo BunnyCure")),
                 Map.entry("whatsapp.handoff.enabled", params.getOrDefault("whatsappHandoffEnabled", "false")),
+                Map.entry("mail.enabled", params.getOrDefault("mailEnabled", "false")),
                 Map.entry("whatsapp.handoff.client-message", params.getOrDefault("whatsappHandoffClientMessage", "")),
                 Map.entry("whatsapp.handoff.admin-prefill", params.getOrDefault("whatsappHandoffAdminPrefill", "")),
                 Map.entry("booking.message.template", params.getOrDefault("msgTemplate", "")),

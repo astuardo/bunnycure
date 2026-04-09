@@ -38,8 +38,11 @@ public class SettingsApiController {
             "app.timezone", "app.locale", "app.currency", "app.service-tip",
             // WhatsApp
             "whatsapp.number", "whatsapp.human.number", "whatsapp.admin-alert.number",
+            "whatsapp.admin-alert.enabled",
             "whatsapp.human.display-name",
             "whatsapp.handoff.enabled", "whatsapp.handoff.client-message", "whatsapp.handoff.admin-prefill",
+            // Mail
+            "mail.enabled",
             // Booking
             "booking.enabled",
             "booking.message.template",
@@ -292,10 +295,14 @@ public class SettingsApiController {
                 Map.entry("whatsapp.number", "56988873031"),
                 Map.entry("whatsapp.human.number", "56988873031"),
                 Map.entry("whatsapp.admin-alert.number", "56964499995"),
+                Map.entry("whatsapp.admin-alert.enabled", "true"),
                 Map.entry("whatsapp.human.display-name", "Equipo BunnyCure"),
                 Map.entry("whatsapp.handoff.enabled", "true"),
                 Map.entry("whatsapp.handoff.client-message", "Si necesitas ayuda personalizada, escríbenos al WhatsApp de atención humana: {numero}."),
                 Map.entry("whatsapp.handoff.admin-prefill", "Hola {nombre}, te escribe BunnyCure por tu solicitud o cita. Te contacto para ayudarte personalmente."),
+
+                // Mail
+                Map.entry("mail.enabled", "true"),
 
                 // Booking
                 Map.entry("booking.enabled", "true"),
@@ -354,6 +361,7 @@ public class SettingsApiController {
                 .number(settingsService.getWhatsappNumber())
                 .humanNumber(settingsService.getHumanWhatsappNumber())
                 .adminAlertNumber(settingsService.getAdminAlertWhatsappNumber("56964499995"))
+                .adminAlertEnabled(settingsService.isWhatsappAdminAlertEnabled())
                 .humanDisplayName(settingsService.getHumanWhatsappDisplayName())
                 .handoffEnabled(settingsService.isWhatsappHandoffEnabled())
                 .handoffClientMessage(settingsService.getWhatsappHandoffClientMessage())
@@ -399,6 +407,7 @@ public class SettingsApiController {
 
     private AppSettingsDto.NotificationTemplateSettings getNotificationTemplateSettings() {
         return AppSettingsDto.NotificationTemplateSettings.builder()
+                .emailEnabled(settingsService.isMailEnabled())
                 .defaultTitle(settingsService.getNotificationDefaultTitle())
                 .defaultBody(settingsService.getNotificationDefaultBody())
                 .twoHourTitle(settingsService.getNotificationTwoHourTitle())
