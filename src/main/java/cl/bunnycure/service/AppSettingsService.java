@@ -276,6 +276,14 @@ public class AppSettingsService {
         return get("app.phone.display", "+56 9 6449 9995");
     }
 
+    public String getAppOwnerName() {
+        return get("app.owner.name", "Dueña");
+    }
+
+    public boolean isWhatsappEnabled() {
+        return getBoolean("whatsapp.enabled", true);
+    }
+
     // ── Configuración de Campos Dinámicos (Fase 3) ─────────────────────────
 
     /** Valores válidos para field mode */

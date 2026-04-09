@@ -32,6 +32,11 @@ public class AppSettingsDto {
         private String slogan;
         private String email;
         private String logoUrl;
+        private String websiteUrl;
+        private String instagramUrl;
+        private String instagramHandle;
+        private String phoneDisplay;
+        private String ownerName;
         private String primaryColor;
         private String secondaryColor;
         private String timezone;
@@ -45,6 +50,7 @@ public class AppSettingsDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class WhatsAppSettings {
+        private Boolean enabled;
         private String number;
         private String humanNumber;
         private String adminAlertNumber;
@@ -53,6 +59,24 @@ public class AppSettingsDto {
         private Boolean handoffEnabled;
         private String handoffClientMessage;
         private String handoffAdminPrefill;
+        private String templateConfirmationName;
+        private String templateReminderName;
+        private String templateCancellationName;
+        private String templateBookingReviewName;
+        private String templateBookingRejectedName;
+        private String templateAdminAlertName;
+        private String templateAdminAppointmentAlertName;
+        private String templateLanguage;
+        private String templateAdminAlertLanguage;
+        private Boolean templateConfirmationEnabled;
+        private Boolean templateReminderEnabled;
+        private Boolean templateCancellationEnabled;
+        private Boolean templateBookingReviewEnabled;
+        private Boolean templateBookingRejectedEnabled;
+        private Boolean templateAdminAlertEnabled;
+        private Boolean templateAdminAppointmentAlertEnabled;
+        private String adminBookingRequestsUrl;
+        private String businessName;
     }
     
     @Data

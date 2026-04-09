@@ -34,13 +34,24 @@ public class SettingsApiController {
     private static final Set<String> VALID_KEYS = Set.of(
             // Branding & Identidad
             "app.name", "app.slogan", "app.email", "app.logo-url",
+            "app.website.url", "app.instagram.url", "app.instagram.handle", "app.phone.display", "app.owner.name",
             "app.primary-color", "app.secondary-color",
             "app.timezone", "app.locale", "app.currency", "app.service-tip",
             // WhatsApp
+            "whatsapp.enabled",
             "whatsapp.number", "whatsapp.human.number", "whatsapp.admin-alert.number",
             "whatsapp.admin-alert.enabled",
             "whatsapp.human.display-name",
             "whatsapp.handoff.enabled", "whatsapp.handoff.client-message", "whatsapp.handoff.admin-prefill",
+            "whatsapp.template.confirmation.name", "whatsapp.template.reminder.name",
+            "whatsapp.template.cancellation.name", "whatsapp.template.booking-review.name",
+            "whatsapp.template.booking-rejected.name", "whatsapp.template.admin-alert.name",
+            "whatsapp.template.admin-appointment-alert.name", "whatsapp.template.language",
+            "whatsapp.template.admin-alert.language", "whatsapp.template.confirmation.enabled",
+            "whatsapp.template.reminder.enabled", "whatsapp.template.cancellation.enabled",
+            "whatsapp.template.booking-review.enabled", "whatsapp.template.booking-rejected.enabled",
+            "whatsapp.template.admin-alert.enabled", "whatsapp.template.admin-appointment-alert.enabled",
+            "whatsapp.admin.booking-requests.url", "whatsapp.business.name",
             // Mail
             "mail.enabled",
             // Booking
@@ -285,6 +296,11 @@ public class SettingsApiController {
                 Map.entry("app.slogan", "Arte en tus manos ✨"),
                 Map.entry("app.email", "contacto@bunnycure.cl"),
                 Map.entry("app.logo-url", "/images/logo.png"),
+                Map.entry("app.website.url", "https://www.bunnycure.cl"),
+                Map.entry("app.instagram.url", "https://www.instagram.com/bunny.cure"),
+                Map.entry("app.instagram.handle", "@bunny.cure"),
+                Map.entry("app.phone.display", "+56 9 6449 9995"),
+                Map.entry("app.owner.name", "Dueña"),
                 Map.entry("app.primary-color", "#F472B6"),
                 Map.entry("app.secondary-color", "#8B5CF6"),
                 Map.entry("app.timezone", "America/Santiago"),
@@ -293,6 +309,7 @@ public class SettingsApiController {
                 Map.entry("app.service-tip", "Llega con las uñas limpias y sin esmalte"),
 
                 // WhatsApp
+                Map.entry("whatsapp.enabled", "true"),
                 Map.entry("whatsapp.number", "56988873031"),
                 Map.entry("whatsapp.human.number", "56988873031"),
                 Map.entry("whatsapp.admin-alert.number", "56964499995"),
@@ -301,6 +318,24 @@ public class SettingsApiController {
                 Map.entry("whatsapp.handoff.enabled", "true"),
                 Map.entry("whatsapp.handoff.client-message", "Si necesitas ayuda personalizada, escríbenos al WhatsApp de atención humana: {numero}."),
                 Map.entry("whatsapp.handoff.admin-prefill", "Hola {nombre}, te escribe BunnyCure por tu solicitud o cita. Te contacto para ayudarte personalmente."),
+                Map.entry("whatsapp.template.confirmation.name", "confirmacion_cita"),
+                Map.entry("whatsapp.template.reminder.name", "recordatorio_cita"),
+                Map.entry("whatsapp.template.cancellation.name", "cancelacion_cita"),
+                Map.entry("whatsapp.template.booking-review.name", "agenda_en_revision"),
+                Map.entry("whatsapp.template.booking-rejected.name", "solicitud_rechazada"),
+                Map.entry("whatsapp.template.admin-alert.name", ""),
+                Map.entry("whatsapp.template.admin-appointment-alert.name", "confirmacion_hora"),
+                Map.entry("whatsapp.template.language", "es_CL"),
+                Map.entry("whatsapp.template.admin-alert.language", "es_CL"),
+                Map.entry("whatsapp.template.confirmation.enabled", "true"),
+                Map.entry("whatsapp.template.reminder.enabled", "true"),
+                Map.entry("whatsapp.template.cancellation.enabled", "true"),
+                Map.entry("whatsapp.template.booking-review.enabled", "true"),
+                Map.entry("whatsapp.template.booking-rejected.enabled", "true"),
+                Map.entry("whatsapp.template.admin-alert.enabled", "false"),
+                Map.entry("whatsapp.template.admin-appointment-alert.enabled", "true"),
+                Map.entry("whatsapp.admin.booking-requests.url", ""),
+                Map.entry("whatsapp.business.name", "BunnyCure"),
 
                 // Mail
                 Map.entry("mail.enabled", "true"),
@@ -349,6 +384,11 @@ public class SettingsApiController {
                 .slogan(settingsService.getAppSlogan())
                 .email(settingsService.getAppEmail())
                 .logoUrl(settingsService.getAppLogoUrl())
+                .websiteUrl(settingsService.getAppWebsiteUrl())
+                .instagramUrl(settingsService.getAppInstagramUrl())
+                .instagramHandle(settingsService.getAppInstagramHandle())
+                .phoneDisplay(settingsService.getAppPhoneDisplay())
+                .ownerName(settingsService.getAppOwnerName())
                 .primaryColor(settingsService.getAppPrimaryColor())
                 .secondaryColor(settingsService.getAppSecondaryColor())
                 .timezone(settingsService.getAppTimezone())
@@ -360,6 +400,7 @@ public class SettingsApiController {
 
     private AppSettingsDto.WhatsAppSettings getWhatsAppSettings() {
         return AppSettingsDto.WhatsAppSettings.builder()
+                .enabled(settingsService.isWhatsappEnabled())
                 .number(settingsService.getWhatsappNumber())
                 .humanNumber(settingsService.getHumanWhatsappNumber())
                 .adminAlertNumber(settingsService.getAdminAlertWhatsappNumber("56964499995"))
@@ -368,6 +409,24 @@ public class SettingsApiController {
                 .handoffEnabled(settingsService.isWhatsappHandoffEnabled())
                 .handoffClientMessage(settingsService.getWhatsappHandoffClientMessage())
                 .handoffAdminPrefill(settingsService.getWhatsappHandoffAdminPrefill())
+                .templateConfirmationName(settingsService.get("whatsapp.template.confirmation.name", "confirmacion_cita"))
+                .templateReminderName(settingsService.get("whatsapp.template.reminder.name", "recordatorio_cita"))
+                .templateCancellationName(settingsService.get("whatsapp.template.cancellation.name", "cancelacion_cita"))
+                .templateBookingReviewName(settingsService.get("whatsapp.template.booking-review.name", "agenda_en_revision"))
+                .templateBookingRejectedName(settingsService.get("whatsapp.template.booking-rejected.name", "solicitud_rechazada"))
+                .templateAdminAlertName(settingsService.get("whatsapp.template.admin-alert.name", ""))
+                .templateAdminAppointmentAlertName(settingsService.get("whatsapp.template.admin-appointment-alert.name", "confirmacion_hora"))
+                .templateLanguage(settingsService.get("whatsapp.template.language", "es_CL"))
+                .templateAdminAlertLanguage(settingsService.get("whatsapp.template.admin-alert.language", "es_CL"))
+                .templateConfirmationEnabled(settingsService.getBoolean("whatsapp.template.confirmation.enabled", true))
+                .templateReminderEnabled(settingsService.getBoolean("whatsapp.template.reminder.enabled", true))
+                .templateCancellationEnabled(settingsService.getBoolean("whatsapp.template.cancellation.enabled", true))
+                .templateBookingReviewEnabled(settingsService.getBoolean("whatsapp.template.booking-review.enabled", true))
+                .templateBookingRejectedEnabled(settingsService.getBoolean("whatsapp.template.booking-rejected.enabled", true))
+                .templateAdminAlertEnabled(settingsService.getBoolean("whatsapp.template.admin-alert.enabled", false))
+                .templateAdminAppointmentAlertEnabled(settingsService.getBoolean("whatsapp.template.admin-appointment-alert.enabled", true))
+                .adminBookingRequestsUrl(settingsService.get("whatsapp.admin.booking-requests.url", ""))
+                .businessName(settingsService.get("whatsapp.business.name", settingsService.getAppName()))
                 .build();
     }
 
@@ -423,7 +482,15 @@ public class SettingsApiController {
      * @return mensaje de error si es inválido, null si es válido
      */
     private String validateSettingValue(String key, String value) {
+        Set<String> allowEmpty = Set.of(
+                "whatsapp.template.admin-alert.name",
+                "whatsapp.admin.booking-requests.url"
+        );
+
         if (value == null || value.trim().isEmpty()) {
+            if (allowEmpty.contains(key)) {
+                return null;
+            }
             return "El valor no puede estar vacío";
         }
 

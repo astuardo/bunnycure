@@ -112,8 +112,7 @@ public class AppointmentReminderService {
      */
     private void sendWhatsAppReminder(Appointment appointment, String phone) {
         try {
-            boolean whatsappEnabled = Boolean.parseBoolean(
-                    appSettingsService.get("whatsapp.enabled", "true"));
+            boolean whatsappEnabled = appSettingsService.isWhatsappEnabled();
 
             if (!whatsappEnabled) {
                 log.debug("[REMINDER-WA] WhatsApp deshabilitado en configuración");

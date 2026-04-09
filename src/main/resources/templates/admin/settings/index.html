@@ -73,6 +73,45 @@
         </div>
 
         <div class="row g-3 mt-1">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Sitio web</label>
+            <input type="url" name="appWebsiteUrl" class="form-control"
+                   th:value="${appWebsiteUrl}" placeholder="https://www.bunnycure.cl"
+                   maxlength="255"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Instagram URL</label>
+            <input type="url" name="appInstagramUrl" class="form-control"
+                   th:value="${appInstagramUrl}" placeholder="https://www.instagram.com/bunny.cure"
+                   maxlength="255"/>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Instagram handle</label>
+            <input type="text" name="appInstagramHandle" class="form-control"
+                   th:value="${appInstagramHandle}" placeholder="@bunny.cure"
+                   maxlength="80"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Teléfono de contacto (display)</label>
+            <input type="text" name="appPhoneDisplay" class="form-control"
+                   th:value="${appPhoneDisplay}" placeholder="+56 9 6449 9995"
+                   maxlength="40"/>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Nombre de dueña/admin</label>
+            <input type="text" name="appOwnerName" class="form-control"
+                   th:value="${appOwnerName}" placeholder="Dueña"
+                   maxlength="100"/>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
           <div class="col-md-4">
             <label class="form-label fw-semibold">Color primario</label>
             <div class="input-group">
@@ -158,6 +197,21 @@
             <input class="form-check-input" type="checkbox"
                    name="bookingEnabled" value="true"
                    th:checked="${bookingEnabled}"
+                   style="width:3rem;height:1.5rem;cursor:pointer;">
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <div class="fw-semibold">Habilitar WhatsApp automático</div>
+            <small class="text-muted">
+              Control global para envíos WhatsApp en flujos automáticos.
+            </small>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox"
+                   name="whatsappEnabled" value="true"
+                   th:checked="${whatsappEnabled}"
                    style="width:3rem;height:1.5rem;cursor:pointer;">
           </div>
         </div>
@@ -436,6 +490,127 @@
         <div class="alert alert-info mt-3 mb-0" style="background:#E0F2FE;border-color:#7DD3FC;">
           <i class="bi bi-info-circle me-2"></i>
           <strong>Nota:</strong> Los campos <strong>Nombre</strong>, <strong>Teléfono</strong>, <strong>Servicio</strong> y <strong>Fecha/Bloque</strong> siempre son obligatorios.
+        </div>
+      </div>
+    </div>
+
+    <!-- Templates WhatsApp -->
+    <div class="card table-card mb-4">
+      <div class="card-header fw-semibold py-3 px-4"
+           style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
+        <i class="bi bi-chat-square-text me-2" style="color:#8B5CF6;"></i>
+        Templates WhatsApp
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Template confirmación</label>
+            <input type="text" name="waTemplateConfirmationName" class="form-control" th:value="${waTemplateConfirmationName}" maxlength="80"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Template recordatorio</label>
+            <input type="text" name="waTemplateReminderName" class="form-control" th:value="${waTemplateReminderName}" maxlength="80"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Template cancelación</label>
+            <input type="text" name="waTemplateCancellationName" class="form-control" th:value="${waTemplateCancellationName}" maxlength="80"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Template agenda en revisión</label>
+            <input type="text" name="waTemplateBookingReviewName" class="form-control" th:value="${waTemplateBookingReviewName}" maxlength="80"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Template solicitud rechazada</label>
+            <input type="text" name="waTemplateBookingRejectedName" class="form-control" th:value="${waTemplateBookingRejectedName}" maxlength="80"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Template alerta admin (booking)</label>
+            <input type="text" name="waTemplateAdminAlertName" class="form-control" th:value="${waTemplateAdminAlertName}" maxlength="80"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Template alerta admin (cita creada)</label>
+            <input type="text" name="waTemplateAdminAppointmentAlertName" class="form-control" th:value="${waTemplateAdminAppointmentAlertName}" maxlength="80"/>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Idioma templates</label>
+            <input type="text" name="waTemplateLanguage" class="form-control" th:value="${waTemplateLanguage}" maxlength="10"/>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Idioma alerta admin</label>
+            <input type="text" name="waTemplateAdminAlertLanguage" class="form-control" th:value="${waTemplateAdminAlertLanguage}" maxlength="10"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">URL panel solicitudes admin</label>
+            <input type="url" name="waAdminBookingRequestsUrl" class="form-control" th:value="${waAdminBookingRequestsUrl}" maxlength="255"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Nombre negocio para contexto WhatsApp</label>
+            <input type="text" name="waBusinessName" class="form-control" th:value="${waBusinessName}" maxlength="100"/>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-md-4 form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="waTemplateConfirmationEnabled" value="true" th:checked="${waTemplateConfirmationEnabled}">
+            <label class="form-check-label ms-2">Template confirmación habilitado</label>
+          </div>
+          <div class="col-md-4 form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="waTemplateReminderEnabled" value="true" th:checked="${waTemplateReminderEnabled}">
+            <label class="form-check-label ms-2">Template recordatorio habilitado</label>
+          </div>
+          <div class="col-md-4 form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="waTemplateCancellationEnabled" value="true" th:checked="${waTemplateCancellationEnabled}">
+            <label class="form-check-label ms-2">Template cancelación habilitado</label>
+          </div>
+          <div class="col-md-4 form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="waTemplateBookingReviewEnabled" value="true" th:checked="${waTemplateBookingReviewEnabled}">
+            <label class="form-check-label ms-2">Template agenda en revisión habilitado</label>
+          </div>
+          <div class="col-md-4 form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="waTemplateBookingRejectedEnabled" value="true" th:checked="${waTemplateBookingRejectedEnabled}">
+            <label class="form-check-label ms-2">Template rechazo habilitado</label>
+          </div>
+          <div class="col-md-4 form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="waTemplateAdminAlertEnabled" value="true" th:checked="${waTemplateAdminAlertEnabled}">
+            <label class="form-check-label ms-2">Template alerta admin booking habilitado</label>
+          </div>
+          <div class="col-md-4 form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="waTemplateAdminAppointmentAlertEnabled" value="true" th:checked="${waTemplateAdminAppointmentAlertEnabled}">
+            <label class="form-check-label ms-2">Template alerta admin cita habilitado</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Templates notificación -->
+    <div class="card table-card mb-4">
+      <div class="card-header fw-semibold py-3 px-4"
+           style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
+        <i class="bi bi-bell-fill me-2" style="color:#8B5CF6;"></i>
+        Templates de Notificación
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Título por defecto</label>
+            <input type="text" name="notificationDefaultTitle" class="form-control"
+                   th:value="${notificationDefaultTitle}" maxlength="120"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Título recordatorio 2h</label>
+            <input type="text" name="notificationTwoHourTitle" class="form-control"
+                   th:value="${notificationTwoHourTitle}" maxlength="120"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Cuerpo por defecto</label>
+            <textarea name="notificationDefaultBody" class="form-control" rows="3"
+                      th:text="${notificationDefaultBody}"></textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Cuerpo recordatorio 2h</label>
+            <textarea name="notificationTwoHourBody" class="form-control" rows="3"
+                      th:text="${notificationTwoHourBody}"></textarea>
+          </div>
         </div>
       </div>
     </div>

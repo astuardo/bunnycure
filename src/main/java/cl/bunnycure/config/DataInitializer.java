@@ -163,9 +163,11 @@ public class DataInitializer implements CommandLineRunner {
         if (appSettingsRepository.count() == 0) {
             appSettingsRepository.saveAll(List.of(
                     new AppSettings("booking.enabled",                  "true",  "Portal de reservas habilitado"),
+                    new AppSettings("whatsapp.enabled",                 "true", "Control global WhatsApp"),
                     new AppSettings("whatsapp.number",                  "56990000010", "Número WhatsApp humano (legacy)"),
                     new AppSettings("whatsapp.human.number",            "56990000010", "Número WhatsApp atención humana"),
                     new AppSettings("whatsapp.admin-alert.number",      "56990000011", "Número WhatsApp alertas internas de reservas"),
+                    new AppSettings("whatsapp.admin-alert.enabled",     "true", "Habilita alertas WhatsApp admin"),
                     new AppSettings("whatsapp.human.display-name",      "Equipo de soporte", "Nombre visible atención humana"),
                     new AppSettings("whatsapp.handoff.enabled",         "true", "Habilita derivación a atención humana"),
                     new AppSettings("whatsapp.handoff.client-message",  "Si necesitas ayuda personalizada, escríbenos al WhatsApp de atención humana: {numero}.", "Mensaje de derivación al cliente"),
@@ -184,8 +186,16 @@ public class DataInitializer implements CommandLineRunner {
                     new AppSettings("whatsapp.template.booking-review.enabled", "true", "Habilita template de agenda en revisión"),
                     new AppSettings("whatsapp.template.booking-rejected.enabled", "true", "Habilita template de solicitud rechazada"),
                     new AppSettings("whatsapp.template.admin-alert.enabled", "false", "Habilita template de alerta admin"),
+                    new AppSettings("whatsapp.template.admin-appointment-alert.name", "confirmacion_hora", "Template WhatsApp alerta admin por cita creada"),
+                    new AppSettings("whatsapp.template.admin-appointment-alert.enabled", "true", "Habilita template alerta admin por cita creada"),
                     new AppSettings("whatsapp.admin.booking-requests.url", "", "URL del panel admin para solicitudes de reserva"),
                     new AppSettings("whatsapp.business.name", "Negocio Demo", "Nombre del negocio para contexto WhatsApp"),
+                    new AppSettings("mail.enabled", "true", "Control global de correo"),
+                    new AppSettings("app.website.url", "https://www.bunnycure.cl", "Sitio web del negocio"),
+                    new AppSettings("app.instagram.url", "https://www.instagram.com/bunny.cure", "Instagram del negocio"),
+                    new AppSettings("app.instagram.handle", "@bunny.cure", "Handle de Instagram"),
+                    new AppSettings("app.phone.display", "+56 9 6449 9995", "Teléfono visible del negocio"),
+                    new AppSettings("app.owner.name", "Dueña", "Nombre de la dueña/admin"),
                     new AppSettings("booking.message.template",
                             "Hola Bunny Cure! [conejo]\nMe gustar\u00EDa reservar una cita:\n\u2022 Servicio: {servicio}\n\u2022 Fecha: {fecha}\n\u2022 Bloque: {bloque}\n\u2022 Nombre: {nombre}\n\u2022 Tel\u00E9fono: {telefono}\n\u00BFTienen disponibilidad?",
                             "Template mensaje WhatsApp"),
@@ -198,7 +208,11 @@ public class DataInitializer implements CommandLineRunner {
                     new AppSettings("reminder.strategy",                "2hours",
                             "Estrategia de recordatorios: 2hours | morning | day_before | both"),
                     new AppSettings("reminder.two-hours.interval-minutes", "30",
-                            "Frecuencia de revisión para recordatorios de 2 horas (5-120 minutos)")
+                            "Frecuencia de revisión para recordatorios de 2 horas (5-120 minutos)"),
+                    new AppSettings("notification.template.default.title", "Recordatorio de Cita", "Título por defecto de notificación"),
+                    new AppSettings("notification.template.default.body", "Hola {customerName}, tienes una cita de {serviceName} el {date} a las {time}.", "Cuerpo por defecto de notificación"),
+                    new AppSettings("notification.template.2hour.title", "¡Tu cita es pronto!", "Título de notificación 2 horas"),
+                    new AppSettings("notification.template.2hour.body", "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). ¡Te esperamos!", "Cuerpo de notificación 2 horas")
             ));
             log.info("✅ Configuración inicial cargada");
         }
