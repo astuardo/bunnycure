@@ -7,10 +7,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.Instant;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ReminderScheduler {
+
+    private static final String TWO_HOUR_LAST_RUN_AT_KEY = "reminder.two-hours.last-run-at";
 
     private final AppointmentService appointmentService;
     private final AppSettingsService appSettingsService;
@@ -53,22 +58,44 @@ public class ReminderScheduler {
      * El metodo verifica citas en ventana de 2h hacia adelante, pero se ejecuta
      * frecuentemente para no perder citas agendadas "last minute".
      */
-    @Scheduled(
-            cron = "${bunnycure.reminder.two-hours.cron:0 */30 * * * *}",
-            zone = "${bunnycure.scheduler.timezone:America/Santiago}"
-    )
+    @Scheduled(cron = "0 * * * * *", zone = "${bunnycure.scheduler.timezone:America/Santiago}")
     public void sendTwoHourReminders() {
         if (!appSettingsService.isReminder2HoursEnabled()) {
             log.debug("[REMINDER-SCHEDULER] Recordatorio 2h omitido (strategy={})",
                     appSettingsService.getReminderStrategy());
             return;
         }
+
+        int intervalMinutes = appSettingsService.getReminderTwoHoursIntervalMinutes();
+        if (!shouldRunTwoHourReminderNow(intervalMinutes)) {
+            log.debug("[REMINDER-SCHEDULER] Recordatorio 2h omitido por frecuencia ({} min)", intervalMinutes);
+            return;
+        }
+
         try {
             log.info("[REMINDER-SCHEDULER] Iniciando recordatorios 2h...");
             appointmentService.sendRemindersForAppointmentsIn2Hours();
+            appSettingsService.set(TWO_HOUR_LAST_RUN_AT_KEY, Instant.now().toString());
             log.info("[REMINDER-SCHEDULER] Recordatorios 2h completados");
         } catch (Exception e) {
             log.error("[REMINDER-SCHEDULER] Error en recordatorios 2h", e);
+        }
+    }
+
+    private boolean shouldRunTwoHourReminderNow(int intervalMinutes) {
+        String lastRunRaw = appSettingsService.get(TWO_HOUR_LAST_RUN_AT_KEY, "");
+        if (lastRunRaw == null || lastRunRaw.isBlank()) {
+            return true;
+        }
+
+        try {
+            Instant lastRun = Instant.parse(lastRunRaw);
+            long elapsedMinutes = Duration.between(lastRun, Instant.now()).toMinutes();
+            return elapsedMinutes >= intervalMinutes;
+        } catch (Exception ex) {
+            log.warn("[REMINDER-SCHEDULER] Valor inválido en {}='{}', se ejecutará ahora",
+                    TWO_HOUR_LAST_RUN_AT_KEY, lastRunRaw);
+            return true;
         }
     }
 }

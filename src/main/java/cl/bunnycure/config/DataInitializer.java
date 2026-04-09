@@ -196,7 +196,9 @@ public class DataInitializer implements CommandLineRunner {
                     new AppSettings("booking.block.afternoon.enabled",  "true",  "Tarde habilitado"),
                     new AppSettings("booking.block.night.enabled",      "true",  "Noche habilitado"),
                     new AppSettings("reminder.strategy",                "2hours",
-                            "Estrategia de recordatorios: 2hours | morning | day_before | both")
+                            "Estrategia de recordatorios: 2hours | morning | day_before | both"),
+                    new AppSettings("reminder.two-hours.interval-minutes", "30",
+                            "Frecuencia de revisión para recordatorios de 2 horas (5-120 minutos)")
             ));
             log.info("✅ Configuración inicial cargada");
         }

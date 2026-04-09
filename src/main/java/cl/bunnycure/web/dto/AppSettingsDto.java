@@ -82,6 +82,7 @@ public class AppSettingsDto {
     @AllArgsConstructor
     public static class ReminderSettings {
         private String strategy;
+        private Integer twoHoursIntervalMinutes;
     }
     
     @Data

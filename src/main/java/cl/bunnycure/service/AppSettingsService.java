@@ -155,6 +155,22 @@ public class AppSettingsService {
         return REMINDER_STRATEGY_DAY_BEFORE.equals(getReminderStrategy());
     }
 
+    public int getReminderTwoHoursIntervalMinutes() {
+        String raw = get("reminder.two-hours.interval-minutes", "30");
+        try {
+            int value = Integer.parseInt(raw.trim());
+            if (value < 5) {
+                return 5;
+            }
+            if (value > 120) {
+                return 120;
+            }
+            return value;
+        } catch (Exception ex) {
+            return 30;
+        }
+    }
+
     // ── Identidad & Branding (Fase 1) ───────────────────────────────────────
 
     /** Nombre del negocio. Default: "BunnyCure" */

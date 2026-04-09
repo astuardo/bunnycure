@@ -50,6 +50,7 @@ public class SettingsApiController {
             "booking.block.morning.enabled", "booking.block.afternoon.enabled", "booking.block.night.enabled",
             // Reminders
             "reminder.strategy",
+            "reminder.two-hours.interval-minutes",
             // Field Modes
             "field.email.mode", "field.gender.mode", "field.birth-date.mode",
             "field.emergency-phone.mode", "field.health-notes.mode", "field.general-notes.mode",
@@ -316,6 +317,7 @@ public class SettingsApiController {
 
                 // Reminders
                 Map.entry("reminder.strategy", "2hours"),
+                Map.entry("reminder.two-hours.interval-minutes", "30"),
 
                 // Field Modes
                 Map.entry("field.email.mode", "OPTIONAL"),
@@ -391,6 +393,7 @@ public class SettingsApiController {
     private AppSettingsDto.ReminderSettings getReminderSettings() {
         return AppSettingsDto.ReminderSettings.builder()
                 .strategy(settingsService.getReminderStrategy())
+                .twoHoursIntervalMinutes(settingsService.getReminderTwoHoursIntervalMinutes())
                 .build();
     }
 
@@ -428,6 +431,17 @@ public class SettingsApiController {
         if (key.equals("reminder.strategy")) {
             if (!VALID_REMINDER_STRATEGIES.contains(value)) {
                 return "Estrategia de recordatorio inválida. Valores válidos: " + VALID_REMINDER_STRATEGIES;
+            }
+        }
+
+        if (key.equals("reminder.two-hours.interval-minutes")) {
+            try {
+                int minutes = Integer.parseInt(value);
+                if (minutes < 5 || minutes > 120) {
+                    return "Frecuencia inválida. Debe estar entre 5 y 120 minutos.";
+                }
+            } catch (NumberFormatException ex) {
+                return "Frecuencia inválida. Debe ser un número entero.";
             }
         }
 
