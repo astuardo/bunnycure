@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,6 +94,36 @@ public class WebPushNotificationService {
         for (WebPushSubscription subscription : subscriptions) {
             sendToSubscription(pushService, subscription, payload);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getDiagnostics() {
+        List<WebPushSubscription> allSubscriptions = subscriptionRepository.findAll();
+        List<WebPushSubscription> activeSubscriptions = allSubscriptions.stream()
+                .filter(WebPushSubscription::isActive)
+                .toList();
+
+        List<Map<String, Object>> recentSubscriptions = new ArrayList<>();
+        for (WebPushSubscription subscription : activeSubscriptions.stream().limit(5).toList()) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", subscription.getId());
+            item.put("endpoint", abbreviateEndpoint(subscription.getEndpoint()));
+            item.put("lastSuccessAt", subscription.getLastSuccessAt());
+            item.put("lastFailureAt", subscription.getLastFailureAt());
+            item.put("lastFailureReason", subscription.getLastFailureReason());
+            recentSubscriptions.add(item);
+        }
+
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        diagnostics.put("webPushEnabled", webPushEnabled);
+        diagnostics.put("vapidConfigured", isWebPushConfigured());
+        diagnostics.put("subject", webPushSubject);
+        diagnostics.put("hasPublicKey", webPushPublicKey != null && !webPushPublicKey.isBlank());
+        diagnostics.put("hasPrivateKey", webPushPrivateKey != null && !webPushPrivateKey.isBlank());
+        diagnostics.put("totalSubscriptions", allSubscriptions.size());
+        diagnostics.put("activeSubscriptions", activeSubscriptions.size());
+        diagnostics.put("recentActiveSubscriptions", recentSubscriptions);
+        return diagnostics;
     }
 
     private void sendToSubscription(PushService pushService, WebPushSubscription subscription, String payload) {
@@ -202,5 +233,12 @@ public class WebPushNotificationService {
                 .endpoint(subscription.getEndpoint())
                 .active(subscription.isActive())
                 .build();
+    }
+
+    private String abbreviateEndpoint(String endpoint) {
+        if (endpoint == null || endpoint.length() <= 80) {
+            return endpoint;
+        }
+        return endpoint.substring(0, 77) + "...";
     }
 }

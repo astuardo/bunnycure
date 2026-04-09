@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/push-subscriptions")
 @RequiredArgsConstructor
@@ -31,5 +33,10 @@ public class WebPushSubscriptionApiController {
     ) {
         webPushNotificationService.deactivateSubscription(request.getEndpoint());
         return ResponseEntity.ok(ApiResponse.success("Suscripción eliminada"));
+    }
+
+    @GetMapping("/debug")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> debug() {
+        return ResponseEntity.ok(ApiResponse.success(webPushNotificationService.getDiagnostics()));
     }
 }
