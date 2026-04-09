@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
+import java.math.BigDecimal;
 
 /**
  * DTO de respuesta para operaciones GET de citas.
@@ -41,6 +43,15 @@ public class AppointmentResponseDto {
     
     @Schema(description = "Datos del servicio")
     private ServiceSummaryDto service;
+
+    @Schema(description = "Servicios asociados a la cita")
+    private List<ServiceSummaryDto> services;
+
+    @Schema(description = "Total de la cita sumando todos los servicios")
+    private BigDecimal totalPrice;
+
+    @Schema(description = "Duración total de la cita (minutos)")
+    private Integer totalDurationMinutes;
     
     @Schema(description = "Si se envió recordatorio")
     private boolean reminderSent;

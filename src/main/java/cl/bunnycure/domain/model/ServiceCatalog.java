@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "service_catalog")
@@ -40,6 +42,15 @@ public class ServiceCatalog {
     @Column(nullable = false)
     @Builder.Default
     private Integer displayOrder = 0;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "service_catalog_compatibility",
+            joinColumns = @JoinColumn(name = "service_id"),
+            inverseJoinColumns = @JoinColumn(name = "compatible_service_id")
+    )
+    @Builder.Default
+    private Set<ServiceCatalog> compatibleServices = new LinkedHashSet<>();
 
     public boolean isActive() {
         return Boolean.TRUE.equals(active);

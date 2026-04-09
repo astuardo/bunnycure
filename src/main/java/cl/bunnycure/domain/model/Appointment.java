@@ -13,6 +13,8 @@ import cl.bunnycure.domain.enums.AppointmentStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "appointments")
@@ -36,6 +38,15 @@ public class Appointment {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "service_catalog_id", nullable = false)
     private ServiceCatalog service;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "appointment_services",
+            joinColumns = @JoinColumn(name = "appointment_id"),
+            inverseJoinColumns = @JoinColumn(name = "service_catalog_id")
+    )
+    @Builder.Default
+    private List<ServiceCatalog> services = new ArrayList<>();
 
     @Column(nullable = false)
     private LocalDate appointmentDate;

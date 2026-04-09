@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,10 +37,11 @@ public class AppointmentService {
     private final AppSettingsService appSettingsService;
 
     @Transactional
-    public void updateAppointment(@NotNull Long id, @Valid @NotNull AppointmentDto dto) {
+    public Appointment updateAppointment(@NotNull Long id, @Valid @NotNull AppointmentDto dto) {
         var appointment = findById(id);
         var customer    = customerService.findById(dto.getCustomerId());
-        var service     = serviceCatalogService.findById(dto.getServiceId());
+        var selectedServices = resolveSelectedServices(dto);
+        var primaryService = selectedServices.get(0);
 
         // Resetear recordatorio si cambia la fecha u hora para que vuelva a recibir aviso
         boolean dateOrTimeChanged = !dto.getAppointmentDate().equals(appointment.getAppointmentDate())
@@ -51,7 +53,8 @@ public class AppointmentService {
         }
 
         appointment.setCustomer(customer);
-        appointment.setService(service);
+        appointment.setService(primaryService);
+        appointment.setServices(new ArrayList<>(selectedServices));
         appointment.setAppointmentDate(dto.getAppointmentDate());
         appointment.setAppointmentTime(dto.getAppointmentTime());
         appointment.setObservations(dto.getObservations());
@@ -62,17 +65,19 @@ public class AppointmentService {
                 notificationService.sendCancellationNotice(appointment);
             }
         }
-        appointmentRepository.save(appointment);
+        return appointmentRepository.save(appointment);
     }
 
     @Transactional
-    public void createAppointment(@Valid @NotNull AppointmentDto dto) {
+    public Appointment createAppointment(@Valid @NotNull AppointmentDto dto) {
         var customer = customerService.findById(dto.getCustomerId());
-        var service  = serviceCatalogService.findById(dto.getServiceId()); // ✅
+        var selectedServices = resolveSelectedServices(dto);
+        var primaryService = selectedServices.get(0);
 
         var appointment = Appointment.builder()
                 .customer(customer)
-                .service(service)
+                .service(primaryService)
+                .services(new ArrayList<>(selectedServices))
                 .appointmentDate(dto.getAppointmentDate())
                 .appointmentTime(dto.getAppointmentTime())
                 .observations(dto.getObservations())
@@ -82,7 +87,7 @@ public class AppointmentService {
         // Enviar notificaciones respetando preferencias del cliente + notificar admin
         notificationService.sendAppointmentConfirmation(saved);
         saved.setNotificationSent(true);
-        appointmentRepository.save(saved);
+        return appointmentRepository.save(saved);
     }
 
     @Transactional
@@ -247,5 +252,22 @@ public class AppointmentService {
             log.warn("[REMINDER] Timezone invalida '{}' en app settings. Usando fallback America/Santiago", timezone);
             return ZoneId.of("America/Santiago");
         }
+    }
+
+    private List<cl.bunnycure.domain.model.ServiceCatalog> resolveSelectedServices(AppointmentDto dto) {
+        List<Long> serviceIds = dto.getServiceIds() != null && !dto.getServiceIds().isEmpty()
+                ? dto.getServiceIds()
+                : (dto.getServiceId() != null ? List.of(dto.getServiceId()) : List.of());
+
+        List<cl.bunnycure.domain.model.ServiceCatalog> services;
+        if (serviceIds.size() == 1) {
+            services = List.of(serviceCatalogService.findById(serviceIds.get(0)));
+        } else {
+            services = serviceCatalogService.findByIds(serviceIds);
+        }
+        if (services.isEmpty()) {
+            throw new IllegalArgumentException("Debe seleccionar al menos un servicio");
+        }
+        return services;
     }
 }

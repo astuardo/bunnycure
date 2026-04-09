@@ -99,6 +99,34 @@
             <div class="invalid-feedback" th:errors="*{description}"></div>
           </div>
 
+          <div class="col-12">
+            <label class="form-label fw-semibold">
+              Servicios compatibles para combinar
+            </label>
+            <div class="border rounded p-3" style="max-height: 260px; overflow-y: auto;">
+              <div th:if="${#lists.isEmpty(availableServices)}" class="text-muted small">
+                No hay otros servicios disponibles para combinar.
+              </div>
+              <div th:each="candidate : ${availableServices}" class="form-check mb-2">
+                <input class="form-check-input"
+                       type="checkbox"
+                       name="compatibleServiceIds"
+                       th:id="${'compatible-' + candidate.id}"
+                       th:value="${candidate.id}"
+                       th:checked="${service.compatibleServiceIds != null and #lists.contains(service.compatibleServiceIds, candidate.id)}" />
+                <label class="form-check-label"
+                       th:for="${'compatible-' + candidate.id}">
+                  <span class="fw-semibold" th:text="${candidate.name}"></span>
+                  <small class="text-muted"
+                         th:text="${' · ' + candidate.durationFormatted + ' · $' + candidate.price}"></small>
+                </label>
+              </div>
+            </div>
+            <div class="form-text text-muted">
+              Estos servicios se sugerirán como combinables para crear citas múltiples o paquetes.
+            </div>
+          </div>
+
           <div th:unless="${isNew}" class="col-12">
             <div class="form-check form-switch">
               <input type="checkbox"

@@ -55,6 +55,9 @@
                    th:if="${s.description}"
                    th:text="${s.description}">
             </small>
+            <div class="small text-muted" th:if="${!#sets.isEmpty(s.compatibleServices)}">
+              Combina con <span th:text="${#sets.size(s.compatibleServices)}"></span> servicio(s)
+            </div>
           </td>
           <td>
               <span class="badge rounded-pill"
@@ -129,6 +132,9 @@
       <small class="text-muted d-block mb-2"
              th:if="${s.description}"
              th:text="${s.description}">
+      </small>
+      <small class="text-muted d-block mb-2" th:if="${!#sets.isEmpty(s.compatibleServices)}">
+        Combina con <span th:text="${#sets.size(s.compatibleServices)}"></span> servicio(s)
       </small>
 
       <!-- Fila inferior: precio + acciones -->

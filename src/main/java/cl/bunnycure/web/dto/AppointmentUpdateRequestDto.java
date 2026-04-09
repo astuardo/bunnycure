@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * DTO para actualizar una cita existente.
@@ -27,6 +28,9 @@ public class AppointmentUpdateRequestDto {
     
     @Schema(description = "ID del servicio (opcional para actualización)")
     private Long serviceId;
+
+    @Schema(description = "IDs de servicios seleccionados (opcional para actualización)")
+    private List<Long> serviceIds;
     
     @Schema(description = "Nueva fecha de la cita")
     private LocalDate appointmentDate;

@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Setter
@@ -44,4 +45,6 @@ public class ServiceCatalogDto {
     @Max(value = 9999, message = "El orden de aparición no puede superar 9999")
     @Builder.Default
     private Integer displayOrder = 0;
+
+    private List<Long> compatibleServiceIds;
 }

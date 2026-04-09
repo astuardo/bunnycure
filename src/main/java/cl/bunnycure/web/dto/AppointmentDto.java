@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -22,8 +23,10 @@ public class AppointmentDto {
     @NotNull(message = "El cliente es obligatorio")
     private Long customerId;
 
-    @NotNull(message = "El servicio es obligatorio")
-    private Long serviceId;              // ✅ reemplaza serviceType enum
+    @NotNull(message = "El servicio principal es obligatorio")
+    private Long serviceId;
+
+    private List<Long> serviceIds;
 
     @NotNull(message = "La fecha es obligatoria")
     private LocalDate appointmentDate;

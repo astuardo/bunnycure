@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * DTO para crear una nueva cita.
@@ -26,9 +27,11 @@ public class AppointmentCreateRequestDto {
     @Schema(description = "ID del cliente", example = "1", required = true)
     private Long customerId;
     
-    @NotNull(message = "El ID del servicio es requerido")
-    @Schema(description = "ID del servicio", example = "1", required = true)
+    @Schema(description = "ID del servicio principal (compatibilidad con clientes antiguos)", example = "1")
     private Long serviceId;
+
+    @Schema(description = "IDs de servicios seleccionados", example = "[1,2]")
+    private List<Long> serviceIds;
     
     @NotNull(message = "La fecha de la cita es requerida")
     @Schema(description = "Fecha de la cita", example = "2024-04-15", required = true)

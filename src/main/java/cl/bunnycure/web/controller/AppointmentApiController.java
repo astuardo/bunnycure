@@ -22,10 +22,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 /**
  * REST API Controller para gestión de citas.
@@ -142,31 +144,21 @@ public class AppointmentApiController {
         
         log.info("[API] Creating appointment for customer {} on {} at {}",
                 request.getCustomerId(), request.getAppointmentDate(), request.getAppointmentTime());
-        
+
+        List<Long> selectedServiceIds = resolveServiceIds(request.getServiceId(), request.getServiceIds());
+
         // Convertir a AppointmentDto que espera el servicio
         AppointmentDto dto = AppointmentDto.builder()
                 .customerId(request.getCustomerId())
-                .serviceId(request.getServiceId())
+                .serviceId(selectedServiceIds.get(0))
+                .serviceIds(selectedServiceIds)
                 .appointmentDate(request.getAppointmentDate())
                 .appointmentTime(request.getAppointmentTime())
                 .observations(request.getNotes())
                 .status(AppointmentStatus.PENDING)
                 .build();
-        
-        appointmentService.createAppointment(dto);
-        
-        // Buscar la cita recién creada (el servicio no retorna la entidad)
-        List<Appointment> appointments = appointmentService.findByDateRange(
-                request.getAppointmentDate(), 
-                request.getAppointmentDate()
-        );
-        
-        Appointment created = appointments.stream()
-                .filter(a -> a.getCustomer().getId().equals(request.getCustomerId()) &&
-                           a.getService().getId().equals(request.getServiceId()) &&
-                           a.getAppointmentTime().equals(request.getAppointmentTime()))
-                .findFirst()
-                .orElseThrow(() -> new ValidationException("Error al recuperar la cita creada"));
+
+        Appointment created = appointmentService.createAppointment(dto);
         
         AppointmentResponseDto responseDto = toResponseDto(created);
         
@@ -200,11 +192,16 @@ public class AppointmentApiController {
         
         // Obtener la cita actual para combinar datos
         Appointment current = appointmentService.findById(id);
+        List<Long> currentServiceIds = current.getServices() != null && !current.getServices().isEmpty()
+                ? current.getServices().stream().map(cl.bunnycure.domain.model.ServiceCatalog::getId).toList()
+                : List.of(current.getService().getId());
+        List<Long> selectedServiceIds = resolveServiceIds(request.getServiceId(), request.getServiceIds(), currentServiceIds);
         
         // Construir DTO con datos actualizados (merge con datos actuales)
         AppointmentDto dto = AppointmentDto.builder()
                 .customerId(request.getCustomerId() != null ? request.getCustomerId() : current.getCustomer().getId())
-                .serviceId(request.getServiceId() != null ? request.getServiceId() : current.getService().getId())
+                .serviceId(selectedServiceIds.get(0))
+                .serviceIds(selectedServiceIds)
                 .appointmentDate(request.getAppointmentDate() != null ? request.getAppointmentDate() : current.getAppointmentDate())
                 .appointmentTime(request.getAppointmentTime() != null ? request.getAppointmentTime() : current.getAppointmentTime())
                 .observations(request.getNotes() != null ? request.getNotes() : current.getObservations())
@@ -344,6 +341,29 @@ public class AppointmentApiController {
      * Convierte una entidad Appointment a AppointmentResponseDto.
      */
     private AppointmentResponseDto toResponseDto(Appointment appointment) {
+        List<ServiceSummaryDto> selectedServices = appointment.getServices() != null && !appointment.getServices().isEmpty()
+                ? appointment.getServices().stream().map(service -> ServiceSummaryDto.builder()
+                        .id(service.getId())
+                        .name(service.getName())
+                        .durationMinutes(service.getDurationMinutes())
+                        .price(service.getPrice())
+                        .active(service.isActive())
+                        .build()).toList()
+                : List.of(ServiceSummaryDto.builder()
+                        .id(appointment.getService().getId())
+                        .name(appointment.getService().getName())
+                        .durationMinutes(appointment.getService().getDurationMinutes())
+                        .price(appointment.getService().getPrice())
+                        .active(appointment.getService().isActive())
+                        .build());
+
+        BigDecimal totalPrice = selectedServices.stream()
+                .map(ServiceSummaryDto::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        int totalDuration = selectedServices.stream()
+                .map(ServiceSummaryDto::getDurationMinutes)
+                .reduce(0, Integer::sum);
+
         return AppointmentResponseDto.builder()
                 .id(appointment.getId())
                 .appointmentDate(appointment.getAppointmentDate())
@@ -358,8 +378,34 @@ public class AppointmentApiController {
                         .price(appointment.getService().getPrice())
                         .active(appointment.getService().isActive())
                         .build())
+                .services(selectedServices)
+                .totalPrice(totalPrice)
+                .totalDurationMinutes(totalDuration)
                 .reminderSent(appointment.isReminderSent())
                 .whatsAppConfirmationSent(false) // Campo no existe en Appointment, por ahora false
                 .build();
+    }
+
+    private List<Long> resolveServiceIds(Long serviceId, List<Long> serviceIds) {
+        return resolveServiceIds(serviceId, serviceIds, List.of());
+    }
+
+    private List<Long> resolveServiceIds(Long serviceId, List<Long> serviceIds, List<Long> fallbackServiceIds) {
+        List<Long> normalized = new ArrayList<>();
+        if (serviceIds != null) {
+            normalized.addAll(serviceIds.stream().filter(id -> id != null && id > 0).toList());
+        }
+        if (serviceId != null && serviceId > 0 && !normalized.contains(serviceId)) {
+            normalized.add(0, serviceId);
+        }
+        if (normalized.isEmpty() && fallbackServiceIds != null) {
+            normalized.addAll(fallbackServiceIds.stream().filter(id -> id != null && id > 0).toList());
+        }
+
+        if (normalized.isEmpty()) {
+            throw new ValidationException("Debe seleccionar al menos un servicio");
+        }
+
+        return normalized.stream().distinct().toList();
     }
 }

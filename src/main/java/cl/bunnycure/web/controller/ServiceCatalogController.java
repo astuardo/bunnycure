@@ -11,6 +11,9 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Controller
 @RequestMapping("/admin/services")
 @RequiredArgsConstructor
@@ -28,6 +31,7 @@ public class ServiceCatalogController extends BaseController {
     public String newForm(Model model) {
         model.addAttribute("service", new ServiceCatalogDto());
         model.addAttribute("isNew", true);
+        populateAvailableServices(model, null);
         return "admin/services/form";
     }
 
@@ -39,6 +43,7 @@ public class ServiceCatalogController extends BaseController {
         
         if (result.hasErrors()) {
             model.addAttribute("isNew", true);
+            populateAvailableServices(model, null);
             return "admin/services/form";
         }
         service.save(dto);
@@ -57,8 +62,10 @@ public class ServiceCatalogController extends BaseController {
         dto.setDescription(s.getDescription());
         dto.setActive(s.getActive());
         dto.setDisplayOrder(s.getDisplayOrder());
+        dto.setCompatibleServiceIds(s.getCompatibleServices().stream().map(cl.bunnycure.domain.model.ServiceCatalog::getId).toList());
         model.addAttribute("service", dto);
         model.addAttribute("isNew", false);
+        populateAvailableServices(model, id);
         return "admin/services/form";
     }
 
@@ -71,6 +78,7 @@ public class ServiceCatalogController extends BaseController {
         
         if (result.hasErrors()) {
             model.addAttribute("isNew", false);
+            populateAvailableServices(model, id);
             return "admin/services/form";
         }
         dto.setId(id);
@@ -130,5 +138,13 @@ public class ServiceCatalogController extends BaseController {
                     "El precio parece muy bajo para la duración especificada (menos de $50 por minuto). Verifique el valor.");
             }
         }
+    }
+
+    private void populateAvailableServices(Model model, Long currentServiceId) {
+        List<cl.bunnycure.domain.model.ServiceCatalog> availableServices = new ArrayList<>(service.findAll());
+        if (currentServiceId != null) {
+            availableServices.removeIf(s -> s.getId().equals(currentServiceId));
+        }
+        model.addAttribute("availableServices", availableServices);
     }
 }

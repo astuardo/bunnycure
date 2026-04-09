@@ -253,6 +253,7 @@ public class ServiceCatalogApiController {
                 .active(service.isActive())
                 .displayOrder(service.getDisplayOrder())
                 .imageUrl(null) // imageUrl no existe en el modelo, por ahora null
+                .compatibleServiceIds(service.getCompatibleServices().stream().map(ServiceCatalog::getId).toList())
                 .build();
     }
 }

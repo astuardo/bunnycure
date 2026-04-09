@@ -12,7 +12,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @Validated
@@ -44,6 +49,38 @@ public class ServiceCatalogService {
                 .orElseThrow(() -> new ResourceNotFoundException("Servicio no encontrado"));
     }
 
+    public List<ServiceCatalog> findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> normalizedIds = ids.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .toList();
+
+        if (normalizedIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<ServiceCatalog> found = repository.findAllById(normalizedIds);
+        Map<Long, ServiceCatalog> byId = new LinkedHashMap<>();
+        found.forEach(service -> byId.put(service.getId(), service));
+
+        if (byId.size() != normalizedIds.size()) {
+            List<Long> missing = normalizedIds.stream()
+                    .filter(id -> !byId.containsKey(id))
+                    .toList();
+            throw new ResourceNotFoundException("Servicios no encontrados: " + missing);
+        }
+
+        List<ServiceCatalog> ordered = new ArrayList<>();
+        for (Long id : normalizedIds) {
+            ordered.add(byId.get(id));
+        }
+        return ordered;
+    }
+
     @Transactional
     public ServiceCatalog save(@Valid @NotNull ServiceCatalogDto dto) {
         ServiceCatalog s;
@@ -64,7 +101,29 @@ public class ServiceCatalogService {
         s.setDescription(dto.getDescription());
         if (dto.getActive() != null) s.setActive(dto.getActive());
         if (dto.getDisplayOrder() != null && dto.getId() != null) s.setDisplayOrder(dto.getDisplayOrder());
+        applyCompatibleServices(s, dto.getCompatibleServiceIds());
         return repository.save(s);
+    }
+
+    private void applyCompatibleServices(ServiceCatalog service, List<Long> compatibleServiceIds) {
+        if (compatibleServiceIds == null) {
+            service.setCompatibleServices(new LinkedHashSet<>());
+            return;
+        }
+
+        List<Long> normalizedIds = compatibleServiceIds.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .toList();
+
+        if (service.getId() != null) {
+            normalizedIds = normalizedIds.stream()
+                    .filter(id -> !id.equals(service.getId()))
+                    .toList();
+        }
+
+        List<ServiceCatalog> compatibleServices = findByIds(normalizedIds);
+        service.setCompatibleServices(new LinkedHashSet<>(compatibleServices));
     }
 
     @Transactional

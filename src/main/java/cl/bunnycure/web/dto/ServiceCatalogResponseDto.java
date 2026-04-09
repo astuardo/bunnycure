@@ -40,4 +40,7 @@ public class ServiceCatalogResponseDto {
     
     @Schema(description = "URL de la imagen del servicio")
     private String imageUrl;
+
+    @Schema(description = "IDs de servicios compatibles para combinar")
+    private java.util.List<Long> compatibleServiceIds;
 }

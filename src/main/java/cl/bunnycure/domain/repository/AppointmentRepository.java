@@ -15,12 +15,18 @@ import cl.bunnycure.domain.model.Customer;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    long countByServiceId(Long serviceId);
+    @Query("""
+        SELECT COUNT(a) FROM Appointment a
+        LEFT JOIN a.services svc
+        WHERE a.service.id = :serviceId OR svc.id = :serviceId
+    """)
+    long countByServiceId(@Param("serviceId") Long serviceId);
 
     @Query("""
-        SELECT a FROM Appointment a
+        SELECT DISTINCT a FROM Appointment a
         JOIN FETCH a.customer
         JOIN FETCH a.service
+        LEFT JOIN FETCH a.services
         WHERE a.appointmentDate BETWEEN :start AND :end
         ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
     """)
@@ -30,26 +36,29 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     );
 
     @Query("""
-        SELECT a FROM Appointment a
+        SELECT DISTINCT a FROM Appointment a
         JOIN FETCH a.customer
         JOIN FETCH a.service
+        LEFT JOIN FETCH a.services
         WHERE a.appointmentDate = :date
         ORDER BY a.appointmentTime ASC
     """)
     List<Appointment> findByDateWithCustomer(@Param("date") LocalDate date);
 
     @Query("""
-        SELECT a FROM Appointment a
+        SELECT DISTINCT a FROM Appointment a
         JOIN FETCH a.customer
         JOIN FETCH a.service
+        LEFT JOIN FETCH a.services
         WHERE a.id = :id
     """)
     Optional<Appointment> findByIdWithDetails(@Param("id") Long id);
 
     @Query("""
-        SELECT a FROM Appointment a
+        SELECT DISTINCT a FROM Appointment a
         JOIN FETCH a.customer
         JOIN FETCH a.service
+        LEFT JOIN FETCH a.services
         WHERE a.customer.id = :customerId
         ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
     """)
@@ -70,9 +79,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     );
 
     @Query("""
-        SELECT a FROM Appointment a
+        SELECT DISTINCT a FROM Appointment a
         JOIN FETCH a.customer
         JOIN FETCH a.service
+        LEFT JOIN FETCH a.services
         WHERE a.status = :status
         AND a.reminderSent = false
         AND a.appointmentDate = :date
@@ -84,9 +94,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     );
 
     @Query("""
-        SELECT a FROM Appointment a
+        SELECT DISTINCT a FROM Appointment a
         JOIN FETCH a.customer
         JOIN FETCH a.service
+        LEFT JOIN FETCH a.services
         WHERE a.status IN :statuses
         AND a.reminderSent = false
         AND a.appointmentDate = :date
@@ -98,9 +109,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     );
 
     @Query("""
-        SELECT a FROM Appointment a
+        SELECT DISTINCT a FROM Appointment a
         JOIN FETCH a.customer
         JOIN FETCH a.service
+        LEFT JOIN FETCH a.services
         WHERE a.status IN :statuses
         AND a.reminderSent = false
         AND a.appointmentDate >= :date
@@ -112,9 +124,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     );
 
     @Query("""
-        SELECT a FROM Appointment a
+        SELECT DISTINCT a FROM Appointment a
         JOIN FETCH a.customer
         JOIN FETCH a.service
+        LEFT JOIN FETCH a.services
         WHERE a.status IN :statuses
         AND a.reminderSent = false
         AND a.appointmentDate = :date
@@ -141,9 +154,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     );
 
     @Query("""
-        SELECT a FROM Appointment a
+        SELECT DISTINCT a FROM Appointment a
         JOIN FETCH a.customer
         JOIN FETCH a.service
+        LEFT JOIN FETCH a.services
         WHERE a.status = :status
         ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
     """)
