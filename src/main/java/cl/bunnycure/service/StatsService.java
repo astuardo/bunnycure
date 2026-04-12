@@ -66,7 +66,7 @@ public class StatsService {
                         .revenue(BigDecimal.ZERO)
                         .build());
                 sStat.setCount(sStat.getCount() + 1);
-                sStat.setRevenue(sStat.getRevenue().add(BigDecimal.valueOf(s.getPrice())));
+                sStat.setRevenue(sStat.getRevenue().add(s.getPrice()));
                 serviceStatsMap.put(s.getId(), sStat);
             }
         }
@@ -94,10 +94,10 @@ public class StatsService {
     private BigDecimal calculateAppointmentTotal(Appointment apt) {
         if (apt.getServices() != null && !apt.getServices().isEmpty()) {
             return apt.getServices().stream()
-                    .map(s -> BigDecimal.valueOf(s.getPrice()))
+                    .map(ServiceCatalog::getPrice)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
-        return apt.getService() != null ? BigDecimal.valueOf(apt.getService().getPrice()) : BigDecimal.ZERO;
+        return apt.getService() != null ? apt.getService().getPrice() : BigDecimal.ZERO;
     }
 
     private List<ServiceCatalog> getAppointmentServices(Appointment apt) {
