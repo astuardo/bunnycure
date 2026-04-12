@@ -218,10 +218,30 @@ public class WebPushNotificationService {
         }
         
         java.math.BigDecimal total = java.math.BigDecimal.ZERO;
-        if (appointment.getTotalPrice() != null && appointment.getTotalPrice().compareTo(java.math.BigDecimal.ZERO) > 0) {
-            total = appointment.getTotalPrice();
-        } else if (appointment.getService() != null) {
-            total = appointment.getService().getPrice();
+        
+        // Extract from observations
+        if (appointment.getObservations() != null) {
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile("Total final estimado:\\s*\\$([\\d\\.]+)");
+            java.util.regex.Matcher m = p.matcher(appointment.getObservations());
+            if (m.find()) {
+                try {
+                    String cleanAmount = m.group(1).replace(".", "");
+                    total = new java.math.BigDecimal(cleanAmount);
+                } catch (Exception ignored) {}
+            }
+        }
+        
+        // Fallback to service sum
+        if (total.compareTo(java.math.BigDecimal.ZERO) == 0) {
+            if (appointment.getServices() != null && !appointment.getServices().isEmpty()) {
+                for (var s : appointment.getServices()) {
+                    if (s != null && s.getPrice() != null) {
+                        total = total.add(s.getPrice());
+                    }
+                }
+            } else if (appointment.getService() != null && appointment.getService().getPrice() != null) {
+                total = appointment.getService().getPrice();
+            }
         }
         
         java.text.NumberFormat clpFormat = java.text.NumberFormat.getCurrencyInstance(new java.util.Locale("es", "CL"));
