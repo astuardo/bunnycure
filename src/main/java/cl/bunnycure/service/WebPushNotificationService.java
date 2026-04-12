@@ -207,7 +207,7 @@ public class WebPushNotificationService {
                 : "fecha por confirmar";
 
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("title", "Recordatorio de agenda");
+        payload.put("title", "Recordatorio de Agenda");
         payload.put("body", String.format("Próxima cita: %s - %s (%s %s)", customerName, serviceName, appointmentDate, appointmentTime));
         payload.put("icon", "/icon-192.png");
         payload.put("badge", "/icon-192.png");

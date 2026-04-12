@@ -20,18 +20,26 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
 	private final Environment env;
 	private final PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler;
 	private final CorsConfigurationSource corsConfigurationSource;
 	private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
-	
-	// @Lazy rompe la referencia circular:
-	// SecurityConfig → JwtAuthenticationFilter → UserService → PasswordEncoder → SecurityConfig
-	@Lazy
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+	public SecurityConfig(
+			Environment env,
+			PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler,
+			CorsConfigurationSource corsConfigurationSource,
+			RestAuthenticationEntryPoint restAuthenticationEntryPoint,
+			@Lazy JwtAuthenticationFilter jwtAuthenticationFilter) {
+		this.env = env;
+		this.passwordChangeSuccessHandler = passwordChangeSuccessHandler;
+		this.corsConfigurationSource = corsConfigurationSource;
+		this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
+		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+	}
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
