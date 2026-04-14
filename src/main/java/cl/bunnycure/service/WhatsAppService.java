@@ -3,6 +3,8 @@ package cl.bunnycure.service;
 import cl.bunnycure.config.WhatsAppConfig;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.BookingRequest;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +42,8 @@ public class WhatsAppService {
     private final RestTemplate restTemplate;
     private final AppSettingsService appSettingsService;
     private final CalendarService calendarService;
+    private final NotificationLogService notificationLogService;
+    private final ObjectMapper objectMapper;
 
     @Value("${bunnycure.whatsapp.admin-alert.enabled:true}")
     private boolean adminAlertEnabledFallback;
@@ -107,6 +111,10 @@ public class WhatsAppService {
     }
 
     public boolean sendTextMessageSync(String toPhoneNumber, String message) {
+        return sendTextMessageSync(toPhoneNumber, message, null);
+    }
+
+    public boolean sendTextMessageSync(String toPhoneNumber, String message, Appointment appointment) {
         try {
             if (config.getToken() == null || config.getToken().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Token no configurado");
@@ -156,12 +164,24 @@ public class WhatsAppService {
             // Log detallado de la respuesta
             log.info("[WHATSAPP-RESPONSE] Status: {}", response.getStatusCode());
             log.info("[WHATSAPP-RESPONSE] Body: {}", response.getBody());
-            log.info("[WHATSAPP-RESPONSE] Headers: {}", response.getHeaders());
 
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("[WHATSAPP] ✅ Mensaje enviado exitosamente a {}", normalizedPhone);
-                log.info("[WHATSAPP] ℹ️ IMPORTANTE: Verifica que el número {} esté registrado en Meta for Developers", normalizedPhone);
-                log.info("[WHATSAPP] ℹ️ Si estás en modo sandbox, solo puedes enviar a números verificados");
+            String wamid = null;
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                try {
+                    JsonNode root = objectMapper.readTree(response.getBody());
+                    JsonNode messages = root.path("messages");
+                    if (messages.isArray() && !messages.isEmpty()) {
+                        wamid = messages.get(0).path("id").asText();
+                    }
+                } catch (Exception e) {
+                    log.warn("[WHATSAPP-LOG] No se pudo parsear wamid de la respuesta: {}", e.getMessage());
+                }
+                
+                log.info("[WHATSAPP] ✅ Mensaje enviado exitosamente a {}. WAMID: {}", normalizedPhone, wamid);
+                
+                // Guardar Log
+                notificationLogService.logWhatsApp(appointment, normalizedPhone, "TEXT_MESSAGE", message, wamid);
+                
                 return true;
             } else {
                 log.error("[WHATSAPP] ❌ Error al enviar mensaje. Status: {}, Body: {}", 
@@ -171,7 +191,6 @@ public class WhatsAppService {
 
         } catch (Exception e) {
             log.error("[WHATSAPP] ❌ Excepción al enviar mensaje a {}: {}", toPhoneNumber, e.getMessage());
-            log.error("[WHATSAPP] ℹ️ Detalles del error:", e);
             return false;
         }
     }
@@ -400,6 +419,15 @@ public class WhatsAppService {
                                     String languageCode,
                                     String headerParam,
                                     List<String> bodyParams) {
+        return sendTemplateSync(toPhoneNumber, templateName, languageCode, headerParam, bodyParams, null);
+    }
+
+    public boolean sendTemplateSync(String toPhoneNumber,
+                                    String templateName,
+                                    String languageCode,
+                                    String headerParam,
+                                    List<String> bodyParams,
+                                    Appointment appointment) {
         try {
             if (config.getToken() == null || config.getToken().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Token no configurado");
@@ -490,8 +518,25 @@ public class WhatsAppService {
             log.info("[WHATSAPP-TEMPLATE] Status: {}", response.getStatusCode());
             log.info("[WHATSAPP-TEMPLATE] Body: {}", response.getBody());
 
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("[WHATSAPP] ✅ Template '{}' enviado exitosamente a {}", templateName, normalizedPhone);
+            String wamid = null;
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                try {
+                    JsonNode root = objectMapper.readTree(response.getBody());
+                    JsonNode messages = root.path("messages");
+                    if (messages.isArray() && !messages.isEmpty()) {
+                        wamid = messages.get(0).path("id").asText();
+                    }
+                } catch (Exception e) {
+                    log.warn("[WHATSAPP-LOG] No se pudo parsear wamid de la respuesta: {}", e.getMessage());
+                }
+
+                log.info("[WHATSAPP] ✅ Template '{}' enviado exitosamente a {}. WAMID: {}", templateName, normalizedPhone, wamid);
+
+                // Guardar Log
+                String contentSummary = String.format("Template: %s | Header: %s | Params: %s", 
+                        templateName, headerParam, bodyParams);
+                notificationLogService.logWhatsApp(appointment, normalizedPhone, templateName, contentSummary, wamid);
+
                 return true;
             } else {
                 log.error("[WHATSAPP] ❌ Error al enviar template. Status: {}, Body: {}", 
@@ -579,12 +624,13 @@ public class WhatsAppService {
         String servicio = appointment.getService().getName();
         String cliente = appointment.getCustomer().getFullName();
 
-        sendTemplate(
+        sendTemplateSync(
                 phone,
                 config.getCitaConfirmadaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
                 cliente,
-                Arrays.asList(servicio, fecha, hora)
+                Arrays.asList(servicio, fecha, hora),
+                appointment
         );
     }
 
@@ -614,12 +660,13 @@ public class WhatsAppService {
         String servicio = appointment.getService().getName();
         String cliente = appointment.getCustomer().getFullName();
 
-        sendTemplate(
+        sendTemplateSync(
                 phone,
                 config.getRecordatorioCitaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
                 cliente,
-                Arrays.asList(servicio, fecha, hora)
+                Arrays.asList(servicio, fecha, hora),
+                appointment
         );
     }
 
@@ -648,12 +695,13 @@ public class WhatsAppService {
         String servicio = appointment.getService().getName();
         String cliente = appointment.getCustomer().getFullName();
 
-        sendTemplate(
+        sendTemplateSync(
                 phone,
                 config.getCancelacionCitaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
                 cliente,
-                Arrays.asList(servicio, fecha, hora)
+                Arrays.asList(servicio, fecha, hora),
+                appointment
         );
     }
 

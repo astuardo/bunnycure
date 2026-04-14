@@ -32,6 +32,7 @@ public class NotificationService {
     private final WhatsAppAdminAlertOutboxService whatsAppAdminAlertOutboxService;
     private final AppSettingsService appSettingsService;
     private final WebPushNotificationService webPushNotificationService;
+    private final NotificationLogService notificationLogService;
 
     @Value("${bunnycure.mail.enabled:true}")
     private boolean mailEnabled;
@@ -245,7 +246,7 @@ public class NotificationService {
     // ── Helpers privados ─────────────────────────────────────────────────────
 
     private void sendEmail(String to, String subject, String html) throws Exception {
-        sendHtml(to, subject, html);
+        sendHtml(to, subject, html, null);
     }
 
     private void send(Appointment appointment, String template, String subject) {
@@ -266,7 +267,7 @@ public class NotificationService {
             ctx.setVariable("fechaFormateada", fechaFormateada);
 
             String html = templateEngine.process(template, ctx);
-            sendHtml(appointment.getCustomer().getEmail(), subject, html);
+            sendHtml(appointment.getCustomer().getEmail(), subject, html, appointment);
             log.info("[MAIL-OK] {} → {}", subject, appointment.getCustomer().getEmail());
 
         } catch (Exception e) {
@@ -276,6 +277,10 @@ public class NotificationService {
     }
 
     private void sendHtml(String to, String subject, String html) throws Exception {
+        sendHtml(to, subject, html, null);
+    }
+
+    private void sendHtml(String to, String subject, String html, Appointment appointment) throws Exception {
         if (!isMailEnabled()) {
             log.info("[MAIL-SKIP] {} (mail deshabilitado globalmente)", subject);
             return;
@@ -294,7 +299,11 @@ public class NotificationService {
                 helper.setText(html, true);
                 mailSender.send(msg);
                 log.info("[MAIL-OK] {} → {}", subject, to);
-                return; // Success, exit
+                
+                // Registro en Log
+                notificationLogService.logEmail(appointment, to, subject, html);
+                
+                return // Success, exit
             } catch (Exception e) {
                 log.warn("[MAIL-RETRY] Intento {} de {} fallido para {}: {}", 
                         attempt, maxRetries, to, e.getMessage());
