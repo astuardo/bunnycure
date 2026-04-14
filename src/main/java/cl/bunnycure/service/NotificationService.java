@@ -303,7 +303,7 @@ public class NotificationService {
                 // Registro en Log
                 notificationLogService.logEmail(appointment, to, subject, html);
                 
-                return // Success, exit
+                return; // Success, exit
             } catch (Exception e) {
                 log.warn("[MAIL-RETRY] Intento {} de {} fallido para {}: {}", 
                         attempt, maxRetries, to, e.getMessage());
