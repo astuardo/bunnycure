@@ -20,7 +20,7 @@ public class AppSettings {
     @Column(name = "setting_key", length = 100)
     private String key;
 
-    @Column(name = "setting_value", length = 500)
+    @Column(name = "setting_value", columnDefinition = "TEXT")
     private String value;
 
     @Column(length = 200)
