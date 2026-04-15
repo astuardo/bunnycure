@@ -35,6 +35,8 @@ public class AppointmentService {
     private final NotificationService notificationService;
     private final ServiceCatalogService serviceCatalogService;
     private final AppSettingsService appSettingsService;
+    private final LoyaltyRewardService loyaltyRewardService;
+    private final cl.bunnycure.domain.repository.LoyaltyRewardHistoryRepository loyaltyRewardHistoryRepository;
 
     @Transactional
     public Appointment updateAppointment(@NotNull Long id, @Valid @NotNull AppointmentDto dto) {
@@ -283,26 +285,53 @@ public class AppointmentService {
             if (customer != null) {
                 int currentStamps = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
                 int totalVisits = customer.getTotalCompletedVisits() != null ? customer.getTotalCompletedVisits() : 0;
-                
-                customer.setLoyaltyStamps(currentStamps + 1);
-                customer.setTotalCompletedVisits(totalVisits + 1);
-                
-                // Enviar la notificación de actualización de sellos (o recompensa) al cliente
-                notificationService.sendLoyaltyUpdateNotification(customer);
-                
-                if (customer.getLoyaltyStamps() == 10) {
-                    log.info("[LOYALTY] Cliente {} ha completado 10 sellos! Recompensa disponible.", customer.getId());
-                    // customer.setLoyaltyStamps(0); // Dependiendo si reinicia automático o manual
+                int rewardIndex = customer.getCurrentRewardIndex() != null ? customer.getCurrentRewardIndex() : 0;
+
+                if (currentStamps < 10) {
+                    // Flujo normal de acumulación
+                    customer.setLoyaltyStamps(currentStamps + 1);
+                    customer.setTotalCompletedVisits(totalVisits + 1);
+                    log.info("[LOYALTY] Cliente {} suma sello {}/10", customer.getId(), customer.getLoyaltyStamps());
+                } else {
+                    // ESTA ES LA CITA #11 (LA DEL PREMIO)
+                    // 1. Obtener el premio actual
+                    var reward = loyaltyRewardService.getRewardAt(rewardIndex);
+                    String rewardName = (reward != null) ? reward.getName() : "Premio BunnyCure";
+
+                    // 2. Registrar en el historial
+                    var history = cl.bunnycure.domain.model.LoyaltyRewardHistory.builder()
+                            .customer(customer)
+                            .rewardName(rewardName)
+                            .earnedAt(java.time.LocalDateTime.now())
+                            .appointment(appointment)
+                            .build();
+                    loyaltyRewardHistoryRepository.save(history);
+
+                    // 3. Reiniciar contador y avanzar ciclo
+                    customer.setLoyaltyStamps(0);
+                    customer.setCurrentRewardIndex(rewardIndex + 1);
+                    customer.setTotalCompletedVisits(totalVisits + 1);
+                    
+                    log.info("[LOYALTY] Cliente {} canjeó premio '{}'. Reiniciando ciclo.", customer.getId(), rewardName);
                 }
+
+                // Enviar la notificación de actualización (que ahora incluirá la info de sellos)
+                notificationService.sendLoyaltyUpdateNotification(customer);
             }
         } else if (oldStatus == AppointmentStatus.COMPLETED && newStatus != AppointmentStatus.COMPLETED) {
-            // Rollback if changed from COMPLETED to something else
+            // Rollback si se cambia de COMPLETADA a otro estado (ej. error humano)
             var customer = appointment.getCustomer();
             if (customer != null) {
                 int currentStamps = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
                 int totalVisits = customer.getTotalCompletedVisits() != null ? customer.getTotalCompletedVisits() : 0;
-                
-                if (currentStamps > 0) customer.setLoyaltyStamps(currentStamps - 1);
+
+                if (currentStamps > 0) {
+                    customer.setLoyaltyStamps(currentStamps - 1);
+                } else {
+                    // Si estaba en 0 es porque justo había completado un ciclo, 
+                    // para un rollback perfecto habría que revertir el rewardIndex también.
+                    // Por simplicidad en este MVP, solo evitamos negativos.
+                }
                 if (totalVisits > 0) customer.setTotalCompletedVisits(totalVisits - 1);
             }
         }

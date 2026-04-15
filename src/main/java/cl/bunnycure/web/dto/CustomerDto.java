@@ -51,4 +51,5 @@ public class CustomerDto {
 
     private Integer loyaltyStamps;
     private Integer totalCompletedVisits;
+    private Integer currentRewardIndex;
 }

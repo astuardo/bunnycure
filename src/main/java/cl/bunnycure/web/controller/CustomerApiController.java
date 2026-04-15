@@ -249,6 +249,7 @@ public class CustomerApiController {
                 .notificationPreference(customer.getNotificationPreference())
                 .loyaltyStamps(customer.getLoyaltyStamps())
                 .totalCompletedVisits(customer.getTotalCompletedVisits())
+                .currentRewardIndex(customer.getCurrentRewardIndex())
                 .build();
     }
 

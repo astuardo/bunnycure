@@ -62,6 +62,9 @@ public class Customer {
     @Column(name = "total_completed_visits", nullable = false)
     private Integer totalCompletedVisits = 0;
 
+    @Column(name = "current_reward_index", nullable = false)
+    private Integer currentRewardIndex = 0;
+
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Appointment> appointments = new ArrayList<>();
 

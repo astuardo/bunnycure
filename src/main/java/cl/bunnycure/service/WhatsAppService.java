@@ -604,10 +604,6 @@ public class WhatsAppService {
         return false;
     }
 
-    /**
-     * Envía el template confirmacion_cita con placeholders:
-     * HEADER {{1}}=cliente, BODY {{1}}=servicio, {{2}}=fecha, {{3}}=hora
-     */
     @Async
     public void sendCitaConfirmadaTemplate(Appointment appointment) {
         String phone = appointment.getCustomer().getPhone();
@@ -617,19 +613,31 @@ public class WhatsAppService {
             return;
         }
 
-        String fecha = appointment.getAppointmentDate()
-                .format(shortDateFormatter());
-        String hora = appointment.getAppointmentTime()
-                .format(DateTimeFormatter.ofPattern("HH:mm"));
+        var customer = appointment.getCustomer();
+        String fecha = appointment.getAppointmentDate().format(shortDateFormatter());
+        String hora = appointment.getAppointmentTime().format(DateTimeFormatter.ofPattern("HH:mm"));
         String servicio = appointment.getService().getName();
-        String cliente = appointment.getCustomer().getFullName();
+        String cliente = customer.getFullName();
+
+        // Calcular info de fidelización para el parámetro {{5}} del template de Facebook
+        int stamps = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
+        int rewardIndex = customer.getCurrentRewardIndex() != null ? customer.getCurrentRewardIndex() : 0;
+        var reward = loyaltyRewardService.getRewardAt(rewardIndex);
+        String rewardName = (reward != null) ? reward.getName() : "un premio especial";
+
+        String loyaltyInfo;
+        if (stamps >= 10) {
+            loyaltyInfo = String.format("¡Felicidades! Esta es tu cita #11. ¡Hoy disfrutas de tu premio: %s! 🎉", rewardName);
+        } else {
+            loyaltyInfo = String.format("Llevas %d/10 marcas para ganarte el premio: %s 🐇", stamps, rewardName);
+        }
 
         sendTemplateSync(
                 phone,
                 config.getCitaConfirmadaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
                 cliente,
-                Arrays.asList(servicio, fecha, hora),
+                Arrays.asList(servicio, fecha, hora, loyaltyInfo),
                 appointment
         );
     }
@@ -820,6 +828,8 @@ public class WhatsAppService {
         );
     }
 
+    private final LoyaltyRewardService loyaltyRewardService;
+
     @Async
     public void sendLoyaltyUpdateMessage(cl.bunnycure.domain.model.Customer customer) {
         try {
@@ -831,22 +841,35 @@ public class WhatsAppService {
             }
 
             int stamps = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
+            int rewardIndex = customer.getCurrentRewardIndex() != null ? customer.getCurrentRewardIndex() : 0;
             int maxStamps = 10;
             
+            var reward = loyaltyRewardService.getRewardAt(rewardIndex);
+            String rewardName = (reward != null) ? reward.getName() : "un premio especial";
+
             String message;
-            if (stamps >= maxStamps) {
+            if (stamps == 0 && customer.getTotalCompletedVisits() > 0) {
+                // Acaba de completar el servicio #11 y ganó el premio
                 message = String.format(
                         "🎉 *¡Felicidades %s!* 🎉\n\n" +
-                        "Has completado tu tarjeta de fidelización (10/10 sellos).\n" +
-                        "¡Tienes una recompensa disponible para tu próxima visita! 🐇✨",
-                        customer.getFirstName()
+                        "Hoy has canjeado tu premio: *%s*.\n" +
+                        "Tu tarjeta se ha reiniciado. ¡Sigue visitándonos para tu próximo regalo! 🐇✨",
+                        customer.getFirstName(), rewardName
+                );
+            } else if (stamps >= maxStamps) {
+                message = String.format(
+                        "🎉 *¡Felicidades %s!* 🎉\n\n" +
+                        "Has completado tus 10 sellos.\n" +
+                        "*¡Tu próxima cita es la del premio: %s!* 🎁✨\n" +
+                        "Te esperamos para consentirte.",
+                        customer.getFirstName(), rewardName
                 );
             } else {
                 message = String.format(
                         "💖 *¡Gracias por tu visita!* 💖\n\n" +
-                        "Acabas de ganar un nuevo sello en tu tarjeta de fidelización.\n\n" +
-                        "Llevas *%d/%d* sellos. ¡Falta poco para tu premio! 🐇✨",
-                        stamps, maxStamps
+                        "Acabas de ganar un nuevo sello.\n\n" +
+                        "Llevas *%d/%d* sellos para tu premio: *%s*. 🐇✨",
+                        stamps, maxStamps, rewardName
                 );
             }
 
