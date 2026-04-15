@@ -220,6 +220,17 @@ public class CustomerApiController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Ajustar sellos de fidelización", description = "Incrementa o decrementa los sellos de un cliente manualmente.")
+    @PostMapping("/{id}/loyalty/adjust")
+    public ResponseEntity<ApiResponse<CustomerDto>> adjustLoyalty(
+            @PathVariable Long id,
+            @RequestParam int delta) {
+        
+        log.info("[API] Adjusting loyalty for customer {}: delta={}", id, delta);
+        Customer updated = customerService.adjustLoyaltyStamps(id, delta);
+        return ResponseEntity.ok(ApiResponse.success(toDto(updated)));
+    }
+
     /**
      * Convierte una entidad Customer a CustomerDto.
      */
@@ -236,6 +247,8 @@ public class CustomerApiController {
                 .healthNotes(customer.getHealthNotes())
                 .notes(customer.getNotes())
                 .notificationPreference(customer.getNotificationPreference())
+                .loyaltyStamps(customer.getLoyaltyStamps())
+                .totalCompletedVisits(customer.getTotalCompletedVisits())
                 .build();
     }
 

@@ -820,6 +820,43 @@ public class WhatsAppService {
         );
     }
 
+    @Async
+    public void sendLoyaltyUpdateMessage(cl.bunnycure.domain.model.Customer customer) {
+        try {
+            String phone = customer.getPhone();
+            if (phone == null || phone.isEmpty()) {
+                log.warn("[WHATSAPP-SKIP] Cliente {} no tiene teléfono configurado para loyalty",
+                        customer.getFullName());
+                return;
+            }
+
+            int stamps = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
+            int maxStamps = 10;
+            
+            String message;
+            if (stamps >= maxStamps) {
+                message = String.format(
+                        "🎉 *¡Felicidades %s!* 🎉\n\n" +
+                        "Has completado tu tarjeta de fidelización (10/10 sellos).\n" +
+                        "¡Tienes una recompensa disponible para tu próxima visita! 🐇✨",
+                        customer.getFirstName()
+                );
+            } else {
+                message = String.format(
+                        "💖 *¡Gracias por tu visita!* 💖\n\n" +
+                        "Acabas de ganar un nuevo sello en tu tarjeta de fidelización.\n\n" +
+                        "Llevas *%d/%d* sellos. ¡Falta poco para tu premio! 🐇✨",
+                        stamps, maxStamps
+                );
+            }
+
+            sendTextMessage(phone, message);
+
+        } catch (Exception e) {
+            log.error("[WHATSAPP] Error al enviar mensaje de fidelización: {}", e.getMessage(), e);
+        }
+    }
+
     /**
      * Normaliza el número de teléfono eliminando caracteres especiales
      * y asegurando que tenga el formato correcto para WhatsApp API

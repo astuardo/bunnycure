@@ -221,4 +221,23 @@ public class CustomerService {
         var customer = findByPublicId(publicId);
         customerRepository.delete(customer);
     }
+
+    @Transactional
+    public Customer adjustLoyaltyStamps(Long id, int delta) {
+        var customer = findById(id);
+        int current = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
+        int nextValue = current + delta;
+        
+        if (nextValue < 0) nextValue = 0;
+        
+        customer.setLoyaltyStamps(nextValue);
+        
+        // Si el ajuste es positivo, también lo sumamos al total histórico (opcional, según lógica de negocio)
+        if (delta > 0) {
+            int total = customer.getTotalCompletedVisits() != null ? customer.getTotalCompletedVisits() : 0;
+            customer.setTotalCompletedVisits(total + delta);
+        }
+        
+        return customerRepository.save(customer);
+    }
 }

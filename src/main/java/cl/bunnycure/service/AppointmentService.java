@@ -93,10 +93,16 @@ public class AppointmentService {
     @Transactional
     public Appointment updateStatus(Long id, AppointmentStatus newStatus) {
         var appointment = findById(id);
-        appointment.setStatus(newStatus);
-
-        if (newStatus == AppointmentStatus.CANCELLED) {
-            notificationService.sendCancellationNotice(appointment);
+        AppointmentStatus oldStatus = appointment.getStatus();
+        
+        if (oldStatus != newStatus) {
+            appointment.setStatus(newStatus);
+    
+            if (newStatus == AppointmentStatus.CANCELLED) {
+                notificationService.sendCancellationNotice(appointment);
+            }
+            
+            handleLoyaltyStamps(appointment, oldStatus, newStatus);
         }
         return appointmentRepository.save(appointment);
     }
@@ -269,5 +275,36 @@ public class AppointmentService {
             throw new IllegalArgumentException("Debe seleccionar al menos un servicio");
         }
         return services;
+    }
+
+    private void handleLoyaltyStamps(Appointment appointment, AppointmentStatus oldStatus, AppointmentStatus newStatus) {
+        if (oldStatus != AppointmentStatus.COMPLETED && newStatus == AppointmentStatus.COMPLETED) {
+            var customer = appointment.getCustomer();
+            if (customer != null) {
+                int currentStamps = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
+                int totalVisits = customer.getTotalCompletedVisits() != null ? customer.getTotalCompletedVisits() : 0;
+                
+                customer.setLoyaltyStamps(currentStamps + 1);
+                customer.setTotalCompletedVisits(totalVisits + 1);
+                
+                // Enviar la notificación de actualización de sellos (o recompensa) al cliente
+                notificationService.sendLoyaltyUpdateNotification(customer);
+                
+                if (customer.getLoyaltyStamps() == 10) {
+                    log.info("[LOYALTY] Cliente {} ha completado 10 sellos! Recompensa disponible.", customer.getId());
+                    // customer.setLoyaltyStamps(0); // Dependiendo si reinicia automático o manual
+                }
+            }
+        } else if (oldStatus == AppointmentStatus.COMPLETED && newStatus != AppointmentStatus.COMPLETED) {
+            // Rollback if changed from COMPLETED to something else
+            var customer = appointment.getCustomer();
+            if (customer != null) {
+                int currentStamps = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
+                int totalVisits = customer.getTotalCompletedVisits() != null ? customer.getTotalCompletedVisits() : 0;
+                
+                if (currentStamps > 0) customer.setLoyaltyStamps(currentStamps - 1);
+                if (totalVisits > 0) customer.setTotalCompletedVisits(totalVisits - 1);
+            }
+        }
     }
 }

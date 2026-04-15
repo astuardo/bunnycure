@@ -243,6 +243,24 @@ public class NotificationService {
         log.info("[WHATSAPP-URL] {}", url);
     }
 
+    @Async
+    public void sendLoyaltyUpdateNotification(Customer customer) {
+        if (customer == null) {
+            return;
+        }
+
+        cl.bunnycure.domain.enums.NotificationPreference pref = customer.getNotificationPreference();
+
+        // Enviar WhatsApp solo si la preferencia lo permite
+        if (pref != null && pref.allowsWhatsApp() && customer.getPhone() != null) {
+            log.info("[NOTIFICATION] Enviando actualización de sellos por WhatsApp a {}", 
+                    customer.getPhone());
+            whatsAppService.sendLoyaltyUpdateMessage(customer);
+        }
+        
+        // TODO: Enviar email si corresponde y se crea template HTML
+    }
+
     // ── Helpers privados ─────────────────────────────────────────────────────
 
     private void sendEmail(String to, String subject, String html) throws Exception {

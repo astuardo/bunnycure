@@ -56,6 +56,12 @@ public class Customer {
     @Column(name = "notification_preference", nullable = false, length = 20)
     private NotificationPreference notificationPreference = NotificationPreference.BOTH;
 
+    @Column(name = "loyalty_stamps", nullable = false)
+    private Integer loyaltyStamps = 0;
+
+    @Column(name = "total_completed_visits", nullable = false)
+    private Integer totalCompletedVisits = 0;
+
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Appointment> appointments = new ArrayList<>();
 

@@ -48,4 +48,7 @@ public class CustomerDto {
 
     @NotNull(message = "La preferencia de notificación es obligatoria")
     private NotificationPreference notificationPreference;
+
+    private Integer loyaltyStamps;
+    private Integer totalCompletedVisits;
 }

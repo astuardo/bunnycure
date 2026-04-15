@@ -17,6 +17,7 @@ public class CustomerSummary {
     private final String fullName;
     private final String phone;
     private final String email;
+    private final Integer loyaltyStamps;
 
     public CustomerSummary(Customer customer, long appointmentCount) {
         this.customer         = customer;
@@ -26,5 +27,6 @@ public class CustomerSummary {
         this.fullName         = customer.getFullName();
         this.phone            = customer.getPhone();
         this.email            = customer.getEmail();
+        this.loyaltyStamps    = customer.getLoyaltyStamps();
     }
 }
