@@ -43,6 +43,12 @@ class AppointmentServiceTest {
     @Mock
     private AppSettingsService appSettingsService;
 
+    @Mock
+    private LoyaltyRewardService loyaltyRewardService;
+
+    @Mock
+    private cl.bunnycure.domain.repository.LoyaltyRewardHistoryRepository loyaltyRewardHistoryRepository;
+
     private AppointmentService appointmentService;
 
     @BeforeEach
@@ -53,7 +59,9 @@ class AppointmentServiceTest {
                 customerService,
                 notificationService,
                 serviceCatalogService,
-                appSettingsService
+                appSettingsService,
+                loyaltyRewardService,
+                loyaltyRewardHistoryRepository
         );
     }
 
