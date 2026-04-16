@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -91,6 +92,21 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(error));
     }
     
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFound(
+            NoResourceFoundException ex, WebRequest request) {
+        // No loggeamos como ERROR ni mostramos traza porque es normal que falten recursos como favicon.ico
+        logger.debug("Static resource not found: {}", ex.getResourcePath());
+        
+        ErrorResponse error = new ErrorResponse(
+                "Resource not found: " + ex.getResourcePath(), 
+                "RESOURCE_NOT_FOUND"
+        );
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(error));
+    }
+
     @ExceptionHandler(ServiceException.class)
     public ResponseEntity<ApiResponse<Void>> handleServiceException(
             ServiceException ex, WebRequest request) {
