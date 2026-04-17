@@ -1,6 +1,13 @@
 package cl.bunnycure.service;
 
 import cl.bunnycure.domain.model.Customer;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.services.walletobjects.Walletobjects;
+import com.google.api.services.walletobjects.model.LoyaltyPoints;
+import com.google.api.services.walletobjects.model.LoyaltyPointsBalance;
+import com.google.api.services.walletobjects.model.LoyaltyObject;
+import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
@@ -27,51 +34,61 @@ public class GoogleWalletService {
     @Value("${GOOGLE_WALLET_CREDENTIALS:}")
     private String credentialsJson;
 
+    private Walletobjects client;
+
+    /**
+     * Inicializa el cliente de API de Google Wallet.
+     */
+    private Walletobjects getClient() throws Exception {
+        if (this.client != null) return this.client;
+
+        ServiceAccountCredentials credentials = getCredentials();
+        this.client = new Walletobjects.Builder(
+                GoogleNetHttpTransport.newTrustedTransport(),
+                GsonFactory.getDefaultInstance(),
+                new HttpCredentialsAdapter(credentials))
+                .setApplicationName("BunnyCure")
+                .build();
+        return this.client;
+    }
+
+    private ServiceAccountCredentials getCredentials() throws Exception {
+        if (credentialsJson != null && !credentialsJson.isBlank()) {
+            return ServiceAccountCredentials.fromStream(
+                new java.io.ByteArrayInputStream(credentialsJson.getBytes())
+            );
+        } else {
+            return ServiceAccountCredentials.fromStream(new FileInputStream(credentialsPath));
+        }
+    }
+
     /**
      * Genera un JWT firmado para que el cliente guarde su tarjeta en Google Wallet.
-     * Utiliza la API moderna de Google Auth y JJWT 0.12.x.
      */
     public String createWalletLink(Customer customer) {
         try {
-            // 1. Cargar credenciales: Priorizar Variable de Entorno sobre Archivo Local
-            ServiceAccountCredentials credentials;
-            if (credentialsJson != null && !credentialsJson.isBlank()) {
-                log.info("Loading Google Wallet credentials from environment variable");
-                credentials = ServiceAccountCredentials.fromStream(
-                    new java.io.ByteArrayInputStream(credentialsJson.getBytes())
-                );
-            } else {
-                log.info("Loading Google Wallet credentials from local file: {}", credentialsPath);
-                credentials = ServiceAccountCredentials.fromStream(new FileInputStream(credentialsPath));
-            }
-            
+            ServiceAccountCredentials credentials = getCredentials();
             String serviceAccountEmail = credentials.getClientEmail();
             PrivateKey privateKey = credentials.getPrivateKey();
 
-            // 2. Definir el objeto de lealtad (Loyalty Object)
             String objectId = String.format("%s.%s", issuerId, customer.getPublicId());
             
             Map<String, Object> loyaltyObject = new HashMap<>();
             loyaltyObject.put("id", objectId);
             loyaltyObject.put("classId", String.format("%s.%s", issuerId, loyaltyClass));
             loyaltyObject.put("state", "ACTIVE");
-            
-            // Datos del cliente
             loyaltyObject.put("accountName", customer.getFullName());
             loyaltyObject.put("accountId", customer.getPhone());
             
-            // Puntos/Sellos actuales
             Map<String, Object> loyaltyPoints = new HashMap<>();
             Map<String, Object> balance = new HashMap<>();
             balance.put("int", customer.getLoyaltyStamps());
             loyaltyPoints.put("balance", balance);
             loyaltyObject.put("loyaltyPoints", loyaltyPoints);
 
-            // 3. Estructura del Payload
             Map<String, Object> payload = new HashMap<>();
             payload.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
 
-            // 4. Generar el JWT usando JJWT 0.12.x (Fluent API moderna)
             long now = System.currentTimeMillis() / 1000L;
             
             String jwt = Jwts.builder()
@@ -81,7 +98,7 @@ public class GoogleWalletService {
                     .claim("typ", "google.wallet_object_jwt")
                     .claim("iat", now)
                     .claim("payload", payload)
-                    .signWith(privateKey, Jwts.SIG.RS256) // Usar Jwts.SIG para algoritmos modernos
+                    .signWith(privateKey, Jwts.SIG.RS256)
                     .compact();
 
             return "https://pay.google.com/gp/v/save/" + jwt;
@@ -89,6 +106,36 @@ public class GoogleWalletService {
         } catch (Exception e) {
             log.error("Error generating Google Wallet link for customer {}: {}", customer.getId(), e.getMessage(), e);
             throw new RuntimeException("No se pudo generar el enlace de Google Wallet", e);
+        }
+    }
+
+    /**
+     * Actualiza los sellos en Google Wallet mediante la API REST.
+     * Esto hace que el teléfono del cliente reciba una notificación y actualice la tarjeta.
+     */
+    public void updateCustomerStamps(Customer customer) {
+        try {
+            String objectId = String.format("%s.%s", issuerId, customer.getPublicId());
+            log.info("Pushing update to Google Wallet for customer {}: {} stamps", customer.getFullName(), customer.getLoyaltyStamps());
+
+            // Crear el objeto de actualización parcial (patch)
+            LoyaltyObject patchBody = new LoyaltyObject()
+                    .setLoyaltyPoints(new LoyaltyPoints()
+                            .setBalance(new LoyaltyPointsBalance()
+                                    .setInt(customer.getLoyaltyStamps())));
+
+            // Enviar el PATCH a Google
+            getClient().loyaltyobject().patch(objectId, patchBody).execute();
+            log.info("Google Wallet updated successfully for customer {}", customer.getId());
+
+        } catch (com.google.api.client.googleapis.json.GoogleJsonResponseException e) {
+            if (e.getStatusCode() == 404) {
+                log.warn("Customer {} has not saved the card to Wallet yet. Skipping push update.", customer.getId());
+            } else {
+                log.error("Google API error updating Wallet for customer {}: {}", customer.getId(), e.getDetails());
+            }
+        } catch (Exception e) {
+            log.error("Unexpected error updating Google Wallet for customer {}: {}", customer.getId(), e.getMessage());
         }
     }
 }

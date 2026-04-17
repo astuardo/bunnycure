@@ -23,6 +23,7 @@ import java.util.List;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final GoogleWalletService googleWalletService;
 
     public List<Customer> findAll() {
         return customerRepository.findAll();
@@ -238,6 +239,11 @@ public class CustomerService {
             customer.setTotalCompletedVisits(total + delta);
         }
         
-        return customerRepository.save(customer);
+        Customer saved = customerRepository.save(customer);
+        
+        // Sincronizar con Google Wallet en segundo plano (opcionalmente podrías usar @Async)
+        googleWalletService.updateCustomerStamps(saved);
+        
+        return saved;
     }
 }
