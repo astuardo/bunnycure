@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 public class CustomerApiController {
 
     private final CustomerService customerService;
+    private final cl.bunnycure.service.GoogleWalletService googleWalletService;
 
     @Operation(
             summary = "Listar clientes",
@@ -229,6 +230,21 @@ public class CustomerApiController {
         log.info("[API] Adjusting loyalty for customer {}: delta={}", id, delta);
         Customer updated = customerService.adjustLoyaltyStamps(id, delta);
         return ResponseEntity.ok(ApiResponse.success(toDto(updated)));
+    }
+
+    @Operation(summary = "Obtener enlace de Google Wallet", description = "Genera un enlace firmado para guardar la tarjeta de fidelización en Google Wallet.")
+    @GetMapping("/{id}/wallet/google-link")
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> getGoogleWalletLink(
+            @PathVariable Long id) {
+        
+        log.info("[API] Generating Google Wallet link for customer {}", id);
+        Customer customer = customerService.findById(id);
+        String url = googleWalletService.createWalletLink(customer);
+        
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("url", url);
+        
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     /**
