@@ -24,14 +24,26 @@ public class GoogleWalletService {
     @Value("${bunnycure.google.wallet.credentials-path}")
     private String credentialsPath;
 
+    @Value("${GOOGLE_WALLET_CREDENTIALS:}")
+    private String credentialsJson;
+
     /**
      * Genera un JWT firmado para que el cliente guarde su tarjeta en Google Wallet.
      * Utiliza la API moderna de Google Auth y JJWT 0.12.x.
      */
     public String createWalletLink(Customer customer) {
         try {
-            // 1. Cargar credenciales usando ServiceAccountCredentials (API moderna)
-            ServiceAccountCredentials credentials = ServiceAccountCredentials.fromStream(new FileInputStream(credentialsPath));
+            // 1. Cargar credenciales: Priorizar Variable de Entorno sobre Archivo Local
+            ServiceAccountCredentials credentials;
+            if (credentialsJson != null && !credentialsJson.isBlank()) {
+                log.info("Loading Google Wallet credentials from environment variable");
+                credentials = ServiceAccountCredentials.fromStream(
+                    new java.io.ByteArrayInputStream(credentialsJson.getBytes())
+                );
+            } else {
+                log.info("Loading Google Wallet credentials from local file: {}", credentialsPath);
+                credentials = ServiceAccountCredentials.fromStream(new FileInputStream(credentialsPath));
+            }
             
             String serviceAccountEmail = credentials.getClientEmail();
             PrivateKey privateKey = credentials.getPrivateKey();
