@@ -8,6 +8,7 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.walletobjects.Walletobjects;
 import com.google.api.services.walletobjects.model.Barcode;
+import com.google.api.services.walletobjects.model.GenericObject;
 import com.google.api.services.walletobjects.model.Image;
 import com.google.api.services.walletobjects.model.ImageUri;
 import com.google.api.services.walletobjects.model.LoyaltyObject;
@@ -38,6 +39,12 @@ public class GoogleWalletService {
     @Value("${bunnycure.google.wallet.loyalty-class}")
     private String loyaltyClass;
 
+    @Value("${bunnycure.google.wallet.generic-class:bunnycure_generic_card}")
+    private String genericClass;
+
+    @Value("${bunnycure.google.wallet.pass-type:loyalty}")
+    private String passType;
+
     @Value("${bunnycure.google.wallet.credentials-path}")
     private String credentialsPath;
 
@@ -60,35 +67,22 @@ public class GoogleWalletService {
             PrivateKey privateKey = credentials.getPrivateKey();
             String serviceAccountEmail = credentials.getClientEmail();
 
-            String classId = buildClassId();
-            String objectId = buildObjectId(customer);
+            String classId = issueGenericPass() ? buildGenericClassId() : buildLoyaltyClassId();
+            String objectId = issueGenericPass() ? buildGenericObjectId(customer) : buildLoyaltyObjectId(customer);
             String phone = normalizePhone(customer.getPhone());
-
-            // 1. Construir el Loyalty Object (Formato exacto del dashboard)
-            Map<String, Object> loyaltyObject = new LinkedHashMap<>();
-            loyaltyObject.put("id", objectId);
-            loyaltyObject.put("classId", classId);
-            loyaltyObject.put("state", "ACTIVE");
-            loyaltyObject.put("accountName", customer.getFullName() != null && !customer.getFullName().isBlank() ? customer.getFullName() : "Cliente BunnyCure");
-            loyaltyObject.put("accountId", phone);
-            
-            Map<String, Object> loyaltyPoints = new LinkedHashMap<>();
-            Map<String, Object> balance = new LinkedHashMap<>();
-            balance.put("int", customer.getLoyaltyStamps());
-            loyaltyPoints.put("balance", balance);
-            loyaltyPoints.put("label", "Sellos");
-            loyaltyObject.put("loyaltyPoints", loyaltyPoints);
-
-            Map<String, Object> barcode = new LinkedHashMap<>();
-            barcode.put("type", "QR_CODE");
-            barcode.put("value", phone);
-            barcode.put("alternateText", phone);
-            loyaltyObject.put("barcode", barcode);
-            loyaltyObject.put("heroImage", buildHeroImagePayload(normalizeStamps(customer.getLoyaltyStamps())));
+            int stamps = normalizeStamps(customer.getLoyaltyStamps());
 
             // 2. Preparar el Payload
             Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
+            if (issueGenericPass()) {
+                payload.put("genericObjects", Collections.singletonList(
+                        buildGenericObjectPayload(objectId, classId, phone, stamps))
+                );
+            } else {
+                payload.put("loyaltyObjects", Collections.singletonList(
+                        buildLoyaltyObjectPayload(objectId, classId, customer, phone, stamps))
+                );
+            }
 
             // 3. Crear Claims manualmente (idéntico al dashboard validado)
             long now = System.currentTimeMillis() / 1000L;
@@ -113,7 +107,8 @@ public class GoogleWalletService {
             // 4. Firmar JWT manualmente para mantener aud como String ("google")
             String signedJwt = signWalletJwt(claims, privateKey);
 
-            log.info("[Wallet] Link generated for customer: {}", customer.getFullName());
+            log.info("[Wallet] Link generated for customer: {}, passType={}, objectId={}",
+                    customer.getFullName(), normalizedPassType(), objectId);
             return "https://pay.google.com/gp/v/save/" + signedJwt;
 
         } catch (Exception e) {
@@ -135,22 +130,19 @@ public class GoogleWalletService {
     }
     
     public void updateCustomerStamps(Customer customer) {
-        String objectId = buildObjectId(customer);
         int stamps = normalizeStamps(customer.getLoyaltyStamps());
 
         try {
             Walletobjects walletobjects = getWalletobjectsClient();
-            LoyaltyObject loyaltyObject = getOrCreateLoyaltyObject(walletobjects, customer);
-
-            loyaltyObject.setLoyaltyPoints(buildLoyaltyPoints(stamps));
-            loyaltyObject.setTextModulesData(mergeProgressModule(loyaltyObject.getTextModulesData(), stamps));
-            loyaltyObject.setHeroImage(buildHeroImage(stamps));
-
-            walletobjects.loyaltyobject().update(objectId, loyaltyObject).execute();
-            log.info("[Wallet] Loyalty object updated: objectId={}, stamps={}", objectId, stamps);
+            if (syncLoyaltyPass()) {
+                syncLoyaltyObject(walletobjects, customer, stamps);
+            }
+            if (syncGenericPass()) {
+                syncGenericObject(walletobjects, customer, stamps);
+            }
         } catch (Exception e) {
-            log.error("[Wallet] Error updating loyalty object for objectId={}, stamps={}: {}",
-                    objectId, stamps, e.getMessage(), e);
+            log.error("[Wallet] Error updating wallet object(s) for customerPublicId={}, stamps={}: {}",
+                    customer.getPublicId(), stamps, e.getMessage(), e);
         }
     }
 
@@ -185,7 +177,7 @@ public class GoogleWalletService {
     }
 
     private LoyaltyObject getOrCreateLoyaltyObject(Walletobjects walletobjects, Customer customer) throws Exception {
-        String objectId = buildObjectId(customer);
+        String objectId = buildLoyaltyObjectId(customer);
         try {
             return walletobjects.loyaltyobject().get(objectId).execute();
         } catch (GoogleJsonResponseException e) {
@@ -196,7 +188,7 @@ public class GoogleWalletService {
             int stamps = normalizeStamps(customer.getLoyaltyStamps());
             LoyaltyObject newObject = new LoyaltyObject()
                     .setId(objectId)
-                    .setClassId(buildClassId())
+                    .setClassId(buildLoyaltyClassId())
                     .setState("ACTIVE")
                     .setAccountName(resolveAccountName(customer))
                     .setAccountId(normalizePhone(customer.getPhone()))
@@ -212,6 +204,51 @@ public class GoogleWalletService {
             log.info("[Wallet] Loyalty object created for sync: objectId={}, stamps={}", objectId, stamps);
             return created;
         }
+    }
+
+    private GenericObject getOrCreateGenericObject(Walletobjects walletobjects, Customer customer) throws Exception {
+        String objectId = buildGenericObjectId(customer);
+        try {
+            return walletobjects.genericobject().get(objectId).execute();
+        } catch (GoogleJsonResponseException e) {
+            if (e.getStatusCode() != 404) {
+                throw e;
+            }
+
+            int stamps = normalizeStamps(customer.getLoyaltyStamps());
+            String phone = normalizePhone(customer.getPhone());
+            GenericObject newObject = new GenericObject()
+                    .setId(objectId)
+                    .setClassId(buildGenericClassId())
+                    .setState("ACTIVE")
+                    .setBarcode(buildBarcode(phone))
+                    .setHeroImage(buildHeroImage(stamps))
+                    .setTextModulesData(new ArrayList<>(buildGenericModules(customer, stamps)));
+
+            GenericObject created = walletobjects.genericobject().insert(newObject).execute();
+            log.info("[Wallet] Generic object created for sync: objectId={}, stamps={}", objectId, stamps);
+            return created;
+        }
+    }
+
+    private void syncLoyaltyObject(Walletobjects walletobjects, Customer customer, int stamps) throws Exception {
+        String objectId = buildLoyaltyObjectId(customer);
+        LoyaltyObject loyaltyObject = getOrCreateLoyaltyObject(walletobjects, customer);
+        loyaltyObject.setLoyaltyPoints(buildLoyaltyPoints(stamps));
+        loyaltyObject.setTextModulesData(mergeProgressModule(loyaltyObject.getTextModulesData(), stamps));
+        loyaltyObject.setHeroImage(buildHeroImage(stamps));
+        walletobjects.loyaltyobject().update(objectId, loyaltyObject).execute();
+        log.info("[Wallet] Loyalty object updated: objectId={}, stamps={}", objectId, stamps);
+    }
+
+    private void syncGenericObject(Walletobjects walletobjects, Customer customer, int stamps) throws Exception {
+        String objectId = buildGenericObjectId(customer);
+        GenericObject genericObject = getOrCreateGenericObject(walletobjects, customer);
+        genericObject.setHeroImage(buildHeroImage(stamps));
+        genericObject.setBarcode(buildBarcode(normalizePhone(customer.getPhone())));
+        genericObject.setTextModulesData(new ArrayList<>(mergeGenericModules(genericObject.getTextModulesData(), customer, stamps)));
+        walletobjects.genericobject().update(objectId, genericObject).execute();
+        log.info("[Wallet] Generic object updated: objectId={}, stamps={}", objectId, stamps);
     }
 
     private LoyaltyPoints buildLoyaltyPoints(int stamps) {
@@ -240,6 +277,31 @@ public class GoogleWalletService {
                 .setBody(visual + " (" + boundedStamps + "/10)");
     }
 
+    private List<TextModuleData> buildGenericModules(Customer customer, int stamps) {
+        List<TextModuleData> modules = new ArrayList<>();
+        modules.add(new TextModuleData()
+                .setId("customer_name")
+                .setHeader("Nombre")
+                .setBody(resolveAccountName(customer)));
+        modules.add(new TextModuleData()
+                .setId("customer_phone")
+                .setHeader("Telefono")
+                .setBody(normalizePhone(customer.getPhone())));
+        modules.add(buildProgressModule(stamps));
+        return modules;
+    }
+
+    private List<TextModuleData> mergeGenericModules(List<TextModuleData> existingModules, Customer customer, int stamps) {
+        List<TextModuleData> modules = existingModules == null ? new ArrayList<>() : new ArrayList<>(existingModules);
+        modules.removeIf(module -> module != null && (
+                "stamp_progress".equals(module.getId())
+                        || "customer_name".equals(module.getId())
+                        || "customer_phone".equals(module.getId()))
+        );
+        modules.addAll(buildGenericModules(customer, stamps));
+        return modules;
+    }
+
     private Image buildHeroImage(int stamps) {
         return new Image()
                 .setSourceUri(new ImageUri().setUri(buildHeroImageUrl(stamps)));
@@ -253,12 +315,81 @@ public class GoogleWalletService {
         return heroImage;
     }
 
-    private String buildClassId() {
+    private Barcode buildBarcode(String phone) {
+        return new Barcode()
+                .setType("QR_CODE")
+                .setValue(phone)
+                .setAlternateText(phone);
+    }
+
+    private Map<String, Object> buildLoyaltyObjectPayload(String objectId, String classId, Customer customer, String phone, int stamps) {
+        Map<String, Object> loyaltyObject = new LinkedHashMap<>();
+        loyaltyObject.put("id", objectId);
+        loyaltyObject.put("classId", classId);
+        loyaltyObject.put("state", "ACTIVE");
+        loyaltyObject.put("accountName", resolveAccountName(customer));
+        loyaltyObject.put("accountId", phone);
+
+        Map<String, Object> loyaltyPoints = new LinkedHashMap<>();
+        Map<String, Object> balance = new LinkedHashMap<>();
+        balance.put("int", stamps);
+        loyaltyPoints.put("balance", balance);
+        loyaltyPoints.put("label", "Sellos");
+        loyaltyObject.put("loyaltyPoints", loyaltyPoints);
+
+        Map<String, Object> barcode = new LinkedHashMap<>();
+        barcode.put("type", "QR_CODE");
+        barcode.put("value", phone);
+        barcode.put("alternateText", phone);
+        loyaltyObject.put("barcode", barcode);
+        loyaltyObject.put("heroImage", buildHeroImagePayload(stamps));
+        loyaltyObject.put("textModulesData", Collections.singletonList(buildProgressModulePayload(stamps)));
+        return loyaltyObject;
+    }
+
+    private Map<String, Object> buildGenericObjectPayload(String objectId, String classId, String phone, int stamps) {
+        Map<String, Object> genericObject = new LinkedHashMap<>();
+        genericObject.put("id", objectId);
+        genericObject.put("classId", classId);
+        genericObject.put("state", "ACTIVE");
+
+        Map<String, Object> barcode = new LinkedHashMap<>();
+        barcode.put("type", "QR_CODE");
+        barcode.put("value", phone);
+        barcode.put("alternateText", phone);
+        genericObject.put("barcode", barcode);
+        genericObject.put("heroImage", buildHeroImagePayload(stamps));
+        genericObject.put("textModulesData", Collections.singletonList(buildProgressModulePayload(stamps)));
+        return genericObject;
+    }
+
+    private Map<String, Object> buildProgressModulePayload(int stamps) {
+        int boundedStamps = Math.max(0, Math.min(10, stamps));
+        StringBuilder visual = new StringBuilder(10);
+        for (int i = 0; i < 10; i++) {
+            visual.append(i < boundedStamps ? '●' : '○');
+        }
+        Map<String, Object> module = new LinkedHashMap<>();
+        module.put("id", "stamp_progress");
+        module.put("header", "Progreso de estampillas");
+        module.put("body", visual + " (" + boundedStamps + "/10)");
+        return module;
+    }
+
+    private String buildLoyaltyClassId() {
         return String.format("%s.%s", issuerId, loyaltyClass);
     }
 
-    private String buildObjectId(Customer customer) {
+    private String buildGenericClassId() {
+        return String.format("%s.%s", issuerId, genericClass);
+    }
+
+    private String buildLoyaltyObjectId(Customer customer) {
         return String.format("%s.%s", issuerId, customer.getPublicId().replace("-", "_"));
+    }
+
+    private String buildGenericObjectId(Customer customer) {
+        return String.format("%s.%s_g", issuerId, customer.getPublicId().replace("-", "_"));
     }
 
     private int normalizeStamps(Integer loyaltyStamps) {
@@ -285,5 +416,24 @@ public class GoogleWalletService {
         return customer.getFullName() != null && !customer.getFullName().isBlank()
                 ? customer.getFullName()
                 : "Cliente BunnyCure";
+    }
+
+    private String normalizedPassType() {
+        return passType == null ? "loyalty" : passType.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean issueGenericPass() {
+        String mode = normalizedPassType();
+        return "generic".equals(mode) || "dual".equals(mode);
+    }
+
+    private boolean syncLoyaltyPass() {
+        String mode = normalizedPassType();
+        return "loyalty".equals(mode) || "dual".equals(mode);
+    }
+
+    private boolean syncGenericPass() {
+        String mode = normalizedPassType();
+        return "generic".equals(mode) || "dual".equals(mode);
     }
 }
