@@ -65,14 +65,24 @@ public class GoogleWalletService {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
 
-            // 3. Crear Claims manualmente para evitar que JJWT cree arrays en 'aud'
+            // 3. Crear Claims manualmente (idéntico al dashboard validado)
             long now = System.currentTimeMillis() / 1000L;
             Map<String, Object> claims = new LinkedHashMap<>();
             claims.put("iss", serviceAccountEmail);
-            claims.put("aud", "google"); // Forzado como String
+            claims.put("aud", "google"); 
             claims.put("typ", "savetowallet");
-            claims.put("iat", now - 60L); // 1 min atrás por seguridad
-            claims.put("exp", now + 3600L);
+            claims.put("iat", now - 30L); // 30s atrás para evitar fallos de reloj
+            
+            // Origins es OBLIGATORIO para integraciones web, de lo contrario Google bloquea por seguridad (CSRF)
+            List<String> origins = Arrays.asList(
+                "http://localhost:5173",
+                "https://bunnycure-frontend.vercel.app",
+                "https://bunnycure-frontend-astuardo.vercel.app",
+                "https://bunnycure.cl",
+                "https://www.bunnycure.cl"
+            );
+            claims.put("origins", origins);
+            
             claims.put("payload", payload);
 
             // 4. Firmar el JWT
