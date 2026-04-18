@@ -91,12 +91,16 @@ public class GoogleWalletService {
 
             long now = System.currentTimeMillis() / 1000L;
             
+            // Orígenes permitidos (necesario para seguridad en web)
+            List<String> origins = Arrays.asList("http://localhost:5173", "https://bunnycure-frontend.vercel.app");
+
             String jwt = Jwts.builder()
                     .header().add("typ", "JWT").and()
                     .claim("iss", serviceAccountEmail)
                     .claim("aud", "google")
-                    .claim("typ", "google.wallet_object_jwt")
+                    .claim("typ", "savetowallet")
                     .claim("iat", now)
+                    .claim("origins", origins)
                     .claim("payload", payload)
                     .signWith(privateKey, Jwts.SIG.RS256)
                     .compact();
