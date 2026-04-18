@@ -27,6 +27,9 @@ public class GoogleWalletService {
     @Value("${GOOGLE_WALLET_CREDENTIALS:}")
     private String credentialsJson;
 
+    /**
+     * Genera un JWT firmado con los campos estrictos que Google requiere para Loyalty Cards.
+     */
     public String createWalletLink(Customer customer) {
         try {
             ServiceAccountCredentials credentials = getCredentials();
@@ -34,18 +37,19 @@ public class GoogleWalletService {
             PrivateKey privateKey = credentials.getPrivateKey();
 
             String classId = String.format("%s.%s", issuerId, loyaltyClass);
-            // Usamos un ID simple sin guiones para evitar problemas de URL
             String objectId = String.format("%s.%s", issuerId, customer.getPublicId().replace("-", "_"));
 
-            // 1. Objeto de fidelización (Casing compatible con REST)
+            // 1. Loyalty Object - Formato estrictamente compatible con la API REST
             Map<String, Object> loyaltyObject = new LinkedHashMap<>();
             loyaltyObject.put("id", objectId);
             loyaltyObject.put("classId", classId);
-            loyaltyObject.put("state", "active"); // Usamos minúsculas como en el ejemplo exitoso
+            loyaltyObject.put("state", "active");
+            
+            // Campos obligatorios para visualización
             loyaltyObject.put("accountName", customer.getFullName());
             loyaltyObject.put("accountId", customer.getPhone().replace("+", ""));
             
-            // Puntos de fidelidad
+            // Puntos de fidelidad con estructura completa
             Map<String, Object> loyaltyPoints = new LinkedHashMap<>();
             Map<String, Object> balance = new LinkedHashMap<>();
             balance.put("int", customer.getLoyaltyStamps());
@@ -53,9 +57,9 @@ public class GoogleWalletService {
             loyaltyPoints.put("label", "Sellos");
             loyaltyObject.put("loyaltyPoints", loyaltyPoints);
 
-            // Código de barras
+            // Código de barras (A veces requerido para que el botón funcione)
             Map<String, Object> barcode = new LinkedHashMap<>();
-            barcode.put("type", "qrCode"); // camelCase
+            barcode.put("type", "qrCode");
             barcode.put("value", customer.getPhone());
             barcode.put("alternateText", customer.getPhone());
             loyaltyObject.put("barcode", barcode);
@@ -64,12 +68,11 @@ public class GoogleWalletService {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
 
-            // 3. Ajuste de tiempos (IAT 1 hora atrás por seguridad de reloj)
-            long now = (System.currentTimeMillis() / 1000L);
-            long iat = now - 3600L; // 1 hora en el pasado
-            long exp = now + 3600L; // 1 hora en el futuro
+            // 3. Claims del JWT - Tiempos y Audiencia
+            long now = System.currentTimeMillis() / 1000L;
+            long iat = now - 60L; // 1 minuto atrás por seguridad
+            long exp = now + 7200L; // Válido por 2 horas
 
-            // 4. Firmar el JWT (Formato Plano)
             String jwt = Jwts.builder()
                     .header().add("typ", "JWT").add("alg", "RS256").and()
                     .claim("iss", serviceAccountEmail)
@@ -81,12 +84,12 @@ public class GoogleWalletService {
                     .signWith(privateKey, Jwts.SIG.RS256)
                     .compact();
 
-            log.info("[Wallet] New token generated for customer ID {}", customer.getId());
+            log.info("[Wallet] JWT generated for client: {}. Object ID: {}", customer.getFullName(), objectId);
             return "https://pay.google.com/gp/v/save/" + jwt;
 
         } catch (Exception e) {
-            log.error("Error en GoogleWalletService: {}", e.getMessage());
-            throw new RuntimeException("Error al generar enlace de Wallet", e);
+            log.error("Error en GoogleWalletService al generar link: {}", e.getMessage());
+            throw new RuntimeException("Error en integración con Wallet", e);
         }
     }
 
@@ -97,8 +100,8 @@ public class GoogleWalletService {
             return ServiceAccountCredentials.fromStream(new FileInputStream(credentialsPath));
         }
     }
-    
+
     public void updateCustomerStamps(Customer customer) {
-        // La lógica push se mantiene igual
+        // ... misma lógica de sincronización push
     }
 }
