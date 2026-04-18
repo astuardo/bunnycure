@@ -72,10 +72,16 @@ public class GoogleWalletService {
             PrivateKey privateKey = credentials.getPrivateKey();
 
             String objectId = String.format("%s.%s", issuerId, customer.getPublicId());
+            String classId = String.format("%s.%s", issuerId, loyaltyClass);
             
+            log.info("[Wallet Debug] Issuer ID: {}", issuerId);
+            log.info("[Wallet Debug] Service Account: {}", serviceAccountEmail);
+            log.info("[Wallet Debug] Class ID: {}", classId);
+            log.info("[Wallet Debug] Object ID: {}", objectId);
+
             Map<String, Object> loyaltyObject = new HashMap<>();
             loyaltyObject.put("id", objectId);
-            loyaltyObject.put("classId", String.format("%s.%s", issuerId, loyaltyClass));
+            loyaltyObject.put("classId", classId);
             loyaltyObject.put("state", "ACTIVE");
             loyaltyObject.put("accountName", customer.getFullName());
             loyaltyObject.put("accountId", customer.getPhone());
@@ -90,9 +96,9 @@ public class GoogleWalletService {
             payload.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
 
             long now = System.currentTimeMillis() / 1000L;
-            
-            // Orígenes permitidos (necesario para seguridad en web)
             List<String> origins = Arrays.asList("http://localhost:5173", "https://bunnycure-frontend.vercel.app");
+
+            log.info("[Wallet Debug] Origins: {}", origins);
 
             String jwt = Jwts.builder()
                     .header().add("typ", "JWT").and()
@@ -105,7 +111,10 @@ public class GoogleWalletService {
                     .signWith(privateKey, Jwts.SIG.RS256)
                     .compact();
 
-            return "https://pay.google.com/gp/v/save/" + jwt;
+            String finalUrl = "https://pay.google.com/gp/v/save/" + jwt;
+            log.info("[Wallet Debug] JWT Header/Payload (can be decoded at jwt.io): {}", jwt.substring(0, jwt.lastIndexOf(".")));
+            
+            return finalUrl;
 
         } catch (Exception e) {
             log.error("Error generating Google Wallet link for customer {}: {}", customer.getId(), e.getMessage(), e);
