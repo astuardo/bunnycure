@@ -8,6 +8,8 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.walletobjects.Walletobjects;
 import com.google.api.services.walletobjects.model.Barcode;
+import com.google.api.services.walletobjects.model.Image;
+import com.google.api.services.walletobjects.model.ImageUri;
 import com.google.api.services.walletobjects.model.LoyaltyObject;
 import com.google.api.services.walletobjects.model.LoyaltyPoints;
 import com.google.api.services.walletobjects.model.LoyaltyPointsBalance;
@@ -41,6 +43,12 @@ public class GoogleWalletService {
 
     @Value("${GOOGLE_WALLET_CREDENTIALS:}")
     private String credentialsJson;
+
+    @Value("${bunnycure.google.wallet.hero-base-url}")
+    private String heroBaseUrl;
+
+    @Value("${bunnycure.google.wallet.hero-image-extension:svg}")
+    private String heroImageExtension;
 
     /**
      * Genera un JWT firmado para Google Wallet.
@@ -76,6 +84,7 @@ public class GoogleWalletService {
             barcode.put("value", phone);
             barcode.put("alternateText", phone);
             loyaltyObject.put("barcode", barcode);
+            loyaltyObject.put("heroImage", buildHeroImagePayload(normalizeStamps(customer.getLoyaltyStamps())));
 
             // 2. Preparar el Payload
             Map<String, Object> payload = new LinkedHashMap<>();
@@ -135,6 +144,7 @@ public class GoogleWalletService {
 
             loyaltyObject.setLoyaltyPoints(buildLoyaltyPoints(stamps));
             loyaltyObject.setTextModulesData(mergeProgressModule(loyaltyObject.getTextModulesData(), stamps));
+            loyaltyObject.setHeroImage(buildHeroImage(stamps));
 
             walletobjects.loyaltyobject().update(objectId, loyaltyObject).execute();
             log.info("[Wallet] Loyalty object updated: objectId={}, stamps={}", objectId, stamps);
@@ -195,7 +205,8 @@ public class GoogleWalletService {
                             .setValue(normalizePhone(customer.getPhone()))
                             .setAlternateText(normalizePhone(customer.getPhone())))
                     .setLoyaltyPoints(buildLoyaltyPoints(stamps))
-                    .setTextModulesData(Collections.singletonList(buildProgressModule(stamps)));
+                    .setTextModulesData(Collections.singletonList(buildProgressModule(stamps)))
+                    .setHeroImage(buildHeroImage(stamps));
 
             LoyaltyObject created = walletobjects.loyaltyobject().insert(newObject).execute();
             log.info("[Wallet] Loyalty object created for sync: objectId={}, stamps={}", objectId, stamps);
@@ -229,6 +240,19 @@ public class GoogleWalletService {
                 .setBody(visual + " (" + boundedStamps + "/10)");
     }
 
+    private Image buildHeroImage(int stamps) {
+        return new Image()
+                .setSourceUri(new ImageUri().setUri(buildHeroImageUrl(stamps)));
+    }
+
+    private Map<String, Object> buildHeroImagePayload(int stamps) {
+        Map<String, Object> sourceUri = new LinkedHashMap<>();
+        sourceUri.put("uri", buildHeroImageUrl(stamps));
+        Map<String, Object> heroImage = new LinkedHashMap<>();
+        heroImage.put("sourceUri", sourceUri);
+        return heroImage;
+    }
+
     private String buildClassId() {
         return String.format("%s.%s", issuerId, loyaltyClass);
     }
@@ -239,6 +263,15 @@ public class GoogleWalletService {
 
     private int normalizeStamps(Integer loyaltyStamps) {
         return Math.max(0, loyaltyStamps == null ? 0 : loyaltyStamps);
+    }
+
+    private String buildHeroImageUrl(int stamps) {
+        int boundedStamps = Math.max(0, Math.min(10, stamps));
+        String base = heroBaseUrl.endsWith("/") ? heroBaseUrl.substring(0, heroBaseUrl.length() - 1) : heroBaseUrl;
+        String extension = (heroImageExtension == null || heroImageExtension.isBlank())
+                ? "svg"
+                : heroImageExtension.trim().replace(".", "");
+        return base + "/hero_" + boundedStamps + "." + extension;
     }
 
     private String normalizePhone(String phone) {
