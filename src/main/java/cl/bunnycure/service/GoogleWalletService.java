@@ -40,13 +40,20 @@ public class GoogleWalletService {
             String classId = String.format("%s.%s", issuerId, loyaltyClass);
             String objectId = String.format("%s.%s", issuerId, customer.getPublicId().replace("-", "_"));
 
+            String phone = customer.getPhone();
+            if (phone == null || phone.isBlank()) {
+                phone = "000000000"; // Placeholder para evitar error de validación en Wallet
+            } else {
+                phone = phone.replace("+", "");
+            }
+
             // 1. Construir el Loyalty Object (Formato exacto del dashboard)
             Map<String, Object> loyaltyObject = new LinkedHashMap<>();
             loyaltyObject.put("id", objectId);
             loyaltyObject.put("classId", classId);
             loyaltyObject.put("state", "ACTIVE");
-            loyaltyObject.put("accountName", customer.getFullName());
-            loyaltyObject.put("accountId", customer.getPhone().replace("+", ""));
+            loyaltyObject.put("accountName", customer.getFullName() != null && !customer.getFullName().isBlank() ? customer.getFullName() : "Cliente BunnyCure");
+            loyaltyObject.put("accountId", phone);
             
             Map<String, Object> loyaltyPoints = new LinkedHashMap<>();
             Map<String, Object> balance = new LinkedHashMap<>();
@@ -57,8 +64,8 @@ public class GoogleWalletService {
 
             Map<String, Object> barcode = new LinkedHashMap<>();
             barcode.put("type", "QR_CODE");
-            barcode.put("value", customer.getPhone());
-            barcode.put("alternateText", customer.getPhone());
+            barcode.put("value", phone);
+            barcode.put("alternateText", phone);
             loyaltyObject.put("barcode", barcode);
 
             // 2. Preparar el Payload
