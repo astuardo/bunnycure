@@ -96,9 +96,16 @@ public class GoogleWalletService {
             payload.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
 
             long now = System.currentTimeMillis() / 1000L;
-            List<String> origins = Arrays.asList("http://localhost:5173", "https://bunnycure-frontend.vercel.app");
+            long expiry = now + 3600L; // Expira en 1 hora
+            
+            // Lista de orígenes más amplia para pruebas
+            List<String> origins = Arrays.asList(
+                "http://localhost:5173", 
+                "https://bunnycure-frontend.vercel.app",
+                "https://bunnycure-frontend-astuardo.vercel.app" // Añade aquí cualquier otra URL que uses
+            );
 
-            log.info("[Wallet Debug] Origins: {}", origins);
+            log.info("[Wallet Debug] Setting expiry to: {}", expiry);
 
             String jwt = Jwts.builder()
                     .header().add("typ", "JWT").and()
@@ -106,6 +113,7 @@ public class GoogleWalletService {
                     .claim("aud", "google")
                     .claim("typ", "savetowallet")
                     .claim("iat", now)
+                    .claim("exp", expiry) // Añadido Expiry
                     .claim("origins", origins)
                     .claim("payload", payload)
                     .signWith(privateKey, Jwts.SIG.RS256)
