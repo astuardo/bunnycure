@@ -1,19 +1,23 @@
 package cl.bunnycure.service;
 
 import cl.bunnycure.domain.model.Customer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.ServiceAccountCredentials;
-import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
+import java.security.Signature;
 import java.util.*;
+import java.util.Base64;
 
 @Slf4j
 @Service
 public class GoogleWalletService {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Value("${bunnycure.google.wallet.issuer-id}")
     private String issuerId;
@@ -92,12 +96,8 @@ public class GoogleWalletService {
             
             claims.put("payload", payload);
 
-            // 4. Firmar el JWT
-            String signedJwt = Jwts.builder()
-                    .header().add("typ", "JWT").add("alg", "RS256").and()
-                    .claims(claims)
-                    .signWith(privateKey, Jwts.SIG.RS256)
-                    .compact();
+            // 4. Firmar JWT manualmente para mantener aud como String ("google")
+            String signedJwt = signWalletJwt(claims, privateKey);
 
             log.info("[Wallet] Link generated for customer: {}", customer.getFullName());
             return "https://pay.google.com/gp/v/save/" + signedJwt;
@@ -122,5 +122,26 @@ public class GoogleWalletService {
     
     public void updateCustomerStamps(Customer customer) {
         // La actualización push está bien
+    }
+
+    private String signWalletJwt(Map<String, Object> claims, PrivateKey privateKey) throws Exception {
+        Map<String, Object> header = new LinkedHashMap<>();
+        header.put("typ", "JWT");
+        header.put("alg", "RS256");
+
+        String encodedHeader = toBase64Url(OBJECT_MAPPER.writeValueAsBytes(header));
+        String encodedPayload = toBase64Url(OBJECT_MAPPER.writeValueAsBytes(claims));
+        String signingInput = encodedHeader + "." + encodedPayload;
+
+        Signature signer = Signature.getInstance("SHA256withRSA");
+        signer.initSign(privateKey);
+        signer.update(signingInput.getBytes(StandardCharsets.UTF_8));
+        String encodedSignature = toBase64Url(signer.sign());
+
+        return signingInput + "." + encodedSignature;
+    }
+
+    private String toBase64Url(byte[] bytes) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }
