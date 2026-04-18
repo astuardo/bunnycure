@@ -95,10 +95,10 @@ public class GoogleWalletService {
         java.util.List<String> scopes = Collections.singletonList("https://www.googleapis.com/auth/wallet_object.issuer");
         
         if (credentialsJson != null && !credentialsJson.isBlank()) {
-            return ServiceAccountCredentials.fromStream(new java.io.ByteArrayInputStream(credentialsJson.getBytes()))
+            return (ServiceAccountCredentials) ServiceAccountCredentials.fromStream(new java.io.ByteArrayInputStream(credentialsJson.getBytes()))
                     .createScoped(scopes);
         } else {
-            return ServiceAccountCredentials.fromStream(new FileInputStream(credentialsPath))
+            return (ServiceAccountCredentials) ServiceAccountCredentials.fromStream(new FileInputStream(credentialsPath))
                     .createScoped(scopes);
         }
     }
