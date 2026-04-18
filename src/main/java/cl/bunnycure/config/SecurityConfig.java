@@ -52,7 +52,7 @@ public class SecurityConfig {
 		// ── Autorización ──────────────────────────────────────────────────────
 		http.authorizeHttpRequests(auth -> {
 			// Recursos estáticos y metadatos que no requieren autenticación
-			auth.requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll();
+			auth.requestMatchers("/css/**", "/js/**", "/images/**", "/assets/**", "/webjars/**").permitAll();
 			auth.requestMatchers("/favicon.ico", "/.well-known/**").permitAll();
 			auth.requestMatchers("/error").permitAll();
 			
