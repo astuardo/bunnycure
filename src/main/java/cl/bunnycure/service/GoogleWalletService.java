@@ -2,6 +2,17 @@ package cl.bunnycure.service;
 
 import cl.bunnycure.domain.model.Customer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpRequestInitializer;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.services.walletobjects.Walletobjects;
+import com.google.api.services.walletobjects.model.Barcode;
+import com.google.api.services.walletobjects.model.LoyaltyObject;
+import com.google.api.services.walletobjects.model.LoyaltyPoints;
+import com.google.api.services.walletobjects.model.LoyaltyPointsBalance;
+import com.google.api.services.walletobjects.model.TextModuleData;
+import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,15 +52,9 @@ public class GoogleWalletService {
             PrivateKey privateKey = credentials.getPrivateKey();
             String serviceAccountEmail = credentials.getClientEmail();
 
-            String classId = String.format("%s.%s", issuerId, loyaltyClass);
-            String objectId = String.format("%s.%s", issuerId, customer.getPublicId().replace("-", "_"));
-
-            String phone = customer.getPhone();
-            if (phone == null || phone.isBlank()) {
-                phone = "000000000"; // Placeholder para evitar error de validación en Wallet
-            } else {
-                phone = phone.replace("+", "");
-            }
+            String classId = buildClassId();
+            String objectId = buildObjectId(customer);
+            String phone = normalizePhone(customer.getPhone());
 
             // 1. Construir el Loyalty Object (Formato exacto del dashboard)
             Map<String, Object> loyaltyObject = new LinkedHashMap<>();
@@ -121,7 +126,22 @@ public class GoogleWalletService {
     }
     
     public void updateCustomerStamps(Customer customer) {
-        // La actualización push está bien
+        String objectId = buildObjectId(customer);
+        int stamps = normalizeStamps(customer.getLoyaltyStamps());
+
+        try {
+            Walletobjects walletobjects = getWalletobjectsClient();
+            LoyaltyObject loyaltyObject = getOrCreateLoyaltyObject(walletobjects, customer);
+
+            loyaltyObject.setLoyaltyPoints(buildLoyaltyPoints(stamps));
+            loyaltyObject.setTextModulesData(mergeProgressModule(loyaltyObject.getTextModulesData(), stamps));
+
+            walletobjects.loyaltyobject().update(objectId, loyaltyObject).execute();
+            log.info("[Wallet] Loyalty object updated: objectId={}, stamps={}", objectId, stamps);
+        } catch (Exception e) {
+            log.error("[Wallet] Error updating loyalty object for objectId={}, stamps={}: {}",
+                    objectId, stamps, e.getMessage(), e);
+        }
     }
 
     private String signWalletJwt(Map<String, Object> claims, PrivateKey privateKey) throws Exception {
@@ -143,5 +163,94 @@ public class GoogleWalletService {
 
     private String toBase64Url(byte[] bytes) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private Walletobjects getWalletobjectsClient() throws Exception {
+        HttpRequestInitializer requestInitializer = new HttpCredentialsAdapter(getCredentials());
+        return new Walletobjects.Builder(
+                GoogleNetHttpTransport.newTrustedTransport(),
+                GsonFactory.getDefaultInstance(),
+                requestInitializer
+        ).setApplicationName("BunnyCure").build();
+    }
+
+    private LoyaltyObject getOrCreateLoyaltyObject(Walletobjects walletobjects, Customer customer) throws Exception {
+        String objectId = buildObjectId(customer);
+        try {
+            return walletobjects.loyaltyobject().get(objectId).execute();
+        } catch (GoogleJsonResponseException e) {
+            if (e.getStatusCode() != 404) {
+                throw e;
+            }
+
+            int stamps = normalizeStamps(customer.getLoyaltyStamps());
+            LoyaltyObject newObject = new LoyaltyObject()
+                    .setId(objectId)
+                    .setClassId(buildClassId())
+                    .setState("ACTIVE")
+                    .setAccountName(resolveAccountName(customer))
+                    .setAccountId(normalizePhone(customer.getPhone()))
+                    .setBarcode(new Barcode()
+                            .setType("QR_CODE")
+                            .setValue(normalizePhone(customer.getPhone()))
+                            .setAlternateText(normalizePhone(customer.getPhone())))
+                    .setLoyaltyPoints(buildLoyaltyPoints(stamps))
+                    .setTextModulesData(Collections.singletonList(buildProgressModule(stamps)));
+
+            LoyaltyObject created = walletobjects.loyaltyobject().insert(newObject).execute();
+            log.info("[Wallet] Loyalty object created for sync: objectId={}, stamps={}", objectId, stamps);
+            return created;
+        }
+    }
+
+    private LoyaltyPoints buildLoyaltyPoints(int stamps) {
+        return new LoyaltyPoints()
+                .setLabel("Sellos")
+                .setBalance(new LoyaltyPointsBalance().setInt(stamps));
+    }
+
+    private List<TextModuleData> mergeProgressModule(List<TextModuleData> existingModules, int stamps) {
+        List<TextModuleData> modules = existingModules == null ? new ArrayList<>() : new ArrayList<>(existingModules);
+        modules.removeIf(module -> "stamp_progress".equals(module.getId()));
+        modules.add(buildProgressModule(stamps));
+        return modules;
+    }
+
+    private TextModuleData buildProgressModule(int stamps) {
+        int boundedStamps = Math.max(0, Math.min(10, stamps));
+        StringBuilder visual = new StringBuilder(10);
+        for (int i = 0; i < 10; i++) {
+            visual.append(i < boundedStamps ? '●' : '○');
+        }
+
+        return new TextModuleData()
+                .setId("stamp_progress")
+                .setHeader("Progreso de estampillas")
+                .setBody(visual + " (" + boundedStamps + "/10)");
+    }
+
+    private String buildClassId() {
+        return String.format("%s.%s", issuerId, loyaltyClass);
+    }
+
+    private String buildObjectId(Customer customer) {
+        return String.format("%s.%s", issuerId, customer.getPublicId().replace("-", "_"));
+    }
+
+    private int normalizeStamps(Integer loyaltyStamps) {
+        return Math.max(0, loyaltyStamps == null ? 0 : loyaltyStamps);
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return "000000000";
+        }
+        return phone.replace("+", "");
+    }
+
+    private String resolveAccountName(Customer customer) {
+        return customer.getFullName() != null && !customer.getFullName().isBlank()
+                ? customer.getFullName()
+                : "Cliente BunnyCure";
     }
 }
