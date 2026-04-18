@@ -34,17 +34,18 @@ public class GoogleWalletService {
             PrivateKey privateKey = credentials.getPrivateKey();
 
             String classId = String.format("%s.%s", issuerId, loyaltyClass);
-            // Simplificamos el ID para evitar cualquier problema con caracteres
+            // Usamos un ID simple sin guiones para evitar problemas de URL
             String objectId = String.format("%s.%s", issuerId, customer.getPublicId().replace("-", "_"));
 
-            // 1. Objeto de fidelización (Estructura mínima recomendada)
+            // 1. Objeto de fidelización (Casing compatible con REST)
             Map<String, Object> loyaltyObject = new LinkedHashMap<>();
             loyaltyObject.put("id", objectId);
             loyaltyObject.put("classId", classId);
-            loyaltyObject.put("state", "ACTIVE");
+            loyaltyObject.put("state", "active"); // Usamos minúsculas como en el ejemplo exitoso
             loyaltyObject.put("accountName", customer.getFullName());
             loyaltyObject.put("accountId", customer.getPhone().replace("+", ""));
             
+            // Puntos de fidelidad
             Map<String, Object> loyaltyPoints = new LinkedHashMap<>();
             Map<String, Object> balance = new LinkedHashMap<>();
             balance.put("int", customer.getLoyaltyStamps());
@@ -52,34 +53,40 @@ public class GoogleWalletService {
             loyaltyPoints.put("label", "Sellos");
             loyaltyObject.put("loyaltyPoints", loyaltyPoints);
 
+            // Código de barras
+            Map<String, Object> barcode = new LinkedHashMap<>();
+            barcode.put("type", "qrCode"); // camelCase
+            barcode.put("value", customer.getPhone());
+            barcode.put("alternateText", customer.getPhone());
+            loyaltyObject.put("barcode", barcode);
+
             // 2. Payload del JWT
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
-long now = (System.currentTimeMillis() / 1000L) - 10L; 
-long exp = now + 3600L;
 
-// 4. Firmar el JWT con JJWT 0.12.x
-// Eliminamos 'origins' porque estamos usando un enlace directo (URL) 
-// y no el botón inyectado por el script de Google.
-String jwt = Jwts.builder()
-        .setHeaderParam("typ", "JWT")
-        .setHeaderParam("alg", "RS256")
-        .claim("iss", serviceAccountEmail)
-        .claim("aud", "google")
-        .claim("typ", "savetowallet")
-        .claim("iat", now)
-        .claim("exp", exp)
-        .claim("payload", payload)
-        .signWith(privateKey, Jwts.SIG.RS256)
-        .compact();
+            // 3. Ajuste de tiempos (IAT 1 hora atrás por seguridad de reloj)
+            long now = (System.currentTimeMillis() / 1000L);
+            long iat = now - 3600L; // 1 hora en el pasado
+            long exp = now + 3600L; // 1 hora en el futuro
 
+            // 4. Firmar el JWT (Formato Plano)
+            String jwt = Jwts.builder()
+                    .header().add("typ", "JWT").add("alg", "RS256").and()
+                    .claim("iss", serviceAccountEmail)
+                    .claim("aud", "google")
+                    .claim("typ", "savetowallet")
+                    .claim("iat", iat)
+                    .claim("exp", exp)
+                    .claim("payload", payload)
+                    .signWith(privateKey, Jwts.SIG.RS256)
+                    .compact();
 
-            log.info("[Wallet] Success generating link for {}", customer.getFullName());
+            log.info("[Wallet] New token generated for customer ID {}", customer.getId());
             return "https://pay.google.com/gp/v/save/" + jwt;
 
         } catch (Exception e) {
             log.error("Error en GoogleWalletService: {}", e.getMessage());
-            throw new RuntimeException("No se pudo generar el enlace de Wallet", e);
+            throw new RuntimeException("Error al generar enlace de Wallet", e);
         }
     }
 
@@ -92,6 +99,6 @@ String jwt = Jwts.builder()
     }
     
     public void updateCustomerStamps(Customer customer) {
-        // La lógica de actualización push se mantiene igual
+        // La lógica push se mantiene igual
     }
 }
