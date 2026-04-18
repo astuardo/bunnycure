@@ -1,10 +1,8 @@
 package cl.bunnycure.service;
 
 import cl.bunnycure.domain.model.Customer;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.json.webtoken.JsonWebSignature;
-import com.google.api.client.json.webtoken.JsonWebToken;
 import com.google.auth.oauth2.ServiceAccountCredentials;
+import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,7 +28,8 @@ public class GoogleWalletService {
     private String credentialsJson;
 
     /**
-     * Genera un JWT firmado usando las librerías OFICIALES de Google para máxima compatibilidad.
+     * Genera un JWT firmado para Google Wallet.
+     * Esta versión asegura que 'aud' sea un String y no un Array.
      */
     public String createWalletLink(Customer customer) {
         try {
@@ -41,11 +40,11 @@ public class GoogleWalletService {
             String classId = String.format("%s.%s", issuerId, loyaltyClass);
             String objectId = String.format("%s.%s", issuerId, customer.getPublicId().replace("-", "_"));
 
-            // 1. Estructura del Loyalty Object (JSON que Google validó)
+            // 1. Construir el Loyalty Object (Formato exacto del dashboard)
             Map<String, Object> loyaltyObject = new LinkedHashMap<>();
             loyaltyObject.put("id", objectId);
             loyaltyObject.put("classId", classId);
-            loyaltyObject.put("state", "active");
+            loyaltyObject.put("state", "ACTIVE");
             loyaltyObject.put("accountName", customer.getFullName());
             loyaltyObject.put("accountId", customer.getPhone().replace("+", ""));
             
@@ -57,36 +56,38 @@ public class GoogleWalletService {
             loyaltyObject.put("loyaltyPoints", loyaltyPoints);
 
             Map<String, Object> barcode = new LinkedHashMap<>();
-            barcode.put("type", "qrCode");
+            barcode.put("type", "QR_CODE");
             barcode.put("value", customer.getPhone());
             barcode.put("alternateText", customer.getPhone());
             loyaltyObject.put("barcode", barcode);
 
-            // 2. Preparar el Payload del JWT
-            Map<String, Object> payloadMap = new LinkedHashMap<>();
-            payloadMap.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
+            // 2. Preparar el Payload
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
 
-            // 3. Crear el JWT con la librería oficial de Google
-            JsonWebToken.Payload claims = new JsonWebToken.Payload();
-            claims.setIssuer(serviceAccountEmail);
-            claims.setAudience("google");
-            claims.setIssuedAtTimeSeconds(System.currentTimeMillis() / 1000L - 30L);
-            claims.setExpirationTimeSeconds(System.currentTimeMillis() / 1000L + 3600L);
-            claims.set("typ", "savetowallet");
-            claims.set("payload", payloadMap);
+            // 3. Crear Claims manualmente para evitar que JJWT cree arrays en 'aud'
+            long now = System.currentTimeMillis() / 1000L;
+            Map<String, Object> claims = new LinkedHashMap<>();
+            claims.put("iss", serviceAccountEmail);
+            claims.put("aud", "google"); // Forzado como String
+            claims.put("typ", "savetowallet");
+            claims.put("iat", now - 60L); // 1 min atrás por seguridad
+            claims.put("exp", now + 3600L);
+            claims.put("payload", payload);
 
-            JsonWebSignature.Header header = new JsonWebSignature.Header();
-            header.setAlgorithm("RS256");
-            header.setType("JWT");
+            // 4. Firmar el JWT
+            String signedJwt = Jwts.builder()
+                    .header().add("typ", "JWT").add("alg", "RS256").and()
+                    .claims(claims)
+                    .signWith(privateKey, Jwts.SIG.RS256)
+                    .compact();
 
-            String signedJwt = JsonWebSignature.signUsingRsa(privateKey, GsonFactory.getDefaultInstance(), header, claims);
-
-            log.info("[Wallet] Link generated successfully using Google Libs for {}", customer.getFullName());
+            log.info("[Wallet] Link generated for customer: {}", customer.getFullName());
             return "https://pay.google.com/gp/v/save/" + signedJwt;
 
         } catch (Exception e) {
-            log.error("Error en GoogleWalletService (Google Libs): {}", e.getMessage(), e);
-            throw new RuntimeException("No se pudo generar el enlace de Google Wallet", e);
+            log.error("Error generating Google Wallet link: {}", e.getMessage(), e);
+            throw new RuntimeException("Error en la integración con Google Wallet", e);
         }
     }
 
@@ -97,8 +98,8 @@ public class GoogleWalletService {
             return ServiceAccountCredentials.fromStream(new FileInputStream(credentialsPath));
         }
     }
-
+    
     public void updateCustomerStamps(Customer customer) {
-        // La actualización push utiliza el cliente oficial, por lo que está bien.
+        // La actualización push está bien
     }
 }
