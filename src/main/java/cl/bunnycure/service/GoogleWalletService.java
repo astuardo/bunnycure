@@ -55,31 +55,24 @@ public class GoogleWalletService {
             // 2. Payload del JWT
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
+long now = (System.currentTimeMillis() / 1000L) - 10L; 
+long exp = now + 3600L;
 
-            // 3. Orígenes permitidos (Añadimos todas las variantes posibles)
-            List<String> origins = Arrays.asList(
-                "http://localhost:5173",
-                "https://bunnycure-frontend.vercel.app",
-                "https://bunnycure.cl",
-                "https://www.bunnycure.cl"
-            );
+// 4. Firmar el JWT con JJWT 0.12.x
+// Eliminamos 'origins' porque estamos usando un enlace directo (URL) 
+// y no el botón inyectado por el script de Google.
+String jwt = Jwts.builder()
+        .setHeaderParam("typ", "JWT")
+        .setHeaderParam("alg", "RS256")
+        .claim("iss", serviceAccountEmail)
+        .claim("aud", "google")
+        .claim("typ", "savetowallet")
+        .claim("iat", now)
+        .claim("exp", exp)
+        .claim("payload", payload)
+        .signWith(privateKey, Jwts.SIG.RS256)
+        .compact();
 
-            long now = (System.currentTimeMillis() / 1000L) - 30L; // 30s atrás por seguridad
-            long exp = now + 3600L;
-
-            // 4. Construcción del JWT (Formato Plano compatible con Google)
-            String jwt = Jwts.builder()
-                    .setHeaderParam("typ", "JWT")
-                    .setHeaderParam("alg", "RS256")
-                    .claim("iss", serviceAccountEmail)
-                    .claim("aud", "google") // Audiencia como String simple
-                    .claim("typ", "savetowallet")
-                    .claim("iat", now)
-                    .claim("exp", exp)
-                    .claim("origins", origins)
-                    .claim("payload", payload)
-                    .signWith(privateKey, Jwts.SIG.RS256)
-                    .compact();
 
             log.info("[Wallet] Success generating link for {}", customer.getFullName());
             return "https://pay.google.com/gp/v/save/" + jwt;
