@@ -84,28 +84,27 @@ public class GoogleWalletService {
             loyaltyObject.put("classId", classId);
             loyaltyObject.put("state", "ACTIVE");
             loyaltyObject.put("accountName", customer.getFullName());
-            loyaltyObject.put("accountId", customer.getPhone());
+            // accountId sin el "+" por seguridad
+            loyaltyObject.put("accountId", customer.getPhone().replace("+", ""));
             
             Map<String, Object> loyaltyPoints = new HashMap<>();
             Map<String, Object> balance = new HashMap<>();
             balance.put("int", customer.getLoyaltyStamps());
             loyaltyPoints.put("balance", balance);
+            loyaltyPoints.put("label", "Sellos"); // Etiqueta explícita
             loyaltyObject.put("loyaltyPoints", loyaltyPoints);
 
             Map<String, Object> payload = new HashMap<>();
             payload.put("loyaltyObjects", Collections.singletonList(loyaltyObject));
 
-            long now = System.currentTimeMillis() / 1000L;
-            long expiry = now + 3600L; // Expira en 1 hora
+            long now = (System.currentTimeMillis() / 1000L) - 30L; // 30s atrás por reloj
+            long expiry = now + 3630L; 
             
-            // Lista de orígenes más amplia para pruebas
             List<String> origins = Arrays.asList(
                 "http://localhost:5173", 
                 "https://bunnycure-frontend.vercel.app",
-                "https://bunnycure-frontend-astuardo.vercel.app" // Añade aquí cualquier otra URL que uses
+                "https://bunnycure-frontend-astuardo.vercel.app"
             );
-
-            log.info("[Wallet Debug] Setting expiry to: {}", expiry);
 
             String jwt = Jwts.builder()
                     .header().add("typ", "JWT").and()
@@ -113,7 +112,7 @@ public class GoogleWalletService {
                     .claim("aud", "google")
                     .claim("typ", "savetowallet")
                     .claim("iat", now)
-                    .claim("exp", expiry) // Añadido Expiry
+                    .claim("exp", expiry)
                     .claim("origins", origins)
                     .claim("payload", payload)
                     .signWith(privateKey, Jwts.SIG.RS256)
