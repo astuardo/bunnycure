@@ -63,6 +63,13 @@ public class GoogleWalletService {
 
             Map<String, Object> payload = new LinkedHashMap<>();
             if (issueGenericPass()) {
+                Walletobjects walletobjects = getWalletobjectsClient();
+                boolean classExists = syncGenericClassTemplateIfExists(walletobjects, classId);
+                if (classExists) {
+                    syncGenericObject(walletobjects, customer, stamps);
+                } else {
+                    log.info("[Wallet] GenericClass {} no existe aún; se creará vía JWT payload en save link", classId);
+                }
                 payload.put("genericClasses", Collections.singletonList(buildGenericClassPayload(classId)));
                 payload.put("genericObjects", Collections.singletonList(
                         buildGenericObjectPayload(objectId, classId, phone, stamps, customer))
@@ -211,26 +218,39 @@ public class GoogleWalletService {
     private Map<String, Object> buildGenericClassPayload(String classId) {
         Map<String, Object> genericClass = new LinkedHashMap<>();
         genericClass.put("id", classId);
-        
-        // Template de 2 columnas como en clase_bunny.json
+        genericClass.put("classTemplateInfo", buildGenericClassTemplateInfoMap());
+        return genericClass;
+    }
+
+    private boolean syncGenericClassTemplateIfExists(Walletobjects walletobjects, String classId) throws Exception {
+        try {
+            GenericClass gc = walletobjects.genericclass().get(classId).execute();
+            gc.set("classTemplateInfo", buildGenericClassTemplateInfoMap());
+            walletobjects.genericclass().update(classId, gc).execute();
+            return true;
+        } catch (GoogleJsonResponseException e) {
+            if (e.getStatusCode() == 404) return false;
+            throw e;
+        }
+    }
+
+    private Map<String, Object> buildGenericClassTemplateInfoMap() {
         Map<String, Object> classTemplateInfo = new LinkedHashMap<>();
         Map<String, Object> cardTemplateOverride = new LinkedHashMap<>();
         List<Map<String, Object>> cardRowTemplateInfos = new ArrayList<>();
         Map<String, Object> row1 = new LinkedHashMap<>();
         Map<String, Object> twoItems = new LinkedHashMap<>();
-        
-        twoItems.put("startItem", Collections.singletonMap("firstValue", Collections.singletonMap("fields", 
+
+        twoItems.put("startItem", Collections.singletonMap("firstValue", Collections.singletonMap("fields",
                 Collections.singletonList(Collections.singletonMap("fieldPath", "object.textModulesData['sellos']")))));
-        twoItems.put("endItem", Collections.singletonMap("firstValue", Collections.singletonMap("fields", 
+        twoItems.put("endItem", Collections.singletonMap("firstValue", Collections.singletonMap("fields",
                 Collections.singletonList(Collections.singletonMap("fieldPath", "object.textModulesData['premio:']")))));
-        
+
         row1.put("twoItems", twoItems);
         cardRowTemplateInfos.add(row1);
         cardTemplateOverride.put("cardRowTemplateInfos", cardRowTemplateInfos);
         classTemplateInfo.put("cardTemplateOverride", cardTemplateOverride);
-        genericClass.put("classTemplateInfo", classTemplateInfo);
-        
-        return genericClass;
+        return classTemplateInfo;
     }
 
     private Map<String, Object> buildGenericObjectPayload(String objectId, String classId, String phone, int stamps, Customer customer) {
