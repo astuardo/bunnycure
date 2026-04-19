@@ -267,6 +267,11 @@ Los README quedan alineados con estos cambios del proyecto:
 - **Campos de perfil** adicionales en solicitudes/clientas: género, fecha de nacimiento, teléfono de emergencia y notas
 - Vistas de agenda **día / semana / mes**
 - Paridad de migraciones entre H2 y PostgreSQL validada por tests
+- **Google Wallet (Generic Pass)** con enlace firmado por clienta (`/api/customers/{id}/wallet/google-link`)
+- Tarjeta Wallet con **premio dinámico por clienta** (según `currentRewardIndex` + catálogo de premios)
+- Hero de Wallet **dinámico** (`/assets/wallet/hero_dynamic.svg`) con sellos + premio actual
+- Branding de hero actualizado a **BUNNYCURE** y soporte de ícono personalizado (`static/assets/wallet/rabbit.png`)
+- **Cache-busting** del hero vía `GOOGLE_WALLET_HERO_VERSION` para forzar actualización visual en Google Wallet
 
 ---
 

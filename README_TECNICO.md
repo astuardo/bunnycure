@@ -233,6 +233,27 @@ Rutas:
 - template de mensaje de reserva
 - bloques horario mañana/tarde/noche y sus toggles
 
+### 5.6 Google Wallet (Generic Pass)
+
+Flujo implementado:
+
+1. `GET /api/customers/{id}/wallet/google-link` genera un JWT `savetowallet`.
+2. `GoogleWalletService` arma/actualiza `GenericClass` y `GenericObject`.
+3. El pase muestra:
+   - color de fondo de marca,
+   - nombre de clienta,
+   - módulo `Sellos`,
+   - módulo `Premio` dinámico según `currentRewardIndex` + `LoyaltyRewardService`.
+4. El hero del pase es dinámico vía `GET /assets/wallet/hero_dynamic.svg`.
+
+Detalles del hero dinámico:
+
+- Recibe `stamps` y `reward` por query params.
+- Renderiza SVG en runtime con grilla de 10 sellos y texto de progreso/premio.
+- Branding del encabezado: `BUNNYCURE`.
+- Ícono de sello configurable por archivo estático (`src/main/resources/static/assets/wallet/rabbit.png`).
+- Se aplica cache-busting en la URL del hero con versión (`v`) para forzar refresh en Wallet cuando cambia el diseño.
+
 ---
 
 ## 6. Seguridad y cuentas
@@ -551,10 +572,12 @@ Si falta o viene malformada, lanza `IllegalStateException` durante el arranque.
 | `/reservar` | GET | Portal de reserva |
 | `/reservar/submit` | POST | Crea `BookingRequest` |
 | `/api/customers/lookup` | POST | Lookup público por teléfono |
+| `/api/customers/{id}/wallet/google-link` | GET | Genera link firmado de Google Wallet para la clienta |
 | `/login` | GET/POST | Login form |
 | `/forgot-password` | GET/POST | Inicio recovery |
 | `/reset-password` | GET/POST | Cambio vía token |
 | `/api/webhooks/whatsapp` | GET/POST | Webhook Meta |
+| `/assets/wallet/hero_dynamic.svg` | GET | Hero dinámico para Google Wallet (SVG) |
 | `/.well-known/appspecific/com.chrome.devtools.json` | GET | Evita 404 de DevTools |
 
 ### Autenticados
@@ -663,6 +686,17 @@ mvnw.cmd clean package
 - `WHATSAPP_WEBHOOK_OP_EVENTS_CLEANUP_ENABLED`
 - `WHATSAPP_WEBHOOK_OP_EVENTS_RETENTION_DAYS`
 - `WHATSAPP_WEBHOOK_OP_EVENTS_CLEANUP_CRON`
+
+### Google Wallet
+
+- `GOOGLE_WALLET_ISSUER_ID`
+- `GOOGLE_WALLET_PASS_TYPE` (`loyalty | generic | dual`)
+- `GOOGLE_WALLET_LOYALTY_CLASS`
+- `GOOGLE_WALLET_GENERIC_CLASS`
+- `GOOGLE_WALLET_CREDENTIALS` (JSON de service account inline, opcional)
+- `GOOGLE_WALLET_HERO_BASE_URL`
+- `GOOGLE_WALLET_HERO_IMAGE_EXTENSION`
+- `GOOGLE_WALLET_HERO_VERSION` (cache-busting visual del hero dinámico)
 
 ---
 
