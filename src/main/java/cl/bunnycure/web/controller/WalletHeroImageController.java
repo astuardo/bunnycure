@@ -1,5 +1,6 @@
 package cl.bunnycure.web.controller;
 
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -7,14 +8,22 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 
 @RestController
 public class WalletHeroImageController {
+    private static final String DEFAULT_REWARD = "Premio BunnyCure";
+    private final String rabbitIconDataUri;
+
+    public WalletHeroImageController() {
+        this.rabbitIconDataUri = loadRabbitIconDataUri();
+    }
 
     @GetMapping(value = "/assets/wallet/hero_dynamic.svg", produces = "image/svg+xml")
     public ResponseEntity<String> dynamicHero(
@@ -35,7 +44,6 @@ public class WalletHeroImageController {
     }
 
     private String buildSvg(int stamps, String progressText) {
-        String bunnyPath = "M13 16a3 3 0 0 1 2.24 5M18 10.5V6a3 3 0 0 0-3-3H9a3 3 0 0 0-3 3v4.5M10 10.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0ZM6 10.5h12c1.7 0 3 1.3 3 3v3.5a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-3.5c0-1.7 1.3-3 3-3ZM10 16a3 3 0 0 0-2.24 5";
         int[] cols = {0, 160, 320, 480, 640};
         int[] rows = {0, 90};
         List<int[]> positions = new ArrayList<>();
@@ -53,14 +61,14 @@ public class WalletHeroImageController {
                     Locale.ROOT,
                     "<g transform=\"translate(%d,%d)\">"
                             + "<circle cx=\"0\" cy=\"0\" r=\"35\" fill=\"%s\" stroke=\"%s\" stroke-width=\"%s\" />"
-                            + "<path d=\"%s\" fill=\"none\" stroke=\"%s\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" transform=\"translate(-12,-12)\"/>"
+                            + "<image href=\"%s\" x=\"-18\" y=\"-18\" width=\"36\" height=\"36\" opacity=\"%s\" preserveAspectRatio=\"xMidYMid meet\"/>"
                             + "</g>",
                     p[0], p[1],
                     isFilled ? "#c9897a" : "#f0f0f0",
                     isFilled ? "#7c3a2d" : "#d1d1d1",
                     isFilled ? "2" : "1.5",
-                    bunnyPath,
-                    isFilled ? "#ffffff" : "#d1d1d1"
+                    rabbitIconDataUri,
+                    isFilled ? "1" : "0.28"
             ));
         }
 
@@ -80,9 +88,19 @@ public class WalletHeroImageController {
 
     private String normalizeReward(String reward) {
         String trimmed = reward == null ? "" : reward.trim();
-        if (trimmed.isBlank()) return "Premio BunnyCure";
+        if (trimmed.isBlank()) return DEFAULT_REWARD;
         if (trimmed.length() <= 40) return trimmed.toUpperCase(Locale.ROOT);
         return trimmed.substring(0, 37).toUpperCase(Locale.ROOT) + "...";
+    }
+
+    private String loadRabbitIconDataUri() {
+        try {
+            ClassPathResource resource = new ClassPathResource("static/assets/wallet/rabbit.png");
+            byte[] bytes = resource.getInputStream().readAllBytes();
+            return "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes);
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo cargar assets/wallet/rabbit.png para Wallet hero", e);
+        }
     }
 
     private String escapeXml(String raw) {
