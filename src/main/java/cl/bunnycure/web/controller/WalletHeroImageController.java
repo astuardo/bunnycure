@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -39,7 +38,7 @@ public class WalletHeroImageController {
         String svg = buildSvg(boundedStamps, progressText);
         return ResponseEntity.ok()
                 .contentType(new MediaType("image", "svg+xml", StandardCharsets.UTF_8))
-                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(30)).cachePublic())
+                .cacheControl(CacheControl.noStore().mustRevalidate())
                 .body(svg);
     }
 

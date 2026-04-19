@@ -56,6 +56,9 @@ public class GoogleWalletService {
     @Value("${bunnycure.google.wallet.hero-image-extension:svg}")
     private String heroImageExtension;
 
+    @Value("${bunnycure.google.wallet.hero-version:v1}")
+    private String heroVersion;
+
     public String createWalletLink(Customer customer) {
         try {
             ServiceAccountCredentials credentials = getCredentials();
@@ -367,7 +370,8 @@ public class GoogleWalletService {
         int bounded = Math.max(0, Math.min(10, stamps));
         String base = heroBaseUrl.endsWith("/") ? heroBaseUrl.substring(0, heroBaseUrl.length() - 1) : heroBaseUrl;
         String encodedReward = URLEncoder.encode(rewardName == null ? DEFAULT_REWARD_NAME : rewardName, StandardCharsets.UTF_8);
-        return base + "/hero_dynamic.svg?stamps=" + bounded + "&reward=" + encodedReward;
+        String encodedVersion = URLEncoder.encode(heroVersion == null ? "v1" : heroVersion, StandardCharsets.UTF_8);
+        return base + "/hero_dynamic.svg?stamps=" + bounded + "&reward=" + encodedReward + "&v=" + encodedVersion;
     }
 
     private String normalizePhone(String p) { return (p == null || p.isBlank()) ? "000000000" : p.replace("+", ""); }
