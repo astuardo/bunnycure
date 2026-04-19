@@ -225,13 +225,34 @@ public class GoogleWalletService {
     private boolean syncGenericClassTemplateIfExists(Walletobjects walletobjects, String classId) throws Exception {
         try {
             GenericClass gc = walletobjects.genericclass().get(classId).execute();
-            gc.set("classTemplateInfo", buildGenericClassTemplateInfoMap());
+            gc.setClassTemplateInfo(buildGenericClassTemplateInfoModel());
             walletobjects.genericclass().update(classId, gc).execute();
             return true;
         } catch (GoogleJsonResponseException e) {
             if (e.getStatusCode() == 404) return false;
             throw e;
         }
+    }
+
+    private ClassTemplateInfo buildGenericClassTemplateInfoModel() {
+        FieldSelector sellosSelector = new FieldSelector()
+                .setFields(Collections.singletonList(
+                        new FieldReference().setFieldPath("object.textModulesData['sellos']")
+                ));
+        FieldSelector premioSelector = new FieldSelector()
+                .setFields(Collections.singletonList(
+                        new FieldReference().setFieldPath("object.textModulesData['premio:']")
+                ));
+
+        CardRowTwoItems twoItems = new CardRowTwoItems()
+                .setStartItem(new TemplateItem().setFirstValue(sellosSelector))
+                .setEndItem(new TemplateItem().setFirstValue(premioSelector));
+
+        CardRowTemplateInfo row = new CardRowTemplateInfo().setTwoItems(twoItems);
+        CardTemplateOverride cardTemplateOverride = new CardTemplateOverride()
+                .setCardRowTemplateInfos(Collections.singletonList(row));
+
+        return new ClassTemplateInfo().setCardTemplateOverride(cardTemplateOverride);
     }
 
     private Map<String, Object> buildGenericClassTemplateInfoMap() {
