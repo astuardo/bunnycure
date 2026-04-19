@@ -161,6 +161,8 @@ public class GoogleWalletService {
             GenericObject newObject = new GenericObject()
                     .setId(objectId)
                     .setClassId(buildGenericClassId())
+                    .setHexBackgroundColor("#c9897a")
+                    .setLogo(new Image().setSourceUri(new ImageUri().setUri("https://www.bunnycure.cl/logo.png")))
                     .setCardTitle(createLocalizedString("BunnyCure Loyalty"))
                     .setSubheader(createLocalizedString("Clienta"))
                     .setHeader(createLocalizedString(resolveAccountName(customer)))
@@ -175,6 +177,8 @@ public class GoogleWalletService {
     private void syncGenericObject(Walletobjects walletobjects, Customer customer, int stamps) throws Exception {
         String objectId = buildGenericObjectId(customer);
         GenericObject genericObject = getOrCreateGenericObject(walletobjects, customer);
+        genericObject.setHexBackgroundColor("#c9897a");
+        genericObject.setLogo(new Image().setSourceUri(new ImageUri().setUri("https://www.bunnycure.cl/logo.png")));
         genericObject.setCardTitle(createLocalizedString("BunnyCure Loyalty"));
         genericObject.setSubheader(createLocalizedString("Clienta"));
         genericObject.setHeader(createLocalizedString(resolveAccountName(customer)));
