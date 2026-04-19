@@ -162,14 +162,18 @@ public class GoogleWalletService {
                     .setId(objectId)
                     .setClassId(buildGenericClassId())
                     .setHexBackgroundColor("#c9897a")
-                    .setLogo(new Image().setSourceUri(new ImageUri().setUri("https://www.bunnycure.cl/logo.png")))
-                    .setCardTitle(createLocalizedString("BunnyCure Loyalty"))
-                    .setSubheader(createLocalizedString("Clienta"))
+                    .setLogo(new Image()
+                            .setSourceUri(new ImageUri().setUri("https://www.bunnycure.cl/logo.png"))
+                            .setContentDescription(createLocalizedString("LOGO_IMAGE_DESCRIPTION")))
+                    .setCardTitle(createLocalizedString("Bunny Cure"))
+                    .setSubheader(createLocalizedString("Cliente:"))
                     .setHeader(createLocalizedString(resolveAccountName(customer)))
                     .setState("ACTIVE")
                     .setBarcode(buildBarcode(normalizePhone(customer.getPhone())))
-                    .setHeroImage(buildHeroImage(stamps))
-                    .setTextModulesData(buildGenericModules(customer, stamps));
+                    .setHeroImage(new Image()
+                            .setSourceUri(new ImageUri().setUri(buildHeroImageUrl(stamps)))
+                            .setContentDescription(createLocalizedString("HERO_IMAGE_DESCRIPTION")))
+                    .setTextModulesData(buildGenericModules(stamps));
             return walletobjects.genericobject().insert(newObject).execute();
         }
     }
@@ -178,40 +182,37 @@ public class GoogleWalletService {
         String objectId = buildGenericObjectId(customer);
         GenericObject genericObject = getOrCreateGenericObject(walletobjects, customer);
         genericObject.setHexBackgroundColor("#c9897a");
-        genericObject.setLogo(new Image().setSourceUri(new ImageUri().setUri("https://www.bunnycure.cl/logo.png")));
-        genericObject.setCardTitle(createLocalizedString("BunnyCure Loyalty"));
-        genericObject.setSubheader(createLocalizedString("Clienta"));
+        genericObject.setLogo(new Image()
+                .setSourceUri(new ImageUri().setUri("https://www.bunnycure.cl/logo.png"))
+                .setContentDescription(createLocalizedString("LOGO_IMAGE_DESCRIPTION")));
+        genericObject.setCardTitle(createLocalizedString("Bunny Cure"));
+        genericObject.setSubheader(createLocalizedString("Cliente:"));
         genericObject.setHeader(createLocalizedString(resolveAccountName(customer)));
-        genericObject.setHeroImage(buildHeroImage(stamps));
+        genericObject.setHeroImage(new Image()
+                .setSourceUri(new ImageUri().setUri(buildHeroImageUrl(stamps)))
+                .setContentDescription(createLocalizedString("HERO_IMAGE_DESCRIPTION")));
         genericObject.setBarcode(buildBarcode(normalizePhone(customer.getPhone())));
-        genericObject.setTextModulesData(buildGenericModules(customer, stamps));
+        genericObject.setTextModulesData(buildGenericModules(stamps));
         walletobjects.genericobject().update(objectId, genericObject).execute();
     }
 
-    private List<TextModuleData> buildGenericModules(Customer customer, int stamps) {
+    private List<TextModuleData> buildGenericModules(int stamps) {
         List<TextModuleData> modules = new ArrayList<>();
-        modules.add(new TextModuleData().setId("stamps").setHeader("SELLOS").setBody(stamps + " / 10"));
-        modules.add(new TextModuleData().setId("phone").setHeader("TELÉFONO").setBody(normalizePhone(customer.getPhone())));
+        int boundedStamps = Math.max(0, Math.min(10, stamps));
+        modules.add(new TextModuleData().setId("sellos").setHeader("Sellos").setBody(boundedStamps + " / 10"));
+        modules.add(new TextModuleData().setId("premio:").setHeader("Premio:").setBody("20% de Desc."));
         return modules;
     }
 
     private LocalizedString createLocalizedString(String value) {
-        return new LocalizedString().setDefaultValue(new TranslatedString().setLanguage("es-CL").setValue(value));
+        return new LocalizedString().setDefaultValue(new TranslatedString().setLanguage("en-US").setValue(value));
     }
 
     private Map<String, Object> buildGenericClassPayload(String classId) {
         Map<String, Object> genericClass = new LinkedHashMap<>();
         genericClass.put("id", classId);
-        genericClass.put("issuerName", "BunnyCure");
-        genericClass.put("hexBackgroundColor", "#c9897a");
         
-        Map<String, Object> logo = new LinkedHashMap<>();
-        Map<String, Object> logoSourceUri = new LinkedHashMap<>();
-        logoSourceUri.put("uri", "https://www.bunnycure.cl/logo.png");
-        logo.put("sourceUri", logoSourceUri);
-        genericClass.put("logo", logo);
-
-        // Template de 2 columnas
+        // Template de 2 columnas como en clase_bunny.json
         Map<String, Object> classTemplateInfo = new LinkedHashMap<>();
         Map<String, Object> cardTemplateOverride = new LinkedHashMap<>();
         List<Map<String, Object>> cardRowTemplateInfos = new ArrayList<>();
@@ -219,9 +220,9 @@ public class GoogleWalletService {
         Map<String, Object> twoItems = new LinkedHashMap<>();
         
         twoItems.put("startItem", Collections.singletonMap("firstValue", Collections.singletonMap("fields", 
-                Collections.singletonList(Collections.singletonMap("fieldPath", "object.textModulesData['stamps']")))));
+                Collections.singletonList(Collections.singletonMap("fieldPath", "object.textModulesData['sellos']")))));
         twoItems.put("endItem", Collections.singletonMap("firstValue", Collections.singletonMap("fields", 
-                Collections.singletonList(Collections.singletonMap("fieldPath", "object.textModulesData['phone']")))));
+                Collections.singletonList(Collections.singletonMap("fieldPath", "object.textModulesData['premio:']")))));
         
         row1.put("twoItems", twoItems);
         cardRowTemplateInfos.add(row1);
@@ -236,22 +237,37 @@ public class GoogleWalletService {
         Map<String, Object> genericObject = new LinkedHashMap<>();
         genericObject.put("id", objectId);
         genericObject.put("classId", classId);
-        genericObject.put("state", "ACTIVE");
-        genericObject.put("cardTitle", createLocalizedMap("BunnyCure Loyalty"));
-        genericObject.put("subheader", createLocalizedMap("Clienta"));
-        genericObject.put("header", createLocalizedMap(resolveAccountName(customer)));
+        
+        // Estilo exacto a object_bunny.json
+        genericObject.put("hexBackgroundColor", "#c9897a");
+        
+        Map<String, Object> logo = new LinkedHashMap<>();
+        logo.put("sourceUri", Collections.singletonMap("uri", "https://www.bunnycure.cl/logo.png"));
+        logo.put("contentDescription", createLocalizedMap("LOGO_IMAGE_DESCRIPTION", "en-US"));
+        genericObject.put("logo", logo);
+
+        genericObject.put("cardTitle", createLocalizedMap("Bunny Cure", "en-US"));
+        genericObject.put("subheader", createLocalizedMap("Cliente:", "en-US"));
+        genericObject.put("header", createLocalizedMap(resolveAccountName(customer), "en-US"));
+        
         genericObject.put("barcode", buildBarcodeMap(phone));
-        genericObject.put("heroImage", buildHeroImagePayload(stamps));
+        
+        Map<String, Object> heroImage = new LinkedHashMap<>();
+        heroImage.put("sourceUri", Collections.singletonMap("uri", buildHeroImageUrl(stamps)));
+        heroImage.put("contentDescription", createLocalizedMap("HERO_IMAGE_DESCRIPTION", "en-US"));
+        genericObject.put("heroImage", heroImage);
 
         List<Map<String, Object>> modules = new ArrayList<>();
-        modules.add(buildModuleMap("stamps", "SELLOS", stamps + " / 10"));
-        modules.add(buildModuleMap("phone", "TELÉFONO", phone));
+        int boundedStamps = Math.max(0, Math.min(10, stamps));
+        modules.add(buildModuleMap("sellos", "Sellos", boundedStamps + " / 10"));
+        modules.add(buildModuleMap("premio:", "Premio:", "20% de Desc."));
         genericObject.put("textModulesData", modules);
+        
         return genericObject;
     }
 
-    private Map<String, Object> createLocalizedMap(String value) {
-        return Collections.singletonMap("defaultValue", Map.of("language", "es-CL", "value", value));
+    private Map<String, Object> createLocalizedMap(String value, String lang) {
+        return Collections.singletonMap("defaultValue", Map.of("language", lang, "value", value));
     }
 
     private Map<String, Object> buildModuleMap(String id, String header, String body) {
@@ -262,8 +278,12 @@ public class GoogleWalletService {
 
     private Map<String, Object> buildBarcodeMap(String value) {
         Map<String, Object> b = new LinkedHashMap<>();
-        b.put("type", "QR_CODE"); b.put("value", value); b.put("alternateText", value);
+        b.put("type", "QR_CODE"); b.put("value", value); b.put("alternateText", "");
         return b;
+    }
+
+    private Barcode buildBarcode(String phone) {
+        return new Barcode().setType("QR_CODE").setValue(phone).setAlternateText("");
     }
 
     // --- MÉTODOS LOYALTY (LEGACY) ---
@@ -273,7 +293,7 @@ public class GoogleWalletService {
         obj.put("accountName", resolveAccountName(customer)); obj.put("accountId", phone);
         obj.put("loyaltyPoints", Map.of("label", "Sellos", "balance", Map.of("int", stamps)));
         obj.put("barcode", buildBarcodeMap(phone));
-        obj.put("heroImage", buildHeroImagePayload(stamps));
+        obj.put("heroImage", Map.of("sourceUri", Map.of("uri", buildHeroImageUrl(stamps))));
         obj.put("textModulesData", Collections.singletonList(Map.of("id", "stamp_progress", "header", "Progreso", "body", stamps + "/10")));
         return obj;
     }
@@ -282,20 +302,8 @@ public class GoogleWalletService {
         String objectId = buildLoyaltyObjectId(customer);
         LoyaltyObject lo = walletobjects.loyaltyobject().get(objectId).execute();
         lo.setLoyaltyPoints(new LoyaltyPoints().setLabel("Sellos").setBalance(new LoyaltyPointsBalance().setInt(stamps)));
-        lo.setHeroImage(buildHeroImage(stamps));
+        lo.setHeroImage(new Image().setSourceUri(new ImageUri().setUri(buildHeroImageUrl(stamps))));
         walletobjects.loyaltyobject().update(objectId, lo).execute();
-    }
-
-    private Image buildHeroImage(int stamps) {
-        return new Image().setSourceUri(new ImageUri().setUri(buildHeroImageUrl(stamps)));
-    }
-
-    private Map<String, Object> buildHeroImagePayload(int stamps) {
-        return Map.of("sourceUri", Map.of("uri", buildHeroImageUrl(stamps)));
-    }
-
-    private Barcode buildBarcode(String phone) {
-        return new Barcode().setType("QR_CODE").setValue(phone).setAlternateText(phone);
     }
 
     private String buildLoyaltyClassId() { return String.format("%s.%s", issuerId, loyaltyClass); }
