@@ -11,6 +11,8 @@ import com.google.api.services.walletobjects.model.Barcode;
 import com.google.api.services.walletobjects.model.GenericObject;
 import com.google.api.services.walletobjects.model.Image;
 import com.google.api.services.walletobjects.model.ImageUri;
+import com.google.api.services.walletobjects.model.LocalizedString;
+import com.google.api.services.walletobjects.model.TranslatedString;
 import com.google.api.services.walletobjects.model.LoyaltyObject;
 import com.google.api.services.walletobjects.model.LoyaltyPoints;
 import com.google.api.services.walletobjects.model.LoyaltyPointsBalance;
@@ -76,7 +78,7 @@ public class GoogleWalletService {
             Map<String, Object> payload = new LinkedHashMap<>();
             if (issueGenericPass()) {
                 payload.put("genericObjects", Collections.singletonList(
-                        buildGenericObjectPayload(objectId, classId, phone, stamps))
+                        buildGenericObjectPayload(objectId, classId, phone, stamps, customer))
                 );
             } else {
                 payload.put("loyaltyObjects", Collections.singletonList(
@@ -220,6 +222,14 @@ public class GoogleWalletService {
             GenericObject newObject = new GenericObject()
                     .setId(objectId)
                     .setClassId(buildGenericClassId())
+                    .setCardTitle(new LocalizedString()
+                            .setDefaultValue(new TranslatedString()
+                                    .setLanguage("es-CL")
+                                    .setValue("BunnyCure Loyalty")))
+                    .setHeader(new LocalizedString()
+                            .setDefaultValue(new TranslatedString()
+                                    .setLanguage("es-CL")
+                                    .setValue(resolveAccountName(customer))))
                     .setState("ACTIVE")
                     .setBarcode(buildBarcode(phone))
                     .setHeroImage(buildHeroImage(stamps))
@@ -244,6 +254,14 @@ public class GoogleWalletService {
     private void syncGenericObject(Walletobjects walletobjects, Customer customer, int stamps) throws Exception {
         String objectId = buildGenericObjectId(customer);
         GenericObject genericObject = getOrCreateGenericObject(walletobjects, customer);
+        genericObject.setCardTitle(new LocalizedString()
+                .setDefaultValue(new TranslatedString()
+                        .setLanguage("es-CL")
+                        .setValue("BunnyCure Loyalty")));
+        genericObject.setHeader(new LocalizedString()
+                .setDefaultValue(new TranslatedString()
+                        .setLanguage("es-CL")
+                        .setValue(resolveAccountName(customer))));
         genericObject.setHeroImage(buildHeroImage(stamps));
         genericObject.setBarcode(buildBarcode(normalizePhone(customer.getPhone())));
         genericObject.setTextModulesData(new ArrayList<>(mergeGenericModules(genericObject.getTextModulesData(), customer, stamps)));
@@ -347,11 +365,25 @@ public class GoogleWalletService {
         return loyaltyObject;
     }
 
-    private Map<String, Object> buildGenericObjectPayload(String objectId, String classId, String phone, int stamps) {
+    private Map<String, Object> buildGenericObjectPayload(String objectId, String classId, String phone, int stamps, Customer customer) {
         Map<String, Object> genericObject = new LinkedHashMap<>();
         genericObject.put("id", objectId);
         genericObject.put("classId", classId);
         genericObject.put("state", "ACTIVE");
+
+        Map<String, Object> cardTitle = new LinkedHashMap<>();
+        Map<String, Object> cardTitleValue = new LinkedHashMap<>();
+        cardTitleValue.put("language", "es-CL");
+        cardTitleValue.put("value", "BunnyCure Loyalty");
+        cardTitle.put("defaultValue", cardTitleValue);
+        genericObject.put("cardTitle", cardTitle);
+
+        Map<String, Object> header = new LinkedHashMap<>();
+        Map<String, Object> headerValue = new LinkedHashMap<>();
+        headerValue.put("language", "es-CL");
+        headerValue.put("value", resolveAccountName(customer));
+        header.put("defaultValue", headerValue);
+        genericObject.put("header", header);
 
         Map<String, Object> barcode = new LinkedHashMap<>();
         barcode.put("type", "QR_CODE");
