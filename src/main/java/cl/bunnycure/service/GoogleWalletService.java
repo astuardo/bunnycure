@@ -101,6 +101,8 @@ public class GoogleWalletService {
                 "http://localhost:5173",
                 "https://bunnycure-frontend.vercel.app",
                 "https://bunnycure-frontend-astuardo.vercel.app",
+                "https://app.bunnycure.cl",
+                "https://api.bunnycure.cl",
                 "https://bunnycure.cl",
                 "https://www.bunnycure.cl"
             );

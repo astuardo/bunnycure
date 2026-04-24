@@ -17,9 +17,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,6 +39,8 @@ public class CustomerApiController {
 
     private final CustomerService customerService;
     private final cl.bunnycure.service.GoogleWalletService googleWalletService;
+    @Value("${bunnycure.google.wallet.qr-base-url:}")
+    private String walletQrBaseUrl;
 
     @Operation(
             summary = "Listar clientes",
@@ -240,9 +244,17 @@ public class CustomerApiController {
         log.info("[API] Generating Google Wallet link for customer {}", id);
         Customer customer = customerService.findById(id);
         String url = googleWalletService.createWalletLink(customer);
-        
+        String baseForQr = (walletQrBaseUrl != null && !walletQrBaseUrl.isBlank())
+                ? walletQrBaseUrl
+                : ServletUriComponentsBuilder.fromCurrentContextPath().toUriString();
+        String normalizedBase = baseForQr.endsWith("/")
+                ? baseForQr.substring(0, baseForQr.length() - 1)
+                : baseForQr;
+        String qrUrl = normalizedBase + "/w/" + customer.getPublicId();
+
         java.util.Map<String, String> response = new java.util.HashMap<>();
         response.put("url", url);
+        response.put("qrUrl", qrUrl);
         
         return ResponseEntity.ok(ApiResponse.success(response));
     }

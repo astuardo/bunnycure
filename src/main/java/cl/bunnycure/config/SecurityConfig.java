@@ -76,6 +76,7 @@ public class SecurityConfig {
 			
 			// API pública: búsqueda de clientes por teléfono
 			auth.requestMatchers("/api/customers/lookup").permitAll();
+			auth.requestMatchers("/w/**").permitAll();
 			
 			// API pública: servicios (para portal de reservas)
 			auth.requestMatchers(HttpMethod.GET, "/api/services").permitAll();
