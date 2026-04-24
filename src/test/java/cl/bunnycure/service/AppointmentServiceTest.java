@@ -38,6 +38,9 @@ class AppointmentServiceTest {
     private NotificationService notificationService;
 
     @Mock
+    private GoogleWalletService googleWalletService;
+
+    @Mock
     private ServiceCatalogService serviceCatalogService;
 
     @Mock
@@ -58,6 +61,7 @@ class AppointmentServiceTest {
                 bookingRequestRepository,
                 customerService,
                 notificationService,
+                googleWalletService,
                 serviceCatalogService,
                 appSettingsService,
                 loyaltyRewardService,
