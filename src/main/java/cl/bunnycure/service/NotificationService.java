@@ -84,6 +84,24 @@ public class NotificationService {
     }
 
     @Async
+    public void sendAppointmentRescheduleNotice(Appointment appointment, boolean dateChanged, boolean timeChanged) {
+        if (appointment == null || appointment.getCustomer() == null) {
+            return;
+        }
+        if (!dateChanged && !timeChanged) {
+            return;
+        }
+
+        Customer customer = appointment.getCustomer();
+        cl.bunnycure.domain.enums.NotificationPreference pref = customer.getNotificationPreference();
+
+        if (pref != null && pref.allowsWhatsApp() && customer.getPhone() != null && !customer.getPhone().isBlank()) {
+            log.info("[NOTIFICATION] Enviando WhatsApp de modificación de cita a {}", customer.getPhone());
+            whatsAppService.sendCitaConfirmadaTemplate(appointment, dateChanged, timeChanged);
+        }
+    }
+
+    @Async
     public void sendCancellationNotice(Appointment appointment) {
         if (appointment == null || appointment.getCustomer() == null) {
             return;

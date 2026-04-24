@@ -45,9 +45,11 @@ public class AppointmentService {
         var selectedServices = resolveSelectedServices(dto);
         var primaryService = selectedServices.get(0);
 
+        boolean dateChanged = !dto.getAppointmentDate().equals(appointment.getAppointmentDate());
+        boolean timeChanged = !dto.getAppointmentTime().equals(appointment.getAppointmentTime());
+
         // Resetear recordatorio si cambia la fecha u hora para que vuelva a recibir aviso
-        boolean dateOrTimeChanged = !dto.getAppointmentDate().equals(appointment.getAppointmentDate())
-                || !dto.getAppointmentTime().equals(appointment.getAppointmentTime());
+        boolean dateOrTimeChanged = dateChanged || timeChanged;
         if (dateOrTimeChanged) {
             appointment.setReminderSent(false);
             log.info("[APPOINTMENT] Cita {} reagendada a {}/{} — reminderSent reseteado",
@@ -67,6 +69,11 @@ public class AppointmentService {
                 notificationService.sendCancellationNotice(appointment);
             }
         }
+
+        if (dateOrTimeChanged && appointment.getStatus() != AppointmentStatus.CANCELLED) {
+            notificationService.sendAppointmentRescheduleNotice(appointment, dateChanged, timeChanged);
+        }
+
         return appointmentRepository.save(appointment);
     }
 

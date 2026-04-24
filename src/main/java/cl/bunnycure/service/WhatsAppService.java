@@ -606,6 +606,11 @@ public class WhatsAppService {
 
     @Async
     public void sendCitaConfirmadaTemplate(Appointment appointment) {
+        sendCitaConfirmadaTemplate(appointment, false, false);
+    }
+
+    @Async
+    public void sendCitaConfirmadaTemplate(Appointment appointment, boolean dateChanged, boolean timeChanged) {
         String phone = appointment.getCustomer().getPhone();
         if (phone == null || phone.isBlank()) {
             log.warn("[WHATSAPP-SKIP] Cliente {} no tiene teléfono configurado",
@@ -615,7 +620,13 @@ public class WhatsAppService {
 
         var customer = appointment.getCustomer();
         String fecha = appointment.getAppointmentDate().format(shortDateFormatter());
+        if (dateChanged) {
+            fecha = fecha + " (Modificación)";
+        }
         String hora = appointment.getAppointmentTime().format(DateTimeFormatter.ofPattern("HH:mm"));
+        if (timeChanged) {
+            hora = hora + " (Modificación)";
+        }
         String servicio = appointment.getService().getName();
         String cliente = customer.getFullName();
 
