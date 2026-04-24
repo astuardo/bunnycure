@@ -33,6 +33,7 @@ public class AppointmentService {
     private final BookingRequestRepository bookingRequestRepository;
     private final CustomerService customerService;
     private final NotificationService notificationService;
+    private final GoogleWalletService googleWalletService;
     private final ServiceCatalogService serviceCatalogService;
     private final AppSettingsService appSettingsService;
     private final LoyaltyRewardService loyaltyRewardService;
@@ -324,6 +325,8 @@ public class AppointmentService {
 
                 // Enviar la notificación de actualización (que ahora incluirá la info de sellos)
                 notificationService.sendLoyaltyUpdateNotification(customer);
+                // Sincronizar también el pase guardado en Google Wallet y disparar push del pase.
+                googleWalletService.updateCustomerStamps(customer, true);
             }
         } else if (oldStatus == AppointmentStatus.COMPLETED && newStatus != AppointmentStatus.COMPLETED) {
             // Rollback si se cambia de COMPLETADA a otro estado (ej. error humano)
@@ -340,6 +343,8 @@ public class AppointmentService {
                     // Por simplicidad en este MVP, solo evitamos negativos.
                 }
                 if (totalVisits > 0) customer.setTotalCompletedVisits(totalVisits - 1);
+                // También notificamos cuando se revierte un sello para mantener la tarjeta consistente.
+                googleWalletService.updateCustomerStamps(customer, true);
             }
         }
     }

@@ -16,6 +16,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.security.Signature;
@@ -29,6 +34,7 @@ import java.util.Base64;
 public class GoogleWalletService {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String DEFAULT_REWARD_NAME = "Premio BunnyCure";
+    private static final String WALLET_TEXT_AND_NOTIFY = "TEXT_AND_NOTIFY";
 
     private final LoyaltyRewardService loyaltyRewardService;
 
@@ -76,7 +82,7 @@ public class GoogleWalletService {
                 Walletobjects walletobjects = getWalletobjectsClient();
                 boolean classExists = syncGenericClassTemplateIfExists(walletobjects, classId);
                 if (classExists) {
-                    syncGenericObject(walletobjects, customer, stamps);
+                    syncGenericObject(walletobjects, customer, stamps, false);
                 } else {
                     log.info("[Wallet] GenericClass {} no existe aún; se creará vía JWT payload en save link", classId);
                 }
@@ -132,12 +138,16 @@ public class GoogleWalletService {
     }
     
     public void updateCustomerStamps(Customer customer) {
+        updateCustomerStamps(customer, false);
+    }
+
+    public void updateCustomerStamps(Customer customer, boolean notifyUsers) {
         int stamps = normalizeStamps(customer.getLoyaltyStamps());
         String rewardName = resolveCurrentRewardName(customer);
         try {
             Walletobjects walletobjects = getWalletobjectsClient();
-            if (syncLoyaltyPass()) syncLoyaltyObject(walletobjects, customer, stamps, rewardName);
-            if (syncGenericPass()) syncGenericObject(walletobjects, customer, stamps);
+            if (syncLoyaltyPass()) syncLoyaltyObject(walletobjects, customer, stamps, rewardName, notifyUsers);
+            if (syncGenericPass()) syncGenericObject(walletobjects, customer, stamps, notifyUsers);
         } catch (Exception e) {
             log.error("[Wallet] Error updating wallet object(s) for customerPublicId={}, stamps={}: {}",
                     customer.getPublicId(), stamps, e.getMessage(), e);
@@ -199,7 +209,7 @@ public class GoogleWalletService {
         }
     }
 
-    private void syncGenericObject(Walletobjects walletobjects, Customer customer, int stamps) throws Exception {
+    private void syncGenericObject(Walletobjects walletobjects, Customer customer, int stamps, boolean notifyUsers) throws Exception {
         String objectId = buildGenericObjectId(customer);
         String rewardName = resolveCurrentRewardName(customer);
         GenericObject genericObject = getOrCreateGenericObject(walletobjects, customer);
@@ -215,7 +225,11 @@ public class GoogleWalletService {
                 .setContentDescription(createLocalizedString("HERO_IMAGE_DESCRIPTION")));
         genericObject.setBarcode(buildBarcode(normalizePhone(customer.getPhone())));
         genericObject.setTextModulesData(buildGenericModules(stamps, rewardName));
-        walletobjects.genericobject().update(objectId, genericObject).execute();
+        Walletobjects.Genericobject.Update updateRequest = walletobjects.genericobject().update(objectId, genericObject);
+        updateRequest.execute();
+        if (notifyUsers) {
+            sendLoyaltyWalletMessage(objectId, true, customer, stamps, rewardName);
+        }
     }
 
     private List<TextModuleData> buildGenericModules(int stamps, String rewardName) {
@@ -354,12 +368,96 @@ public class GoogleWalletService {
         return obj;
     }
 
-    private void syncLoyaltyObject(Walletobjects walletobjects, Customer customer, int stamps, String rewardName) throws Exception {
+    private void syncLoyaltyObject(Walletobjects walletobjects, Customer customer, int stamps, String rewardName, boolean notifyUsers) throws Exception {
         String objectId = buildLoyaltyObjectId(customer);
         LoyaltyObject lo = walletobjects.loyaltyobject().get(objectId).execute();
         lo.setLoyaltyPoints(new LoyaltyPoints().setLabel("Sellos").setBalance(new LoyaltyPointsBalance().setInt(stamps)));
         lo.setHeroImage(new Image().setSourceUri(new ImageUri().setUri(buildHeroImageUrl(stamps, rewardName))));
-        walletobjects.loyaltyobject().update(objectId, lo).execute();
+        Walletobjects.Loyaltyobject.Update updateRequest = walletobjects.loyaltyobject().update(objectId, lo);
+        updateRequest.execute();
+        if (notifyUsers) {
+            sendLoyaltyWalletMessage(objectId, false, customer, stamps, rewardName);
+        }
+    }
+
+    private void sendLoyaltyWalletMessage(String objectId, boolean genericObject, Customer customer, int stamps, String rewardName) {
+        String accountName = resolveAccountName(customer);
+        String messageBody = String.format(
+                "Hola %s, ahora tienes %d/10 sellos. Premio actual: %s.",
+                accountName,
+                Math.max(0, Math.min(10, stamps)),
+                rewardName
+        );
+        String messageId = "stamps_" + System.currentTimeMillis();
+        try {
+            postWalletMessage(objectId, genericObject, messageId, "Actualizacion de fidelizacion", messageBody, WALLET_TEXT_AND_NOTIFY);
+        } catch (Exception ex) {
+            String details = ex.getMessage() != null ? ex.getMessage() : ex.toString();
+            if (details.contains("status=429")) {
+                log.warn("[Wallet] Push quota exceeded for customerPublicId={}. Falling back to TEXT message.", customer.getPublicId());
+                try {
+                    postWalletMessage(objectId, genericObject, messageId + "_fallback", "Actualizacion de fidelizacion", messageBody, "TEXT");
+                } catch (Exception fallbackEx) {
+                    log.warn("[Wallet] Could not add fallback TEXT message for customerPublicId={}: {}",
+                            customer.getPublicId(), fallbackEx.getMessage());
+                }
+                return;
+            }
+            log.warn("[Wallet] Could not add notify message for customerPublicId={}: {}",
+                    customer.getPublicId(), details);
+        }
+    }
+
+    private void postWalletMessage(
+            String objectId,
+            boolean genericObject,
+            String messageId,
+            String header,
+            String body,
+            String messageType
+    ) throws Exception {
+        ServiceAccountCredentials credentials = getCredentials();
+        credentials.refreshIfExpired();
+        String accessToken = credentials.getAccessToken().getTokenValue();
+
+        String endpoint = genericObject
+                ? "https://walletobjects.googleapis.com/walletobjects/v1/genericObject/"
+                : "https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/";
+        String encodedObjectId = URLEncoder.encode(objectId, StandardCharsets.UTF_8);
+        URL url = new URL(endpoint + encodedObjectId + "/addMessage");
+
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setDoOutput(true);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        Map<String, Object> message = new LinkedHashMap<>();
+        message.put("id", messageId);
+        message.put("header", header);
+        message.put("body", body);
+        message.put("messageType", messageType);
+        payload.put("message", message);
+
+        byte[] requestBody = OBJECT_MAPPER.writeValueAsBytes(payload);
+        try (OutputStream os = connection.getOutputStream()) {
+            os.write(requestBody);
+        }
+
+        int status = connection.getResponseCode();
+        if (status >= 200 && status < 300) {
+            return;
+        }
+
+        String errorBody = readResponseBody(connection.getErrorStream());
+        throw new IllegalStateException("Wallet addMessage failed: status=" + status + ", body=" + errorBody);
+    }
+
+    private String readResponseBody(InputStream stream) throws IOException {
+        if (stream == null) return "";
+        byte[] bytes = stream.readAllBytes();
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     private String buildLoyaltyClassId() { return String.format("%s.%s", issuerId, loyaltyClass); }

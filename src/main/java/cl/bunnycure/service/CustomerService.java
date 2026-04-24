@@ -241,8 +241,8 @@ public class CustomerService {
         
         Customer saved = customerRepository.save(customer);
         
-        // Sincronizar con Google Wallet en segundo plano (opcionalmente podrías usar @Async)
-        googleWalletService.updateCustomerStamps(saved);
+        // Sincronizar con Google Wallet y notificar actualización del pase.
+        googleWalletService.updateCustomerStamps(saved, true);
         
         return saved;
     }
