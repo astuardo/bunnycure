@@ -67,7 +67,9 @@ public class SettingsApiController {
             "field.emergency-phone.mode", "field.health-notes.mode", "field.general-notes.mode",
             // Notification Templates
             "notification.template.default.title", "notification.template.default.body",
-            "notification.template.2hour.title", "notification.template.2hour.body"
+            "notification.template.2hour.title", "notification.template.2hour.body",
+            // GiftCard Template
+            "giftcard.template.svg"
     );
 
     private static final Set<String> VALID_REMINDER_STRATEGIES = Set.of(
