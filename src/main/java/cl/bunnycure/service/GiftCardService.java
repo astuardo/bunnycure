@@ -59,7 +59,7 @@ public class GiftCardService {
 
         String plainPin = generatePin();
         GiftCard giftCard = GiftCard.builder()
-                .code("PENDING-" + UUID.randomUUID())
+                .code("PENDING-" + UUID.randomUUID().toString().replace("-", ""))
                 .pinHash(passwordEncoder.encode(plainPin))
                 .status(GiftCardStatus.ACTIVE)
                 .beneficiaryCustomer(beneficiary)
