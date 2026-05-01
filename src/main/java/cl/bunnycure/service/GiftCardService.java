@@ -529,12 +529,31 @@ public class GiftCardService {
 
     private Customer findOrCreateBeneficiary(String fullName, String phone, String email) {
         return customerService.findByPhone(phone)
-                .orElseGet(() -> customerService.create(CustomerDto.builder()
+                .orElseGet(() -> createBeneficiaryWithOptionalEmailFallback(fullName, phone, email));
+    }
+
+    private Customer createBeneficiaryWithOptionalEmailFallback(String fullName, String phone, String email) {
+        String normalizedEmail = normalizeNullable(email, null);
+        try {
+            return customerService.create(CustomerDto.builder()
+                    .fullName(fullName.trim())
+                    .phone(phone.trim())
+                    .email(normalizedEmail)
+                    .notificationPreference(NotificationPreference.BOTH)
+                    .build());
+        } catch (IllegalArgumentException ex) {
+            // Email is optional for beneficiary. If the email already exists in another customer,
+            // create the beneficiary without email instead of failing the giftcard creation.
+            if (normalizedEmail != null && ex.getMessage() != null && ex.getMessage().contains("Ya existe un cliente con el email")) {
+                return customerService.create(CustomerDto.builder()
                         .fullName(fullName.trim())
                         .phone(phone.trim())
-                        .email(normalizeNullable(email, null))
+                        .email(null)
                         .notificationPreference(NotificationPreference.BOTH)
-                        .build()));
+                        .build());
+            }
+            throw ex;
+        }
     }
 
     private void validateDates(LocalDate expiresOn) {
