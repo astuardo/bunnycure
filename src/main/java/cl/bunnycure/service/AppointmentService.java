@@ -91,13 +91,17 @@ public class AppointmentService {
                 .appointmentDate(dto.getAppointmentDate())
                 .appointmentTime(dto.getAppointmentTime())
                 .observations(dto.getObservations())
+                .notificationSent(false)  // Explicit default
                 .build();
         var saved = appointmentRepository.save(appointment);
 
         // Enviar notificaciones respetando preferencias del cliente + notificar admin
         notificationService.sendAppointmentConfirmation(saved);
+        
+        // ✅ OPTIMIZED: Only update if notification was actually sent
+        // No additional save() call - Hibernate dirty checking handles it
         saved.setNotificationSent(true);
-        return appointmentRepository.save(saved);
+        return saved;
     }
 
     @Transactional
@@ -169,16 +173,24 @@ public class AppointmentService {
 
         log.info("[REMINDER] {} citas encontradas para mañana ({})", appointments.size(), tomorrow);
 
-        appointments.forEach(appointment -> {
+        // ✅ OPTIMIZED: Collect appointments that need reminder, send bulk update
+        List<Appointment> appointmentsToUpdate = new ArrayList<>();
+        for (Appointment appointment : appointments) {
             try {
                 notificationService.sendReminderNotification(appointment, "tomorrow");
                 appointment.setReminderSent(true);
-                appointmentRepository.save(appointment);
+                appointmentsToUpdate.add(appointment);
             } catch (Exception e) {
                 log.error("[REMINDER] Error enviando recordatorio día anterior para cita {}: {}",
                         appointment.getId(), e.getMessage(), e);
             }
-        });
+        }
+        
+        // Single batch save instead of N individual saves
+        if (!appointmentsToUpdate.isEmpty()) {
+            appointmentRepository.saveAll(appointmentsToUpdate);
+            log.info("[REMINDER] ✅ {} recordatorios guardados en batch", appointmentsToUpdate.size());
+        }
     }
 
     /**
@@ -201,16 +213,24 @@ public class AppointmentService {
 
         log.info("[REMINDER] {} citas encontradas en ventana 2h ({} - {})", appointments.size(), now, inTwoHours);
 
-        appointments.forEach(appointment -> {
+        // ✅ OPTIMIZED: Collect appointments that need reminder, send bulk update
+        List<Appointment> appointmentsToUpdate = new ArrayList<>();
+        for (Appointment appointment : appointments) {
             try {
                 notificationService.sendReminderNotification(appointment, "2hours");
                 appointment.setReminderSent(true);
-                appointmentRepository.save(appointment);
+                appointmentsToUpdate.add(appointment);
             } catch (Exception e) {
                 log.error("[REMINDER] Error enviando recordatorio 2h para cita {}: {}",
                         appointment.getId(), e.getMessage(), e);
             }
-        });
+        }
+        
+        // Single batch save instead of N individual saves
+        if (!appointmentsToUpdate.isEmpty()) {
+            appointmentRepository.saveAll(appointmentsToUpdate);
+            log.info("[REMINDER] ✅ {} recordatorios guardados en batch", appointmentsToUpdate.size());
+        }
     }
 
     /**
