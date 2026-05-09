@@ -20,7 +20,8 @@ import java.util.Set;
 public class ServiceCatalog {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "service_catalog_seq_generator")
+    @SequenceGenerator(name = "service_catalog_seq_generator", sequenceName = "service_catalog_seq", allocationSize = 1)
     private Long id;
 
     @Column(nullable = false, length = 100)
