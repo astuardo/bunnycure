@@ -2,8 +2,8 @@ package cl.bunnycure.service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -22,11 +22,18 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret:bunnycure-super-secret-key-change-in-production-minimum-256-bits}")
+    @Value("${jwt.secret}")
     private String secret;
 
     @Value("${jwt.expiration:28800000}") // 8 horas por defecto (mismo que session)
     private Long expiration;
+
+    @PostConstruct
+    public void validateSecret() {
+        if (secret == null || secret.trim().isEmpty() || secret.trim().length() < 32) {
+            throw new IllegalStateException("CRITICAL: 'jwt.secret' no está configurado o es demasiado débil (mínimo 256 bits).");
+        }
+    }
 
     /**
      * Genera un token JWT para un usuario.

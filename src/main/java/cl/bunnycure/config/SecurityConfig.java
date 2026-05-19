@@ -14,7 +14,10 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Arrays;
 
@@ -149,38 +152,13 @@ public class SecurityConfig {
 
 		// ── Headers según perfil ──────────────────────────────────────────────
 		if (isLocal) {
-			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers(
-							"/h2-console/**",
-							"/",
-							"/reservar",
-							"/reservar/**",
-							"/reservar/submit",
-							"/api/**",
-							"/admin/reminders/send/**",
-							"/admin/reminders/send-today",
-							"/login",
-							"/logout"
-					)
-			);
+			http.csrf(csrf -> csrf.ignoringRequestMatchers(csrfIgnoredMatchers(true)));
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.sameOrigin())
 			);
 		} else {
-			// Disable CSRF for public booking portal and API endpoints
-			http.csrf(csrf -> csrf
-					.ignoringRequestMatchers(
-							"/",
-							"/reservar",
-							"/reservar/**",
-							"/reservar/submit",
-							"/api/**",
-							"/admin/reminders/send/**",
-							"/admin/reminders/send-today",
-							"/login",
-							"/logout"
-					)
-			);
+			// CSRF activo para sesión; requests con JWT Bearer quedan exentas.
+			http.csrf(csrf -> csrf.ignoringRequestMatchers(csrfIgnoredMatchers(false)));
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.deny())
 					.httpStrictTransportSecurity(hsts -> hsts
@@ -205,6 +183,40 @@ public class SecurityConfig {
 	@Bean
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
+	}
+
+	private RequestMatcher[] csrfIgnoredMatchers(boolean isLocal) {
+		if (isLocal) {
+			return new RequestMatcher[] {
+					request -> isBearerRequest(request),
+					new AntPathRequestMatcher("/h2-console/**"),
+					new AntPathRequestMatcher("/reservar/**"),
+					new AntPathRequestMatcher("/api/auth/login"),
+					new AntPathRequestMatcher("/api/customers/lookup"),
+					new AntPathRequestMatcher("/api/public/**"),
+					new AntPathRequestMatcher("/api/webhooks/**"),
+					new AntPathRequestMatcher("/login"),
+					new AntPathRequestMatcher("/forgot-password"),
+					new AntPathRequestMatcher("/reset-password")
+			};
+		}
+
+		return new RequestMatcher[] {
+				request -> isBearerRequest(request),
+				new AntPathRequestMatcher("/reservar/**"),
+				new AntPathRequestMatcher("/api/auth/login"),
+				new AntPathRequestMatcher("/api/customers/lookup"),
+				new AntPathRequestMatcher("/api/public/**"),
+				new AntPathRequestMatcher("/api/webhooks/**"),
+				new AntPathRequestMatcher("/login"),
+				new AntPathRequestMatcher("/forgot-password"),
+				new AntPathRequestMatcher("/reset-password")
+		};
+	}
+
+	private boolean isBearerRequest(HttpServletRequest request) {
+		String authorization = request.getHeader("Authorization");
+		return authorization != null && authorization.startsWith("Bearer ");
 	}
 
 	/**

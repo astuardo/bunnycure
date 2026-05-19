@@ -28,7 +28,7 @@ public class CorsConfig {
     @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,PATCH,OPTIONS}")
     private String allowedMethodsConfig;
     
-    @Value("${cors.allowed-headers:*}")
+    @Value("${cors.allowed-headers:Authorization,Content-Type,Accept,Origin,X-XSRF-TOKEN,X-CSRF-TOKEN}")
     private String allowedHeadersConfig;
     
     @Value("${cors.exposed-headers:}")
@@ -60,12 +60,8 @@ public class CorsConfig {
         configuration.setAllowedMethods(methods);
         
         // Headers permitidos
-        if ("*".equals(allowedHeadersConfig)) {
-            configuration.addAllowedHeader("*");
-        } else {
-            List<String> headers = Arrays.asList(allowedHeadersConfig.split(","));
-            configuration.setAllowedHeaders(headers);
-        }
+        List<String> headers = Arrays.asList(allowedHeadersConfig.split(","));
+        configuration.setAllowedHeaders(headers);
         
         // Headers expuestos en la respuesta (si se necesitan)
         if (!exposedHeadersConfig.isEmpty()) {

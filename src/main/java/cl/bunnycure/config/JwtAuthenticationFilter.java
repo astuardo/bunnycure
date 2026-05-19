@@ -53,8 +53,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // (puede ser autenticación por cookie de sesión)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             log.debug("[JWT-FILTER] No Authorization header o no es Bearer");
-            log.debug("[JWT-FILTER] Session ID: {}", request.getSession(false) != null ? 
-                request.getSession(false).getId() : "NO SESSION");
             log.debug("[JWT-FILTER] Continuando con autenticación por sesión...");
             filterChain.doFilter(request, response);
             return;
@@ -64,7 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
         log.info("[JWT-FILTER] ========== JWT DETECTADO ==========");
         log.info("[JWT-FILTER] Request: {} {}", method, requestUri);
-        log.info("[JWT-FILTER] Token (primeros 20 chars): {}...", jwt.substring(0, Math.min(20, jwt.length())));
+        log.info("[JWT-FILTER] Procesando token JWT recibido");
 
         try {
             // Extraer username del token
@@ -99,7 +97,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     log.info("[JWT-FILTER] ✓ Usuario autenticado vía JWT: {}", username);
                     log.info("[JWT-FILTER] =========================================");
                 } else {
-                    log.warn("[JWT-FILTER] ✗ Token INVÁLIDO o EXPIRADO para usuario: {}", username);
+                    log.warn("[JWT-FILTER] ✗ Token INVÁLIDO o EXPIRADO");
                 }
             } else if (username == null) {
                 log.warn("[JWT-FILTER] ✗ No se pudo extraer username del token");

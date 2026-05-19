@@ -70,10 +70,6 @@ public class AuthApiController {
         try {
             log.info("[AUTH-LOGIN] ========== INICIO LOGIN ==========");
             log.info("[AUTH-LOGIN] Usuario: {}", loginRequest.getUsername());
-            log.info("[AUTH-LOGIN] Request headers:");
-            request.getHeaderNames().asIterator().forEachRemaining(header -> 
-                log.info("[AUTH-LOGIN]   {}: {}", header, request.getHeader(header))
-            );
             
             // Crear token de autenticación
             UsernamePasswordAuthenticationToken authToken = 
@@ -112,8 +108,7 @@ public class AuthApiController {
             // GENERAR JWT para clientes móviles
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             String jwtToken = jwtService.generateToken(userDetails);
-            log.info("[AUTH-LOGIN] ✓ JWT generado (longitud: {})", jwtToken.length());
-            log.debug("[AUTH-LOGIN] JWT token: {}", jwtToken);
+            log.info("[AUTH-LOGIN] JWT generado correctamente");
             
             UserDto userDto = UserDto.builder()
                     .id(user.getId())
@@ -139,11 +134,7 @@ public class AuthApiController {
             log.info("[AUTH-LOGIN] ========== LOGIN EXITOSO ==========");
             log.info("[AUTH-LOGIN] Usuario: {}", username);
             log.info("[AUTH-LOGIN] Session ID: {}", session.getId());
-            log.info("[AUTH-LOGIN] JWT incluido: SÍ");
-            log.info("[AUTH-LOGIN] Response headers que se enviarán:");
-            response.getHeaderNames().forEach(header -> 
-                log.info("[AUTH-LOGIN]   {}: {}", header, response.getHeader(header))
-            );
+            log.info("[AUTH-LOGIN] JWT incluido en la respuesta");
             log.info("[AUTH-LOGIN] ===========================================");
             
             return ResponseEntity.ok(ApiResponse.success(loginResponse));
@@ -212,19 +203,8 @@ public class AuthApiController {
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserDto>> getCurrentUser(HttpServletRequest request) {
         log.info("[AUTH-ME] ========== GET /me ==========");
-        log.info("[AUTH-ME] Request headers:");
-        request.getHeaderNames().asIterator().forEachRemaining(header -> 
-            log.info("[AUTH-ME]   {}: {}", header, 
-                header.equalsIgnoreCase("Authorization") ? 
-                    (request.getHeader(header).length() > 30 ? 
-                        request.getHeader(header).substring(0, 30) + "..." : 
-                        request.getHeader(header)) : 
-                    request.getHeader(header))
-        );
-        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.info("[AUTH-ME] Authentication: {}", authentication != null ? 
-            authentication.getClass().getSimpleName() : "NULL");
+        log.info("[AUTH-ME] Authentication presente: {}", authentication != null);
         
         if (authentication == null || !authentication.isAuthenticated() || 
             "anonymousUser".equals(authentication.getPrincipal())) {
