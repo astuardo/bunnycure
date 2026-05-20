@@ -4,6 +4,7 @@ import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.exception.ValidationException;
 import cl.bunnycure.service.AppointmentService;
+import cl.bunnycure.service.SimpleApiService;
 import cl.bunnycure.service.WhatsAppHandoffService;
 import cl.bunnycure.web.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,6 +43,7 @@ public class AppointmentApiController {
 
     private final AppointmentService appointmentService;
     private final WhatsAppHandoffService whatsAppHandoffService;
+    private final SimpleApiService simpleApiService;
 
     @Operation(
             summary = "Listar citas",
@@ -234,15 +236,37 @@ public class AppointmentApiController {
     public ResponseEntity<ApiResponse<AppointmentResponseDto>> updateStatus(
             @Parameter(description = "ID de la cita", required = true)
             @PathVariable Long id,
-            
+             
             @Parameter(description = "Nuevo estado", required = true)
-            @RequestParam AppointmentStatus status) {
+            @RequestParam AppointmentStatus status,
+
+            @Parameter(description = "Generar boleta al completar (default: true)")
+            @RequestParam(defaultValue = "true") boolean generateInvoice) {
         
         log.info("[API] Updating appointment {} status to {}", id, status);
         
-        Appointment updated = appointmentService.updateStatus(id, status);
+        Appointment updated = appointmentService.updateStatus(id, status, generateInvoice);
         AppointmentResponseDto dto = toResponseDto(updated);
         
+        return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
+    @Operation(
+            summary = "Obtener cuota mensual de boletas",
+            description = "Entrega cuántas boletas se han generado este mes y si conviene generar por defecto.")
+    @GetMapping("/invoice-quota")
+    public ResponseEntity<ApiResponse<InvoiceQuotaResponseDto>> getInvoiceQuota() {
+        long generatedThisMonth = simpleApiService.getGeneratedInvoicesThisMonth();
+        int monthlyLimit = simpleApiService.getMonthlyInvoiceLimit();
+        long remainingThisMonth = Math.max(0, monthlyLimit - generatedThisMonth);
+
+        InvoiceQuotaResponseDto dto = InvoiceQuotaResponseDto.builder()
+                .generatedThisMonth(generatedThisMonth)
+                .monthlyLimit(monthlyLimit)
+                .remainingThisMonth(remainingThisMonth)
+                .generateByDefault(generatedThisMonth < monthlyLimit)
+                .build();
+
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 

@@ -38,6 +38,7 @@ public class AppointmentService {
     private final AppSettingsService appSettingsService;
     private final LoyaltyRewardService loyaltyRewardService;
     private final cl.bunnycure.domain.repository.LoyaltyRewardHistoryRepository loyaltyRewardHistoryRepository;
+    private final SimpleApiService simpleApiService;
 
     @Transactional
     public Appointment updateAppointment(@NotNull Long id, @Valid @NotNull AppointmentDto dto) {
@@ -106,6 +107,11 @@ public class AppointmentService {
 
     @Transactional
     public Appointment updateStatus(Long id, AppointmentStatus newStatus) {
+        return updateStatus(id, newStatus, true);
+    }
+
+    @Transactional
+    public Appointment updateStatus(Long id, AppointmentStatus newStatus, boolean generateInvoice) {
         var appointment = findById(id);
         AppointmentStatus oldStatus = appointment.getStatus();
         
@@ -114,6 +120,15 @@ public class AppointmentService {
     
             if (newStatus == AppointmentStatus.CANCELLED) {
                 notificationService.sendCancellationNotice(appointment);
+            }
+            
+            // Generate invoice when appointment is completed
+            if (oldStatus != AppointmentStatus.COMPLETED && newStatus == AppointmentStatus.COMPLETED) {
+                if (generateInvoice) {
+                    generateInvoiceForCompletedAppointment(appointment);
+                } else {
+                    log.info("[INVOICE] Skipping invoice generation by user choice for appointment {}", appointment.getId());
+                }
             }
             
             handleLoyaltyStamps(appointment, oldStatus, newStatus);
@@ -305,6 +320,42 @@ public class AppointmentService {
             throw new IllegalArgumentException("Debe seleccionar al menos un servicio");
         }
         return services;
+    }
+
+    /**
+     * Generates an invoice (boleta de honorarios) when an appointment is marked as completed
+     * This is non-blocking: errors are logged but don't fail the appointment completion
+     */
+    private void generateInvoiceForCompletedAppointment(Appointment appointment) {
+        try {
+            var customer = appointment.getCustomer();
+            if (customer == null) {
+                log.warn("[INVOICE] Cannot generate invoice: appointment {} has no customer", appointment.getId());
+                return;
+            }
+
+            // Calculate total amount from all services
+            java.math.BigDecimal totalAmount = appointment.getServices().stream()
+                    .map(service -> {
+                        if (service.getPrice() != null) {
+                            return java.math.BigDecimal.valueOf(service.getPrice().doubleValue());
+                        }
+                        return java.math.BigDecimal.ZERO;
+                    })
+                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
+            if (totalAmount.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                log.warn("[INVOICE] Skipping invoice generation: appointment {} has zero total amount", appointment.getId());
+                return;
+            }
+
+            // Generate invoice asynchronously (don't block appointment completion)
+            simpleApiService.generateInvoice(appointment, customer, totalAmount);
+        } catch (Exception e) {
+            log.error("[INVOICE-ERROR] Unexpected error generating invoice for appointment {}: {}", 
+                    appointment.getId(), e.getMessage(), e);
+            // Don't rethrow - this should not fail the appointment completion
+        }
     }
 
     private void handleLoyaltyStamps(Appointment appointment, AppointmentStatus oldStatus, AppointmentStatus newStatus) {

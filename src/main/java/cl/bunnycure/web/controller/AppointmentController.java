@@ -5,6 +5,7 @@ import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.service.AppointmentService;
 import cl.bunnycure.service.AppSettingsService;
 import cl.bunnycure.service.CustomerService;
+import cl.bunnycure.service.SimpleApiService;
 import cl.bunnycure.service.ServiceCatalogService;
 import cl.bunnycure.service.WhatsAppHandoffService;
 import cl.bunnycure.web.dto.AppointmentDto;
@@ -53,6 +54,7 @@ public class AppointmentController extends BaseController {
     private final ServiceCatalogService serviceCatalogService; // ✅ campo declarado
     private final WhatsAppHandoffService whatsAppHandoffService;
     private final AppSettingsService appSettingsService;
+    private final SimpleApiService simpleApiService;
 
     @GetMapping
     public String list(@RequestParam(required = false)
@@ -117,6 +119,8 @@ public class AppointmentController extends BaseController {
         model.addAttribute("nextDate", nextDate);
         model.addAttribute("today", today);
         model.addAttribute("todayDate", today);
+        model.addAttribute("invoiceGeneratedThisMonth", simpleApiService.getGeneratedInvoicesThisMonth());
+        model.addAttribute("invoiceMonthlyLimit", simpleApiService.getMonthlyInvoiceLimit());
 
         if ("month".equals(viewMode)) {
             LocalDate calendarStart = rangeStart.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
@@ -294,8 +298,9 @@ public class AppointmentController extends BaseController {
     @PostMapping("/{id}/status")
     public String changeStatus(@PathVariable Long id,
                                @RequestParam AppointmentStatus status,
+                               @RequestParam(defaultValue = "true") boolean generateInvoice,
                                RedirectAttributes flash) {
-        appointmentService.updateStatus(id, status);
+        appointmentService.updateStatus(id, status, generateInvoice);
         flash.addFlashAttribute("successMsg", "Estado actualizado.");
         return "redirect:/appointments";
     }
