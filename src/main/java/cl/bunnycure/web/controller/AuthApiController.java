@@ -4,6 +4,7 @@ import cl.bunnycure.domain.model.User;
 import cl.bunnycure.service.JwtService;
 import cl.bunnycure.service.UserService;
 import cl.bunnycure.web.dto.ApiResponse;
+import cl.bunnycure.web.dto.AccessTokenResponse;
 import cl.bunnycure.web.dto.ChangePasswordRequest;
 import cl.bunnycure.web.dto.LoginRequest;
 import cl.bunnycure.web.dto.LoginResponse;
@@ -19,7 +20,9 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -30,6 +33,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Duration;
 
 /**
  * REST API Controller para autenticación.
@@ -42,6 +47,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthApiController {
+
+    private static final String REFRESH_COOKIE_NAME = "bunnycure_refresh_token";
 
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
@@ -108,7 +115,10 @@ public class AuthApiController {
             // GENERAR JWT para clientes móviles
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             String jwtToken = jwtService.generateToken(userDetails);
+            String refreshToken = jwtService.generateRefreshToken(userDetails, Boolean.TRUE.equals(loginRequest.getRememberMe()));
             log.info("[AUTH-LOGIN] JWT generado correctamente");
+
+            ResponseCookie refreshCookie = buildRefreshCookie(refreshToken, Boolean.TRUE.equals(loginRequest.getRememberMe()));
             
             UserDto userDto = UserDto.builder()
                     .id(user.getId())
@@ -134,10 +144,12 @@ public class AuthApiController {
             log.info("[AUTH-LOGIN] ========== LOGIN EXITOSO ==========");
             log.info("[AUTH-LOGIN] Usuario: {}", username);
             log.info("[AUTH-LOGIN] Session ID: {}", session.getId());
-            log.info("[AUTH-LOGIN] JWT incluido en la respuesta");
+            log.info("[AUTH-LOGIN] JWT de acceso emitido y refresh cookie establecida");
             log.info("[AUTH-LOGIN] ===========================================");
             
-            return ResponseEntity.ok(ApiResponse.success(loginResponse));
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(ApiResponse.success(loginResponse));
             
         } catch (BadCredentialsException e) {
             log.warn("[AUTH-LOGIN] ✗ Login fallido - Credenciales inválidas para: {}", 
@@ -180,10 +192,39 @@ public class AuthApiController {
         if (session != null) {
             session.invalidate();
         }
+
+        ResponseCookie expiredCookie = clearRefreshCookie();
         
         log.info("[API] Logout exitoso");
         
-        return ResponseEntity.ok(ApiResponse.success("Logout exitoso"));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
+                .body(ApiResponse.success("Logout exitoso"));
+    }
+
+    @Operation(
+            summary = "Renovar access token",
+            description = "Usa la cookie HttpOnly de refresh para emitir un nuevo access token.")
+    @RequestMapping(value = "/refresh", method = {RequestMethod.GET, RequestMethod.POST})
+    public ResponseEntity<ApiResponse<AccessTokenResponse>> refresh(
+            @CookieValue(name = REFRESH_COOKIE_NAME, required = false) String refreshToken) {
+
+        if (refreshToken == null || refreshToken.isBlank() || !jwtService.validateRefreshToken(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString())
+                    .body(ApiResponse.error("No autenticado", "NOT_AUTHENTICATED"));
+        }
+
+        String username = jwtService.extractUsername(refreshToken);
+        UserDetails userDetails = (UserDetails) userService.loadUserByUsername(username);
+        String newAccessToken = jwtService.generateToken(userDetails);
+        boolean rememberMe = jwtService.isRememberMeRefreshToken(refreshToken);
+        String newRefreshToken = jwtService.generateRefreshToken(userDetails, rememberMe);
+        ResponseCookie refreshCookie = buildRefreshCookie(newRefreshToken, rememberMe);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(ApiResponse.success(AccessTokenResponse.builder().token(newAccessToken).build()));
     }
 
     @Operation(
@@ -314,5 +355,26 @@ public class AuthApiController {
                         "Error al cambiar contraseña: " + e.getMessage(), 
                         "PASSWORD_CHANGE_ERROR"));
         }
+    }
+
+    private ResponseCookie buildRefreshCookie(String refreshToken, boolean rememberMe) {
+        Duration maxAge = rememberMe ? Duration.ofDays(30) : Duration.ofDays(7);
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .path("/")
+                .maxAge(maxAge)
+                .build();
+    }
+
+    private ResponseCookie clearRefreshCookie() {
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .path("/")
+                .maxAge(Duration.ZERO)
+                .build();
     }
 }
