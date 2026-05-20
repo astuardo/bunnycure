@@ -116,11 +116,18 @@ public class CustomerService {
 
     @Transactional
     public Customer create(@Valid @NotNull CustomerDto dto) {
+        // Validar RUT
+        if (dto.getRut() == null || dto.getRut().isBlank()) {
+            throw new IllegalArgumentException("El RUT es obligatorio");
+        }
+        if (customerRepository.existsByRut(dto.getRut())) {
+            throw new IllegalArgumentException("Ya existe un cliente con el RUT: " + dto.getRut());
+        }
         // Validar email solo si se proporciona
         if (dto.getEmail() != null && !dto.getEmail().isBlank() && customerRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("Ya existe un cliente con el email: " + dto.getEmail());
         }
-        var customer = new Customer(dto.getFullName(), dto.getPhone(), normalizeNullable(dto.getEmail()));
+        var customer = new Customer(dto.getFullName(), dto.getPhone(), normalizeNullable(dto.getEmail()), dto.getRut());
         customer.setGender(normalizeGender(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
         customer.setEmergencyPhone(normalizePhone(dto.getEmergencyPhone()));
@@ -137,6 +144,7 @@ public class CustomerService {
         var customer = findById(id);
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());
+        customer.setRut(dto.getRut());
         customer.setEmail(normalizeNullable(dto.getEmail()));
         customer.setGender(normalizeGender(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
@@ -154,6 +162,7 @@ public class CustomerService {
         var customer = findByPublicId(publicId);
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());
+        customer.setRut(dto.getRut());
         customer.setEmail(normalizeNullable(dto.getEmail()));
         customer.setGender(normalizeGender(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());

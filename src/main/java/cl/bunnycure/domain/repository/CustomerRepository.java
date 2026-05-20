@@ -16,9 +16,13 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     // Nuevo: búsqueda por teléfono para matching desde solicitudes de reserva
     Optional<Customer> findByPhone(String phone);
 
+    Optional<Customer> findByRut(String rut);
+
     List<Customer> findByFullNameContainingIgnoreCase(String name);
 
     boolean existsByEmail(String email);
+
+    boolean existsByRut(String rut);
 
     @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.appointments WHERE c.id = :id")
     Optional<Customer> findByIdWithAppointments(Long id);

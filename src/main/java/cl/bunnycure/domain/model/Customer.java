@@ -37,6 +37,9 @@ public class Customer {
     @Column(nullable = true, unique = true, length = 150)
     private String email;
 
+    @Column(nullable = false, unique = true, length = 20)
+    private String rut;
+
     @Column(length = 20)
     private String gender;
 
@@ -80,6 +83,14 @@ public class Customer {
         this.fullName = fullName;
         this.phone    = phone;
         this.email    = email;
+        this.rut      = "";
+    }
+
+    public Customer(String fullName, String phone, String email, String rut) {
+        this.fullName = fullName;
+        this.phone    = phone;
+        this.email    = email;
+        this.rut      = rut;
     }
 
     @PrePersist

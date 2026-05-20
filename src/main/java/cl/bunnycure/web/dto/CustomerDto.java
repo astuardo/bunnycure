@@ -29,6 +29,10 @@ public class CustomerDto {
     @Pattern(regexp = "^\\+?[0-9]{8,15}$", message = "Formato de teléfono inválido")
     private String phone;
 
+    @NotBlank(message = "El RUT es obligatorio")
+    @Pattern(regexp = "^\\d{1,2}\\.\\d{3}\\.\\d{3}-[0-9K]$", message = "Formato de RUT inválido. Use formato XX.XXX.XXX-X")
+    private String rut;
+
     @Email(message = "Email inválido")
     private String email;  // Ahora es opcional
 

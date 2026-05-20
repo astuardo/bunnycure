@@ -78,6 +78,7 @@ public class CustomerController extends BaseController {
         dto.setPublicId(customer.getPublicId());
         dto.setFullName(customer.getFullName());
         dto.setPhone(customer.getPhone());
+        dto.setRut(customer.getRut());
         dto.setEmail(customer.getEmail());
         dto.setGender(customer.getGender());
         dto.setBirthDate(customer.getBirthDate());
