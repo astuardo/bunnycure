@@ -21,8 +21,7 @@ import java.time.LocalDateTime;
 public class InvoiceLog {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "invoice_logs_seq_generator")
-    @SequenceGenerator(name = "invoice_logs_seq_generator", sequenceName = "invoice_logs_seq", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
