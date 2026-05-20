@@ -7,7 +7,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -45,27 +45,27 @@ public class CorsConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         
         // Orígenes permitidos (frontend URLs específicas)
-        List<String> origins = Arrays.asList(allowedOriginsConfig.split(","));
+        List<String> origins = parseCsvList(allowedOriginsConfig);
         configuration.setAllowedOrigins(origins);
         
         // Patrones de origen permitidos (para preview deployments)
         // Ejemplo: https://*.vercel.app permite todos los preview deployments
         if (!allowedOriginPatternsConfig.isEmpty()) {
-            List<String> patterns = Arrays.asList(allowedOriginPatternsConfig.split(","));
+            List<String> patterns = parseCsvList(allowedOriginPatternsConfig);
             configuration.setAllowedOriginPatterns(patterns);
         }
         
         // Métodos HTTP permitidos
-        List<String> methods = Arrays.asList(allowedMethodsConfig.split(","));
+        List<String> methods = parseCsvList(allowedMethodsConfig);
         configuration.setAllowedMethods(methods);
         
         // Headers permitidos
-        List<String> headers = Arrays.asList(allowedHeadersConfig.split(","));
+        List<String> headers = parseCsvList(allowedHeadersConfig);
         configuration.setAllowedHeaders(headers);
         
         // Headers expuestos en la respuesta (si se necesitan)
         if (!exposedHeadersConfig.isEmpty()) {
-            List<String> exposed = Arrays.asList(exposedHeadersConfig.split(","));
+            List<String> exposed = parseCsvList(exposedHeadersConfig);
             configuration.setExposedHeaders(exposed);
         }
         
@@ -88,5 +88,18 @@ public class CorsConfig {
         source.registerCorsConfiguration("/reset-password", configuration);
         
         return source;
+    }
+
+    private List<String> parseCsvList(String value) {
+        List<String> entries = new ArrayList<>();
+
+        for (String item : value.split(",")) {
+            String trimmed = item.trim();
+            if (!trimmed.isEmpty()) {
+                entries.add(trimmed);
+            }
+        }
+
+        return entries;
     }
 }
