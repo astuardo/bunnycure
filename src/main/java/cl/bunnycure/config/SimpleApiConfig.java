@@ -11,7 +11,7 @@ public class SimpleApiConfig {
     @Value("${simple-api.key:}")
     private String apiKey;
 
-    @Value("${simple-api.endpoint:https://api.simpleapi.cl}")
+    @Value("${simple-api.endpoint:https://servicios.simpleapi.cl}")
     private String endpoint;
 
     @Value("${simple-api.enabled:false}")

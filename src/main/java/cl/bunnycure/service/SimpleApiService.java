@@ -38,7 +38,7 @@ public class SimpleApiService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    private static final String BOLETA_ENDPOINT = "/api/bhe/personas/emitir";
+    private static final String BOLETA_ENDPOINT = "/api/bhe/emitir";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final int MONTHLY_INVOICE_LIMIT = 30;
 
