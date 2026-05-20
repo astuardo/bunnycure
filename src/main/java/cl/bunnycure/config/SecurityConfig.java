@@ -86,7 +86,7 @@ public class SecurityConfig {
 			auth.requestMatchers(HttpMethod.GET, "/api/services").permitAll();
 			
 			// API de autenticación pública
-			auth.requestMatchers("/api/auth/login", "/api/auth/logout").permitAll();
+			auth.requestMatchers("/api/auth/login", "/api/auth/logout", "/api/auth/refresh").permitAll();
 			
 			// API REST endpoints (requieren autenticación)
 			auth.requestMatchers("/api/auth/**").authenticated(); // otros endpoints de autenticación
@@ -192,6 +192,7 @@ public class SecurityConfig {
 					new AntPathRequestMatcher("/h2-console/**"),
 					new AntPathRequestMatcher("/reservar/**"),
 					new AntPathRequestMatcher("/api/auth/login"),
+					new AntPathRequestMatcher("/api/auth/refresh"),
 					new AntPathRequestMatcher("/api/customers/lookup"),
 					new AntPathRequestMatcher("/api/public/**"),
 					new AntPathRequestMatcher("/api/webhooks/**"),
@@ -205,6 +206,7 @@ public class SecurityConfig {
 				request -> isBearerRequest(request),
 				new AntPathRequestMatcher("/reservar/**"),
 				new AntPathRequestMatcher("/api/auth/login"),
+				new AntPathRequestMatcher("/api/auth/refresh"),
 				new AntPathRequestMatcher("/api/customers/lookup"),
 				new AntPathRequestMatcher("/api/public/**"),
 				new AntPathRequestMatcher("/api/webhooks/**"),

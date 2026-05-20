@@ -25,8 +25,11 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.expiration:28800000}") // 8 horas por defecto (mismo que session)
-    private Long expiration;
+    @Value("${jwt.access-expiration:900000}") // 15 minutos
+    private Long accessExpiration;
+
+    @Value("${jwt.refresh-expiration:604800000}") // 7 días
+    private Long refreshExpiration;
 
     @PostConstruct
     public void validateSecret() {
@@ -40,6 +43,7 @@ public class JwtService {
      */
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
+        claims.put("tokenType", "access");
         return createToken(claims, userDetails.getUsername());
     }
 
@@ -47,7 +51,30 @@ public class JwtService {
      * Genera un token con claims personalizados.
      */
     public String generateToken(String username, Map<String, Object> claims) {
+        claims.putIfAbsent("tokenType", "access");
         return createToken(claims, username);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails) {
+        return generateRefreshToken(userDetails, false);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails, boolean rememberMe) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("tokenType", "refresh");
+        claims.put("rememberMe", rememberMe);
+        return createRefreshToken(claims, userDetails.getUsername());
+    }
+
+    public String generateRefreshToken(String username) {
+        return generateRefreshToken(username, false);
+    }
+
+    public String generateRefreshToken(String username, boolean rememberMe) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("tokenType", "refresh");
+        claims.put("rememberMe", rememberMe);
+        return createRefreshToken(claims, username);
     }
 
     /**
@@ -55,7 +82,20 @@ public class JwtService {
      */
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expiration);
+        Date expiryDate = new Date(now.getTime() + accessExpiration);
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject(subject)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    private String createRefreshToken(Map<String, Object> claims, String subject) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + refreshExpiration);
 
         return Jwts.builder()
                 .claims(claims)
@@ -119,7 +159,24 @@ public class JwtService {
      */
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token) && isAccessToken(token));
+    }
+
+    public Boolean validateRefreshToken(String token) {
+        try {
+            return !isTokenExpired(token) && isRefreshToken(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean isRememberMeRefreshToken(String token) {
+        try {
+            Object rememberMe = extractClaim(token, claims -> claims.get("rememberMe"));
+            return Boolean.TRUE.equals(rememberMe);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -127,9 +184,19 @@ public class JwtService {
      */
     public Boolean validateToken(String token) {
         try {
-            return !isTokenExpired(token);
+            return !isTokenExpired(token) && isAccessToken(token);
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private boolean isAccessToken(String token) {
+        Object tokenType = extractClaim(token, claims -> claims.get("tokenType"));
+        return "access".equals(tokenType);
+    }
+
+    private boolean isRefreshToken(String token) {
+        Object tokenType = extractClaim(token, claims -> claims.get("tokenType"));
+        return "refresh".equals(tokenType);
     }
 }
