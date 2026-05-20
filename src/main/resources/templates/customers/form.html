@@ -65,6 +65,24 @@
                         </div>
                     </div>
 
+                    <!-- RUT -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            RUT <span class="text-danger">*</span>
+                        </label>
+                        <input type="text"
+                               th:field="*{rut}"
+                               th:classappend="${#fields.hasErrors('rut')} ? 'is-invalid'"
+                               class="form-control"
+                               placeholder="18664589-8"/>
+                        <div class="invalid-feedback"
+                             th:errors="*{rut}">
+                        </div>
+                        <div class="form-text text-muted">
+                            Formato permitido: 18664589-8 o 12.345.678-9
+                        </div>
+                    </div>
+
                     <!-- Email -->
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">

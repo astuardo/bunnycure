@@ -177,7 +177,7 @@ public class SimpleApiService {
         }
 
         // Check if format contains only digits and valid separators
-        if (!rut.matches("^\\d{1,2}\\.\\d{3}\\.\\d{3}-[0-9K]$")) {
+        if (!rut.matches("^(?:\\d{7,9}|\\d{1,3}(?:\\.\\d{3})+)-[0-9K]$")) {
             return false;
         }
 

@@ -117,17 +117,18 @@ public class CustomerService {
     @Transactional
     public Customer create(@Valid @NotNull CustomerDto dto) {
         // Validar RUT
-        if (dto.getRut() == null || dto.getRut().isBlank()) {
+        String normalizedRut = normalizeRut(dto.getRut());
+        if (normalizedRut == null || normalizedRut.isBlank()) {
             throw new IllegalArgumentException("El RUT es obligatorio");
         }
-        if (customerRepository.existsByRut(dto.getRut())) {
-            throw new IllegalArgumentException("Ya existe un cliente con el RUT: " + dto.getRut());
+        if (customerRepository.existsByRut(normalizedRut)) {
+            throw new IllegalArgumentException("Ya existe un cliente con el RUT: " + normalizedRut);
         }
         // Validar email solo si se proporciona
         if (dto.getEmail() != null && !dto.getEmail().isBlank() && customerRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("Ya existe un cliente con el email: " + dto.getEmail());
         }
-        var customer = new Customer(dto.getFullName(), dto.getPhone(), normalizeNullable(dto.getEmail()), dto.getRut());
+        var customer = new Customer(dto.getFullName(), dto.getPhone(), normalizeNullable(dto.getEmail()), normalizedRut);
         customer.setGender(normalizeGender(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
         customer.setEmergencyPhone(normalizePhone(dto.getEmergencyPhone()));
@@ -142,9 +143,10 @@ public class CustomerService {
     @Transactional
     public Customer update(@NotNull Long id, @Valid @NotNull CustomerDto dto) {
         var customer = findById(id);
+        String normalizedRut = normalizeRut(dto.getRut());
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());
-        customer.setRut(dto.getRut());
+        customer.setRut(normalizedRut);
         customer.setEmail(normalizeNullable(dto.getEmail()));
         customer.setGender(normalizeGender(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
@@ -160,9 +162,10 @@ public class CustomerService {
     @Transactional
     public Customer updateByPublicId(@NotNull String publicId, @Valid @NotNull CustomerDto dto) {
         var customer = findByPublicId(publicId);
+        String normalizedRut = normalizeRut(dto.getRut());
         customer.setFullName(dto.getFullName());
         customer.setPhone(dto.getPhone());
-        customer.setRut(dto.getRut());
+        customer.setRut(normalizedRut);
         customer.setEmail(normalizeNullable(dto.getEmail()));
         customer.setGender(normalizeGender(dto.getGender()));
         customer.setBirthDate(dto.getBirthDate());
@@ -218,6 +221,26 @@ public class CustomerService {
             return null;
         }
         return value.trim();
+    }
+
+    private String normalizeRut(String rut) {
+        if (rut == null || rut.isBlank()) {
+            return null;
+        }
+
+        String cleaned = rut.trim().toUpperCase().replaceAll("[^0-9K]", "");
+        if (cleaned.length() < 2) {
+            return rut.trim();
+        }
+
+        String body = cleaned.substring(0, cleaned.length() - 1);
+        String dv = cleaned.substring(cleaned.length() - 1);
+        if (!body.matches("\\d+")) {
+            return rut.trim().toUpperCase();
+        }
+
+        String formattedBody = body.replaceAll("(\\d)(?=(\\d{3})+$)", "$1.");
+        return formattedBody + "-" + dv;
     }
 
     @Transactional

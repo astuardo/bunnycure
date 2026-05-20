@@ -30,7 +30,10 @@ public class CustomerDto {
     private String phone;
 
     @NotBlank(message = "El RUT es obligatorio")
-    @Pattern(regexp = "^\\d{1,2}\\.\\d{3}\\.\\d{3}-[0-9K]$", message = "Formato de RUT inválido. Use formato XX.XXX.XXX-X")
+    @Pattern(
+            regexp = "^(?:\\d{7,9}|\\d{1,3}(?:\\.\\d{3})+)-[0-9K]$",
+            message = "Formato de RUT inválido. Use 18664589-8 o 12.345.678-9"
+    )
     private String rut;
 
     @Email(message = "Email inválido")

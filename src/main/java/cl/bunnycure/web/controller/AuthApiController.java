@@ -6,6 +6,7 @@ import cl.bunnycure.service.UserService;
 import cl.bunnycure.web.dto.ApiResponse;
 import cl.bunnycure.web.dto.AccessTokenResponse;
 import cl.bunnycure.web.dto.ChangePasswordRequest;
+import org.springframework.security.web.csrf.CsrfToken;
 import cl.bunnycure.web.dto.LoginRequest;
 import cl.bunnycure.web.dto.LoginResponse;
 import cl.bunnycure.web.dto.UserDto;
@@ -162,6 +163,19 @@ public class AuthApiController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error durante el login", "LOGIN_ERROR"));
         }
+    }
+
+    @Operation(
+            summary = "Obtener token CSRF",
+            description = "Devuelve el token CSRF actual y fuerza la creación de la cookie XSRF-TOKEN para clientes web/PWA.")
+    @GetMapping("/csrf")
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> csrf(CsrfToken csrfToken) {
+        java.util.Map<String, String> data = new java.util.HashMap<>();
+        data.put("headerName", csrfToken.getHeaderName());
+        data.put("parameterName", csrfToken.getParameterName());
+        data.put("token", csrfToken.getToken());
+
+        return ResponseEntity.ok(ApiResponse.success(data));
     }
 
     @Operation(

@@ -14,6 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -87,6 +88,7 @@ public class SecurityConfig {
 			
 			// API de autenticación pública
 			auth.requestMatchers("/api/auth/login", "/api/auth/logout", "/api/auth/refresh").permitAll();
+			auth.requestMatchers("/api/auth/csrf").permitAll();
 			
 			// API REST endpoints (requieren autenticación)
 			auth.requestMatchers("/api/auth/**").authenticated(); // otros endpoints de autenticación
@@ -151,14 +153,17 @@ public class SecurityConfig {
 		);
 
 		// ── Headers según perfil ──────────────────────────────────────────────
+		http.csrf(csrf -> csrf
+				.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+				.ignoringRequestMatchers(csrfIgnoredMatchers(isLocal))
+		);
+
 		if (isLocal) {
-			http.csrf(csrf -> csrf.ignoringRequestMatchers(csrfIgnoredMatchers(true)));
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.sameOrigin())
 			);
 		} else {
 			// CSRF activo para sesión; requests con JWT Bearer quedan exentas.
-			http.csrf(csrf -> csrf.ignoringRequestMatchers(csrfIgnoredMatchers(false)));
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.deny())
 					.httpStrictTransportSecurity(hsts -> hsts
