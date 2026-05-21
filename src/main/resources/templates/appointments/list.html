@@ -444,6 +444,29 @@
         </div>
     </div>
 
+    <!-- Modal para confirmar generación de boleta -->
+    <div class="modal fade" id="invoiceConfirmModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h6 class="modal-title fw-bold">Confirmar generación de boleta</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body pt-1">
+                    <p class="text-muted small mb-2">Boletas emitidas este mes: <strong id="invoiceCount">0/30</strong></p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="invoiceCheckbox">
+                        <label class="form-check-label" for="invoiceCheckbox">Generar boleta para esta cita</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="invoiceConfirmBtn" class="btn btn-sm btn-bc">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function confirmDelete(btn) {
             document.getElementById('deleteAptName').textContent = btn.getAttribute('data-name');
@@ -480,6 +503,7 @@
                 var monthlyLimit = Number(form.dataset.monthlyLimit || '30');
 
                 if (generatedThisMonth >= monthlyLimit) {
+                    // Auto-disable invoice generation and ask user to continue without invoice
                     generateInvoiceInput.value = 'false';
                     var continueWithoutInvoice = window.confirm(
                         'Boletas del mes: ' + generatedThisMonth + '/' + monthlyLimit + '.\n' +
@@ -492,13 +516,32 @@
                     return;
                 }
 
-                var wantsInvoice = window.confirm(
-                    'Boletas del mes: ' + generatedThisMonth + '/' + monthlyLimit + '.\n' +
-                    '¿Generar boleta para esta cita?\n' +
-                    'Aceptar = Sí generar\n' +
-                    'Cancelar = No generar'
-                );
-                generateInvoiceInput.value = wantsInvoice ? 'true' : 'false';
+                // Show modal with checkbox and current count before submitting
+                event.preventDefault();
+                showInvoiceModal(form, generatedThisMonth, monthlyLimit);
+            });
+        });
+
+        function showInvoiceModal(form, generatedThisMonth, monthlyLimit) {
+            var modalEl = document.getElementById('invoiceConfirmModal');
+            if (!modalEl) return;
+            modalEl.querySelector('#invoiceCount').textContent = generatedThisMonth + '/' + monthlyLimit;
+            var checkbox = modalEl.querySelector('#invoiceCheckbox');
+            // default checked
+            checkbox.checked = true;
+
+            var confirmBtn = modalEl.querySelector('#invoiceConfirmBtn');
+            var bsModal = new bootstrap.Modal(modalEl);
+
+            function onConfirm() {
+                generateInvoiceInput.value = checkbox.checked ? 'true' : 'false';
+                bsModal.hide();
+                form.submit();
+            }
+
+            confirmBtn.onclick = onConfirm;
+            bsModal.show();
+        }
             });
         });
     </script>

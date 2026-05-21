@@ -17,6 +17,9 @@ public class SimpleApiConfig {
     @Value("${simple-api.enabled:false}")
     private boolean enabled;
 
+    @Value("${simple-api.owner-rut:}")
+    private String apiOwnerRut;
+
     public boolean isConfigured() {
         return enabled && apiKey != null && !apiKey.isBlank();
     }

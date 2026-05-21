@@ -65,10 +65,16 @@ public class SimpleApiService {
             return Optional.empty();
         }
 
-        // Validate configuration
-        if (!config.isConfigured()) {
-            log.warn("[INVOICE-SKIP] SimpleAPI not configured. Set simple-api.enabled=true and provide API key.");
-            createFailedLog(appointment, customer, amount, "SimpleAPI not configured");
+        // If simple-api is disabled in configuration, assemble the request and log it for validation (dry-run)
+        if (!config.isEnabled()) {
+            try {
+                Map<String, Object> requestBody = buildInvoicePayload(customer, amount);
+                String payloadJson = objectMapper.writeValueAsString(requestBody);
+                log.info("[INVOICE-DRYRUN] SIMPLE_API_ENABLED=false. Assembled payload (not sent): {}", payloadJson);
+            } catch (Exception jex) {
+                log.warn("[INVOICE-DRYRUN] Failed to build payload for dry-run: {}", jex.getMessage(), jex);
+            }
+            createFailedLog(appointment, customer, amount, "Dry-run: SimpleAPI disabled - payload logged");
             return Optional.empty();
         }
 
@@ -114,14 +120,7 @@ public class SimpleApiService {
     private String invoiceWithSimpleApi(Customer customer, BigDecimal amount) throws Exception {
         String url = config.getEndpoint() + BOLETA_ENDPOINT;
 
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("rut", customer.getRut());
-        requestBody.put("nombre", customer.getFullName());
-        requestBody.put("email", customer.getEmail() != null ? customer.getEmail() : "");
-        requestBody.put("montoBruto", amount);
-        requestBody.put("descripcion", "Servicios de estética BunnyCure");
-        requestBody.put("fechaEmision", LocalDate.now().format(DATE_FORMATTER));
-        requestBody.put("moneda", "CLP");
+        Map<String, Object> requestBody = buildInvoicePayload(customer, amount);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -157,6 +156,37 @@ public class SimpleApiService {
         } catch (RestClientException e) {
             throw new RuntimeException("Failed to call SimpleAPI: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Builds the request payload for SimpleAPI. RUT is formatted without dots for the external API (e.g. 18664589-8).
+     */
+    private Map<String, Object> buildInvoicePayload(Customer customer, BigDecimal amount) {
+        Map<String, Object> requestBody = new HashMap<>();
+        String sentRut = sanitizeRutForSimpleApi(customer.getRut());
+        requestBody.put("RutCertificado", config.getApiOwnerRut() != null ? config.getApiOwnerRut() : "");
+        requestBody.put("RutReceptor", sentRut);
+        requestBody.put("NombreReceptor", customer.getFullName());
+        requestBody.put("EmailReceptor", customer.getEmail() != null ? customer.getEmail() : "");
+        requestBody.put("Monto", amount);
+        requestBody.put("Descripcion", "Servicios de estética BunnyCure");
+        requestBody.put("FechaEmision", LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+        return requestBody;
+    }
+
+    /**
+     * Returns the RUT formatted for SimpleAPI (no dots, with hyphen DV) e.g. 18664589-8
+     */
+    private String sanitizeRutForSimpleApi(String rut) {
+        if (rut == null) return "";
+        String cleaned = rut.replaceAll("[.\s]", "").toUpperCase();
+        // Ensure there's a hyphen before the last character
+        if (!cleaned.contains("-") && cleaned.length() > 1) {
+            String number = cleaned.substring(0, cleaned.length() - 1);
+            String dv = cleaned.substring(cleaned.length() - 1);
+            cleaned = number + "-" + dv;
+        }
+        return cleaned;
     }
 
     /**
