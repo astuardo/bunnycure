@@ -55,6 +55,9 @@ class AppointmentServiceTest {
     @Mock
     private cl.bunnycure.service.SimpleApiService simpleApiService;
 
+    @Mock
+    private cl.bunnycure.domain.repository.CustomerRepository customerRepository;
+
     private AppointmentService appointmentService;
 
     @BeforeEach
@@ -69,7 +72,8 @@ class AppointmentServiceTest {
                 appSettingsService,
                 loyaltyRewardService,
                 loyaltyRewardHistoryRepository,
-                simpleApiService
+                simpleApiService,
+                customerRepository
         );
     }
 

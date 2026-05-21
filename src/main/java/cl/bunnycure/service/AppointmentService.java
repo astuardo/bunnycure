@@ -4,6 +4,7 @@ import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.domain.repository.BookingRequestRepository;
+import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.AppointmentDto;
 import jakarta.validation.Valid;
@@ -39,6 +40,7 @@ public class AppointmentService {
     private final LoyaltyRewardService loyaltyRewardService;
     private final cl.bunnycure.domain.repository.LoyaltyRewardHistoryRepository loyaltyRewardHistoryRepository;
     private final SimpleApiService simpleApiService;
+    private final CustomerRepository customerRepository;
 
     @Transactional
     public Appointment updateAppointment(@NotNull Long id, @Valid @NotNull AppointmentDto dto) {
@@ -161,6 +163,55 @@ public class AppointmentService {
     @Transactional
     public void deleteAppointment(Long id) {
         var appointment = findById(id);
+
+        // If appointment was completed, rollback loyalty effects
+        if (appointment.getStatus() == AppointmentStatus.COMPLETED) {
+            var customer = appointment.getCustomer();
+            if (customer != null) {
+                try {
+                    // Check if this appointment generated a reward (history entry)
+                    var histories = loyaltyRewardHistoryRepository.findByCustomerIdOrderByEarnedAtDesc(customer.getId());
+                    var linked = histories.stream()
+                            .filter(h -> h.getAppointment() != null && h.getAppointment().getId().equals(appointment.getId()))
+                            .toList();
+
+                    if (!linked.isEmpty()) {
+                        // Remove reward history linked to this appointment and revert reward index / stamps
+                        loyaltyRewardHistoryRepository.deleteAll(linked);
+                        Integer currentRewardIndex = customer.getCurrentRewardIndex() != null ? customer.getCurrentRewardIndex() : 0;
+                        if (currentRewardIndex > 0) {
+                            customer.setCurrentRewardIndex(currentRewardIndex - 1);
+                        }
+                        // Restore stamps to pre-redeem state (10)
+                        customer.setLoyaltyStamps(10);
+                        log.info("[LOYALTY] Removed reward history for appointment {} and reverted reward index for customer {}", appointment.getId(), customer.getId());
+                    } else {
+                        // Simple decrement of a stamp
+                        int current = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
+                        if (current > 0) customer.setLoyaltyStamps(current - 1);
+                        log.info("[LOYALTY] Decremented loyalty stamps for customer {} due to deleted completed appointment {}", customer.getId(), appointment.getId());
+                    }
+
+                    int totalVisits = customer.getTotalCompletedVisits() != null ? customer.getTotalCompletedVisits() : 0;
+                    if (totalVisits > 0) customer.setTotalCompletedVisits(totalVisits - 1);
+
+                    // Persist customer changes and sync wallet
+                    // Use customerService to save via its repository abstraction
+                    // customerService.update is DTO-based; save directly via repository for atomicity
+                    // (injecting CustomerRepository to this service)
+                    // TODO: ensure customer is attached - use repository.save to persist
+                    // this change will be visible after committing transaction
+                    // Save using appointment service's customerRepository
+                    // (customerRepository injected)
+                    customerRepository.save(customer);
+                    googleWalletService.updateCustomerStamps(customer, true);
+
+                } catch (Exception e) {
+                    log.error("[LOYALTY] Error rolling back loyalty data for deleted appointment {}: {}", appointment.getId(), e.getMessage(), e);
+                }
+            }
+        }
+
         // Defensive unlink: production DBs with legacy FK definitions may not have ON DELETE SET NULL.
         bookingRequestRepository.clearAppointmentByAppointmentId(id);
         appointmentRepository.delete(appointment);
