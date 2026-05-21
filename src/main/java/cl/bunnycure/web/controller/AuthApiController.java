@@ -169,13 +169,33 @@ public class AuthApiController {
             summary = "Obtener token CSRF",
             description = "Devuelve el token CSRF actual y fuerza la creación de la cookie XSRF-TOKEN para clientes web/PWA.")
     @GetMapping("/csrf")
-    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> csrf(CsrfToken csrfToken) {
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> csrf(CsrfToken csrfToken, HttpServletRequest request) {
         java.util.Map<String, String> data = new java.util.HashMap<>();
         data.put("headerName", csrfToken.getHeaderName());
         data.put("parameterName", csrfToken.getParameterName());
         data.put("token", csrfToken.getToken());
 
-        return ResponseEntity.ok(ApiResponse.success(data));
+        // Also set cookie explicitly with domain for cross-subdomain PWA use (e.g. app.bunnycure.cl)
+        try {
+            String domain = ".bunnycure.cl"; // Use root domain so cookie is available to subdomains
+            // Allow overriding via request host if needed
+            // Create cookie accessible to JS (httpOnly=false)
+            ResponseCookie cookie = ResponseCookie.from("XSRF-TOKEN", csrfToken.getToken())
+                    .httpOnly(false)
+                    .secure(true)
+                    .sameSite("None")
+                    .path("/")
+                    .domain(domain)
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(ApiResponse.success(data));
+        } catch (Exception e) {
+            // Fallback: return token in body even if cookie couldn't be set
+            log.warn("[CSRF] Could not set XSRF-TOKEN cookie with domain, returning token in body: {}", e.getMessage());
+            return ResponseEntity.ok(ApiResponse.success(data));
+        }
     }
 
     @Operation(
