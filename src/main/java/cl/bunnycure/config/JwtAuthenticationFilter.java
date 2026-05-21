@@ -1,6 +1,7 @@
 package cl.bunnycure.config;
 
 import cl.bunnycure.service.JwtService;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -105,6 +106,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.debug("[JWT-FILTER] Usuario ya autenticado en el contexto: {}", 
                     SecurityContextHolder.getContext().getAuthentication().getName());
             }
+        } catch (ExpiredJwtException e) {
+            // Token expirado: devolver 401 para que PWA refresque
+            log.warn("[JWT-FILTER] ✗ Token expirado. El cliente debe refrescar. Mensaje: {}", e.getMessage());
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"token_expired\",\"message\":\"El token ha expirado. Por favor, refresque la sesión.\"}");
+            return;
         } catch (Exception e) {
             log.error("[JWT-FILTER] ✗ ERROR procesando token JWT: {} - {}", 
                 e.getClass().getSimpleName(), e.getMessage());
