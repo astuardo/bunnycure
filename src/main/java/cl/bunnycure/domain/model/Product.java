@@ -29,6 +29,15 @@ public class Product {
     @Column(name = "purchase_url", length = 500)
     private String purchaseUrl;
 
+    @Column(name = "observed_price", precision = 12, scale = 2)
+    private BigDecimal observedPrice;
+
+    @Column(name = "observed_available")
+    private Boolean observedAvailable;
+
+    @Column(name = "last_observed_at")
+    private OffsetDateTime lastObservedAt;
+
     @Column(name = "purchase_unit", nullable = false, length = 60)
     private String purchaseUnit;
 

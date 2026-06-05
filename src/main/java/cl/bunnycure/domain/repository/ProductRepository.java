@@ -13,6 +13,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Optional<Product> findByNameIgnoreCase(String name);
 
+    @Query("select p from Product p where p.purchaseUrl is not null and trim(p.purchaseUrl) <> ''")
+    java.util.List<Product> findAllWithPurchaseUrl();
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Product p where p.id = :id")
     Optional<Product> findByIdForUpdate(@Param("id") Long id);

@@ -3,6 +3,7 @@ package cl.bunnycure.web.controller;
 import cl.bunnycure.domain.model.Product;
 import cl.bunnycure.domain.repository.ProductRepository;
 import cl.bunnycure.service.InventoryService;
+import cl.bunnycure.service.ProductPriceMonitoringService;
 import cl.bunnycure.service.PurchaseService;
 import cl.bunnycure.domain.repository.InventoryMovementRepository;
 import cl.bunnycure.web.dto.ApiResponse;
@@ -37,6 +38,7 @@ public class InventoryApiController {
 
     private final ProductRepository productRepository;
     private final InventoryService inventoryService;
+    private final ProductPriceMonitoringService productPriceMonitoringService;
     private final PurchaseService purchaseService;
     private final InventoryMovementRepository movementRepository;
 
@@ -92,6 +94,13 @@ public class InventoryApiController {
         }
     }
 
+    @Operation(summary = "Actualizar precio observado de un producto")
+    @PostMapping("/products/{id}/refresh-observed")
+    public ResponseEntity<ApiResponse<ProductResponseDto>> refreshObservedPrice(@PathVariable Long id) {
+        Product updated = productPriceMonitoringService.refreshProduct(id);
+        return ResponseEntity.ok(ApiResponse.success(toDto(updated)));
+    }
+
     @Operation(summary = "Registrar consumo de materiales para un servicio")
     @PostMapping("/consume")
     public ResponseEntity<ApiResponse<Void>> consumeMaterials(@Valid @RequestBody ConsumeRequestDto request) {
@@ -128,6 +137,9 @@ public class InventoryApiController {
                 .consumptionUnit(p.getConsumptionUnit())
                 .conversionFactor(p.getConversionFactor())
                 .stockConsumptionUnit(p.getStockConsumptionUnit())
+                .observedPrice(p.getObservedPrice())
+                .observedAvailable(p.getObservedAvailable())
+                .lastObservedAt(p.getLastObservedAt())
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())
                 .build();
