@@ -138,6 +138,7 @@ public class InventoryApiController {
                 .conversionFactor(p.getConversionFactor())
                 .stockConsumptionUnit(p.getStockConsumptionUnit())
                 .observedPrice(p.getObservedPrice())
+                .previousObservedPrice(p.getPreviousObservedPrice())
                 .observedAvailable(p.getObservedAvailable())
                 .lastObservedAt(p.getLastObservedAt())
                 .createdAt(p.getCreatedAt())

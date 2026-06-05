@@ -56,10 +56,16 @@ public class ProductPriceMonitoringService {
         }
 
         String html = fetchHtml(product.getPurchaseUrl());
-        BigDecimal observedPrice = extractPrice(html).orElse(product.getObservedPrice());
+        BigDecimal currentObservedPrice = product.getObservedPrice();
+        BigDecimal observedPrice = extractPrice(html).orElse(currentObservedPrice);
         Boolean observedAvailable = detectAvailability(html);
 
-        product.setObservedPrice(observedPrice);
+        if (observedPrice != null && (currentObservedPrice == null || observedPrice.compareTo(currentObservedPrice) != 0)) {
+            product.setPreviousObservedPrice(currentObservedPrice);
+            product.setObservedPrice(observedPrice);
+        } else if (observedPrice == null) {
+            product.setObservedPrice(currentObservedPrice);
+        }
         product.setObservedAvailable(observedAvailable);
         product.setLastObservedAt(OffsetDateTime.now());
 
@@ -138,6 +144,21 @@ public class ProductPriceMonitoringService {
     private Boolean detectAvailability(String html) {
         if (html == null || html.isBlank()) {
             return null;
+        }
+
+        Pattern submitButtonPattern = Pattern.compile(
+                "(?is)<button[^>]*id\\s*=\\s*[\"']ProductSubmitButton[^\"']*[\"'][^>]*>(.*?)</button>"
+        );
+        Matcher submitMatcher = submitButtonPattern.matcher(html);
+        if (submitMatcher.find()) {
+            String buttonHtml = submitMatcher.group(0).toLowerCase(Locale.ROOT);
+            String buttonText = submitMatcher.group(1).replaceAll("(?is)<[^>]+>", " ").toLowerCase(Locale.ROOT);
+            if (buttonHtml.contains("disabled") || buttonText.contains("agotado")) {
+                return Boolean.FALSE;
+            }
+            if (buttonText.contains("agregar al carrito") || buttonText.contains("add to cart")) {
+                return Boolean.TRUE;
+            }
         }
 
         String lower = html.toLowerCase(Locale.ROOT);

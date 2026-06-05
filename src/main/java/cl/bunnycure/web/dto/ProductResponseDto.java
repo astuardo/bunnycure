@@ -18,6 +18,7 @@ public class ProductResponseDto {
     private BigDecimal conversionFactor;
     private BigDecimal stockConsumptionUnit;
     private BigDecimal observedPrice;
+    private BigDecimal previousObservedPrice;
     private Boolean observedAvailable;
     private OffsetDateTime lastObservedAt;
     private OffsetDateTime createdAt;

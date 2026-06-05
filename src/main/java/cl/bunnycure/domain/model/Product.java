@@ -32,6 +32,9 @@ public class Product {
     @Column(name = "observed_price", precision = 12, scale = 2)
     private BigDecimal observedPrice;
 
+    @Column(name = "previous_observed_price", precision = 12, scale = 2)
+    private BigDecimal previousObservedPrice;
+
     @Column(name = "observed_available")
     private Boolean observedAvailable;
 
