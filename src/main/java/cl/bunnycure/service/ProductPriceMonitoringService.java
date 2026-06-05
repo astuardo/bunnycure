@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -91,6 +92,9 @@ public class ProductPriceMonitoringService {
         }
 
         List<Pattern> patterns = List.of(
+                // Shopify sale block: prefer the sale price first
+                Pattern.compile("(?is)f-price-item--sale[^>]*>\\s*(?:<s>)?\\s*\\$?\\s*([0-9][0-9.,\\s]*)\\s*<"),
+                Pattern.compile("(?is)f-price-item--regular[^>]*>\\s*\\$?\\s*([0-9][0-9.,\\s]*)\\s*<"),
                 Pattern.compile("(?i)Precio de venta\\s*\\$\\s*([0-9.,]+)"),
                 Pattern.compile("(?i)Precio regular\\s*\\$\\s*([0-9.,]+)"),
                 Pattern.compile("(?i)product:price:amount\"\\s*content=\"([0-9.,]+)\""),
@@ -98,14 +102,21 @@ public class ProductPriceMonitoringService {
                 Pattern.compile("(?i)\\$\\s*([0-9]{1,3}(?:\\.[0-9]{3})*(?:,[0-9]{1,2})?)")
         );
 
+        List<String> candidates = new ArrayList<>();
         for (Pattern pattern : patterns) {
             Matcher matcher = pattern.matcher(html);
             if (matcher.find()) {
                 String candidate = matcher.group(1);
-                BigDecimal parsed = parseMoney(candidate);
-                if (parsed != null) {
-                    return java.util.Optional.of(parsed);
+                if (candidate != null && !candidate.isBlank()) {
+                    candidates.add(candidate);
                 }
+            }
+        }
+
+        for (String candidate : candidates) {
+            BigDecimal parsed = parseMoney(candidate);
+            if (parsed != null) {
+                return java.util.Optional.of(parsed);
             }
         }
 
@@ -117,21 +128,18 @@ public class ProductPriceMonitoringService {
             return null;
         }
 
-        String normalized = raw.trim().replaceAll("\\s", "");
+        String normalized = raw.trim().replaceAll("\\s", "").replace("$", "");
         int lastDot = normalized.lastIndexOf('.');
         int lastComma = normalized.lastIndexOf(',');
 
         try {
-            if (lastDot >= 0 && lastComma >= 0) {
-                if (lastComma > lastDot) {
-                    normalized = normalized.replace(".", "").replace(",", ".");
-                } else {
-                    normalized = normalized.replace(",", "");
-                }
-            } else if (lastComma >= 0) {
+            if (lastComma >= 0) {
                 normalized = normalized.replace(".", "").replace(",", ".");
-            } else {
-                normalized = normalized.replace(",", "");
+            } else if (lastDot >= 0) {
+                boolean looksLikeThousandSeparated = normalized.matches("^\\d{1,3}(?:\\.\\d{3})+$");
+                if (looksLikeThousandSeparated) {
+                    normalized = normalized.replace(".", "");
+                }
             }
 
             return new BigDecimal(normalized);
