@@ -42,6 +42,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String requestUri = request.getRequestURI();
         String method = request.getMethod();
+
+        // Permitir siempre un login limpio: si el cliente envía un Bearer expirado por error,
+        // no debe bloquear la creación de una nueva sesión/token en /api/auth/login.
+        if (isAuthLoginRequest(request, method)) {
+            log.debug("[JWT-FILTER] Omitiendo validación JWT para endpoint de login");
+            filterChain.doFilter(request, response);
+            return;
+        }
         
         log.debug("[JWT-FILTER] ========== Request ==========");
         log.debug("[JWT-FILTER] {} {}", method, requestUri);
@@ -120,5 +128,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isAuthLoginRequest(HttpServletRequest request, String method) {
+        return "POST".equalsIgnoreCase(method) && "/api/auth/login".equals(request.getServletPath());
     }
 }
