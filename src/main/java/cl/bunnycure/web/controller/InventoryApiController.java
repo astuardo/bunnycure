@@ -4,12 +4,15 @@ import cl.bunnycure.domain.model.Product;
 import cl.bunnycure.domain.repository.ProductRepository;
 import cl.bunnycure.service.InventoryService;
 import cl.bunnycure.service.ProductPriceMonitoringService;
+import cl.bunnycure.service.ProductImportService;
 import cl.bunnycure.service.PurchaseService;
 import cl.bunnycure.domain.repository.InventoryMovementRepository;
 import cl.bunnycure.web.dto.ApiResponse;
 import cl.bunnycure.web.dto.ConsumeRequestDto;
 import cl.bunnycure.web.dto.ErrorResponse;
+import cl.bunnycure.web.dto.ImportProductFromUrlRequestDto;
 import cl.bunnycure.web.dto.ProductDto;
+import cl.bunnycure.web.dto.ProductImportPreviewDto;
 import cl.bunnycure.web.dto.ProductResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -39,6 +42,7 @@ public class InventoryApiController {
     private final ProductRepository productRepository;
     private final InventoryService inventoryService;
     private final ProductPriceMonitoringService productPriceMonitoringService;
+    private final ProductImportService productImportService;
     private final PurchaseService purchaseService;
     private final InventoryMovementRepository movementRepository;
 
@@ -99,6 +103,13 @@ public class InventoryApiController {
     public ResponseEntity<ApiResponse<ProductResponseDto>> refreshObservedPrice(@PathVariable Long id) {
         Product updated = productPriceMonitoringService.refreshProduct(id);
         return ResponseEntity.ok(ApiResponse.success(toDto(updated)));
+    }
+
+    @Operation(summary = "Importar datos de producto desde URL de compra")
+    @PostMapping("/products/import-from-url")
+    public ResponseEntity<ApiResponse<ProductImportPreviewDto>> importFromUrl(@Valid @RequestBody ImportProductFromUrlRequestDto request) {
+        ProductImportPreviewDto preview = productImportService.previewFromUrl(request.getPurchaseUrl());
+        return ResponseEntity.ok(ApiResponse.success(preview));
     }
 
     @Operation(summary = "Registrar consumo de materiales para un servicio")

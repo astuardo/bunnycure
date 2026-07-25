@@ -4,24 +4,12 @@ import cl.bunnycure.domain.model.Product;
 import cl.bunnycure.domain.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 @Slf4j
@@ -29,9 +17,7 @@ import java.util.regex.Pattern;
 public class ProductPriceMonitoringService {
 
     private final ProductRepository productRepository;
-
-    @Qualifier("simpleApiRestTemplate")
-    private final RestTemplate restTemplate;
+    private final ProductPageScrapingService productPageScrapingService;
 
     @Scheduled(cron = "${bunnycure.inventory.price-monitor.cron:0 30 8 * * *}", zone = "${bunnycure.scheduler.timezone:America/Santiago}")
     public void refreshAllProducts() {
@@ -56,10 +42,10 @@ public class ProductPriceMonitoringService {
             throw new IllegalArgumentException("El producto no tiene URL de compra para monitorear");
         }
 
-        String html = fetchHtml(product.getPurchaseUrl());
+        ProductPageScrapingService.ProductScrapeResult scraped = productPageScrapingService.scrape(product.getPurchaseUrl());
         BigDecimal currentObservedPrice = product.getObservedPrice();
-        BigDecimal observedPrice = extractPrice(html).orElse(currentObservedPrice);
-        Boolean observedAvailable = detectAvailability(html);
+        BigDecimal observedPrice = scraped.observedPrice() != null ? scraped.observedPrice() : currentObservedPrice;
+        Boolean observedAvailable = scraped.observedAvailable();
 
         if (observedPrice != null && (currentObservedPrice == null || observedPrice.compareTo(currentObservedPrice) != 0)) {
             product.setPreviousObservedPrice(currentObservedPrice);
@@ -74,106 +60,5 @@ public class ProductPriceMonitoringService {
         log.info("[Inventory-Monitor] Refreshed product {} observedPrice={} observedAvailable={}",
                 product.getId(), observedPrice, observedAvailable);
         return saved;
-    }
-
-    private String fetchHtml(String url) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(List.of(MediaType.TEXT_HTML, MediaType.APPLICATION_XHTML_XML, MediaType.ALL));
-        headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (compatible; BunnyCureBot/1.0; +https://bunnycure.cl)");
-        headers.setAcceptCharset(List.of(StandardCharsets.UTF_8));
-
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-        return restTemplate.exchange(URI.create(url), HttpMethod.GET, entity, String.class).getBody();
-    }
-
-    private java.util.Optional<BigDecimal> extractPrice(String html) {
-        if (html == null || html.isBlank()) {
-            return java.util.Optional.empty();
-        }
-
-        List<Pattern> patterns = List.of(
-                // Shopify sale block: prefer the sale price first
-                Pattern.compile("(?is)f-price-item--sale[^>]*>\\s*(?:<s>)?\\s*\\$?\\s*([0-9][0-9.,\\s]*)\\s*<"),
-                Pattern.compile("(?is)f-price-item--regular[^>]*>\\s*\\$?\\s*([0-9][0-9.,\\s]*)\\s*<"),
-                Pattern.compile("(?i)Precio de venta\\s*\\$\\s*([0-9.,]+)"),
-                Pattern.compile("(?i)Precio regular\\s*\\$\\s*([0-9.,]+)"),
-                Pattern.compile("(?i)product:price:amount\"\\s*content=\"([0-9.,]+)\""),
-                Pattern.compile("(?i)\"price\"\\s*:\\s*\"?([0-9.,]+)\"?"),
-                Pattern.compile("(?i)\\$\\s*([0-9]{1,3}(?:\\.[0-9]{3})*(?:,[0-9]{1,2})?)")
-        );
-
-        List<String> candidates = new ArrayList<>();
-        for (Pattern pattern : patterns) {
-            Matcher matcher = pattern.matcher(html);
-            if (matcher.find()) {
-                String candidate = matcher.group(1);
-                if (candidate != null && !candidate.isBlank()) {
-                    candidates.add(candidate);
-                }
-            }
-        }
-
-        for (String candidate : candidates) {
-            BigDecimal parsed = parseMoney(candidate);
-            if (parsed != null) {
-                return java.util.Optional.of(parsed);
-            }
-        }
-
-        return java.util.Optional.empty();
-    }
-
-    private BigDecimal parseMoney(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-
-        String normalized = raw.trim().replaceAll("\\s", "").replace("$", "");
-        int lastDot = normalized.lastIndexOf('.');
-        int lastComma = normalized.lastIndexOf(',');
-
-        try {
-            if (lastComma >= 0) {
-                normalized = normalized.replace(".", "").replace(",", ".");
-            } else if (lastDot >= 0) {
-                boolean looksLikeThousandSeparated = normalized.matches("^\\d{1,3}(?:\\.\\d{3})+$");
-                if (looksLikeThousandSeparated) {
-                    normalized = normalized.replace(".", "");
-                }
-            }
-
-            return new BigDecimal(normalized);
-        } catch (Exception e) {
-            log.debug("[Inventory-Monitor] Could not parse money value '{}': {}", raw, e.getMessage());
-            return null;
-        }
-    }
-
-    private Boolean detectAvailability(String html) {
-        if (html == null || html.isBlank()) {
-            return null;
-        }
-
-        Pattern submitButtonPattern = Pattern.compile(
-                "(?is)<button[^>]*id\\s*=\\s*[\"']ProductSubmitButton[^\"']*[\"'][^>]*>(.*?)</button>"
-        );
-        Matcher submitMatcher = submitButtonPattern.matcher(html);
-        if (submitMatcher.find()) {
-            String buttonHtml = submitMatcher.group(0).toLowerCase(Locale.ROOT);
-            String buttonText = submitMatcher.group(1).replaceAll("(?is)<[^>]+>", " ").toLowerCase(Locale.ROOT);
-            if (buttonHtml.contains("disabled") || buttonText.contains("agotado")) {
-                return Boolean.FALSE;
-            }
-            if (buttonText.contains("agregar al carrito") || buttonText.contains("add to cart")) {
-                return Boolean.TRUE;
-            }
-        }
-
-        String lower = html.toLowerCase(Locale.ROOT);
-        if (lower.contains("agotado") || lower.contains("sold out") || lower.contains("sin stock") || lower.contains("no disponible")) {
-            return Boolean.FALSE;
-        }
-
-        return Boolean.TRUE;
     }
 }
