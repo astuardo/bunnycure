@@ -13,5 +13,7 @@ public class ProductImportPreviewDto {
     private BigDecimal purchasePrice;
     private BigDecimal observedPrice;
     private Boolean observedAvailable;
+    private String suggestedPurchaseUnit;
+    private String suggestedConsumptionUnit;
+    private BigDecimal suggestedConversionFactor;
 }
-

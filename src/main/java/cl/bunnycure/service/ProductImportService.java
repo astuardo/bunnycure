@@ -22,7 +22,9 @@ public class ProductImportService {
                 .purchasePrice(observedPrice)
                 .observedPrice(observedPrice)
                 .observedAvailable(scraped.observedAvailable())
+                .suggestedPurchaseUnit(scraped.suggestedPurchaseUnit())
+                .suggestedConsumptionUnit(scraped.suggestedConsumptionUnit())
+                .suggestedConversionFactor(scraped.suggestedConversionFactor())
                 .build();
     }
 }
-

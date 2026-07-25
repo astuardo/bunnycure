@@ -37,8 +37,17 @@ public class ProductPageScrapingService {
         BigDecimal observedPrice = extractPrice(html).orElse(null);
         Boolean observedAvailable = detectAvailability(html);
         String productName = extractProductName(html).orElse(null);
+        UnitSuggestion unitSuggestion = extractUnitSuggestion(html, productName);
 
-        return new ProductScrapeResult(normalizedUrl, productName, observedPrice, observedAvailable);
+        return new ProductScrapeResult(
+                normalizedUrl,
+                productName,
+                observedPrice,
+                observedAvailable,
+                unitSuggestion.purchaseUnit(),
+                unitSuggestion.consumptionUnit(),
+                unitSuggestion.conversionFactor()
+        );
     }
 
     private String normalizeUrl(String rawUrl) {
@@ -212,11 +221,86 @@ public class ProductPageScrapingService {
                 .trim();
     }
 
+    private UnitSuggestion extractUnitSuggestion(String html, String productName) {
+        String plainHtmlText = html == null ? "" : html.replaceAll("(?is)<[^>]+>", " ");
+        String source = (plainHtmlText + " " + (productName == null ? "" : productName)).replaceAll("\\s+", " ").trim();
+        if (source.isBlank()) {
+            return emptyUnitSuggestion();
+        }
+
+        Pattern purchaseAndAmount = Pattern.compile(
+                "(?i)\\b(botella|frasco|pomo|tubo|envase|tarro|pack|caja|set|unidad(?:es)?)\\b\\s*(?:de\\s*)?([0-9]+(?:[.,][0-9]+)?)\\s*(ml|mL|l|L|g|gr|kg|oz)\\b"
+        );
+        Matcher purchaseMatcher = purchaseAndAmount.matcher(source);
+        if (purchaseMatcher.find()) {
+            String purchaseUnit = toDisplayPurchaseUnit(purchaseMatcher.group(1));
+            BigDecimal quantity = parseDecimal(purchaseMatcher.group(2));
+            String unit = normalizeConsumptionUnit(purchaseMatcher.group(3));
+            if (quantity != null && unit != null) {
+                return new UnitSuggestion(purchaseUnit, unit, quantity);
+            }
+        }
+
+        Pattern amountAndUnit = Pattern.compile("(?i)([0-9]+(?:[.,][0-9]+)?)\\s*(ml|mL|l|L|g|gr|kg|oz)\\b");
+        Matcher amountMatcher = amountAndUnit.matcher(source);
+        if (amountMatcher.find()) {
+            BigDecimal quantity = parseDecimal(amountMatcher.group(1));
+            String unit = normalizeConsumptionUnit(amountMatcher.group(2));
+            if (quantity != null && unit != null) {
+                return new UnitSuggestion("Unidad", unit, quantity);
+            }
+        }
+
+        return emptyUnitSuggestion();
+    }
+
+    private BigDecimal parseDecimal(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return new BigDecimal(raw.replace(",", ".").trim());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String normalizeConsumptionUnit(String raw) {
+        if (raw == null) return null;
+        String unit = raw.trim().toLowerCase(Locale.ROOT);
+        if ("ml".equals(unit)) return "ml";
+        if ("l".equals(unit)) return "l";
+        if ("gr".equals(unit)) return "g";
+        if ("g".equals(unit)) return "g";
+        if ("kg".equals(unit)) return "kg";
+        if ("oz".equals(unit)) return "oz";
+        return unit;
+    }
+
+    private String toDisplayPurchaseUnit(String raw) {
+        if (raw == null || raw.isBlank()) return "Unidad";
+        String normalized = raw.trim().toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("unidad")) {
+            return "Unidad";
+        }
+        return normalized.substring(0, 1).toUpperCase(Locale.ROOT) + normalized.substring(1);
+    }
+
     public record ProductScrapeResult(
             String normalizedUrl,
             String productName,
             BigDecimal observedPrice,
-            Boolean observedAvailable
+            Boolean observedAvailable,
+            String suggestedPurchaseUnit,
+            String suggestedConsumptionUnit,
+            BigDecimal suggestedConversionFactor
     ) {}
-}
 
+    private record UnitSuggestion(
+            String purchaseUnit,
+            String consumptionUnit,
+            BigDecimal conversionFactor
+    ) {}
+
+    private UnitSuggestion emptyUnitSuggestion() {
+        return new UnitSuggestion(null, null, null);
+    }
+}
