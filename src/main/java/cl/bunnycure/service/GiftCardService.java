@@ -63,9 +63,9 @@ public class GiftCardService {
                 .pinHash(passwordEncoder.encode(plainPin))
                 .status(GiftCardStatus.ACTIVE)
                 .beneficiaryCustomer(beneficiary)
-                .beneficiaryNameSnapshot(beneficiary.getFullName())
-                .beneficiaryPhoneSnapshot(beneficiary.getPhone())
-                .beneficiaryEmailSnapshot(normalizeNullable(request.getBeneficiaryEmail(), beneficiary.getEmail()))
+                .beneficiaryNameSnapshot(beneficiary != null ? beneficiary.getFullName() : request.getBeneficiaryFullName().trim())
+                .beneficiaryPhoneSnapshot(beneficiary != null ? beneficiary.getPhone() : request.getBeneficiaryPhone().trim())
+                .beneficiaryEmailSnapshot(normalizeNullable(request.getBeneficiaryEmail(), beneficiary != null ? beneficiary.getEmail() : null))
                 .buyerName(normalizeNullable(request.getBuyerName(), null))
                 .buyerPhone(normalizeNullable(request.getBuyerPhone(), null))
                 .buyerEmail(normalizeNullable(request.getBuyerEmail(), null))
@@ -130,9 +130,9 @@ public class GiftCardService {
         int totalAmount = itemBuildData.stream().mapToInt(data -> data.unitPrice * data.quantity).sum();
 
         giftCard.setBeneficiaryCustomer(beneficiary);
-        giftCard.setBeneficiaryNameSnapshot(beneficiary.getFullName());
-        giftCard.setBeneficiaryPhoneSnapshot(beneficiary.getPhone());
-        giftCard.setBeneficiaryEmailSnapshot(normalizeNullable(request.getBeneficiaryEmail(), beneficiary.getEmail()));
+        giftCard.setBeneficiaryNameSnapshot(beneficiary != null ? beneficiary.getFullName() : request.getBeneficiaryFullName().trim());
+        giftCard.setBeneficiaryPhoneSnapshot(beneficiary != null ? beneficiary.getPhone() : request.getBeneficiaryPhone().trim());
+        giftCard.setBeneficiaryEmailSnapshot(normalizeNullable(request.getBeneficiaryEmail(), beneficiary != null ? beneficiary.getEmail() : null));
         giftCard.setBuyerName(normalizeNullable(request.getBuyerName(), null));
         giftCard.setBuyerPhone(normalizeNullable(request.getBuyerPhone(), null));
         giftCard.setBuyerEmail(normalizeNullable(request.getBuyerEmail(), null));
@@ -528,8 +528,10 @@ public class GiftCardService {
     }
 
     private Customer findOrCreateBeneficiary(String fullName, String phone, String email) {
-        return customerService.findByPhone(phone)
-                .orElseGet(() -> createBeneficiaryWithOptionalEmailFallback(fullName, phone, email));
+        if (phone == null || phone.isBlank() || phone.trim().equals("+56900000000")) {
+            return null;
+        }
+        return customerService.findByPhone(phone.trim()).orElse(null);
     }
 
     private Customer createBeneficiaryWithOptionalEmailFallback(String fullName, String phone, String email) {

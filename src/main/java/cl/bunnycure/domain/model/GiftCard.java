@@ -43,7 +43,7 @@ public class GiftCard {
     private GiftCardStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "beneficiary_customer_id", nullable = false)
+    @JoinColumn(name = "beneficiary_customer_id")
     private Customer beneficiaryCustomer;
 
     @Column(name = "beneficiary_name_snapshot", nullable = false, length = 120)
