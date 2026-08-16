@@ -69,7 +69,9 @@ public class SettingsApiController {
             "notification.template.default.title", "notification.template.default.body",
             "notification.template.2hour.title", "notification.template.2hour.body",
             // GiftCard Template
-            "giftcard.template.svg"
+            "giftcard.template.svg",
+            // Schedule Unavailabilities & Blocks
+            "schedule.unavailabilities", "schedule.unavailability.colors", "schedule.unavailability.notifications"
     );
 
     private static final Set<String> VALID_REMINDER_STRATEGIES = Set.of(

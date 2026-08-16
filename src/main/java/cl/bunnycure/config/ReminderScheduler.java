@@ -19,6 +19,8 @@ public class ReminderScheduler {
 
     private final AppointmentService appointmentService;
     private final AppSettingsService appSettingsService;
+    private final cl.bunnycure.service.WebPushNotificationService webPushNotificationService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     /**
      * Recordatorio para citas de mañana.
@@ -98,4 +100,103 @@ public class ReminderScheduler {
             return true;
         }
     }
+
+    /**
+     * Revisa periódicamente los bloqueos de agenda y días no laborables para enviar notificaciones Push PWA
+     * 24 horas antes y 1 hora antes según la configuración del administrador.
+     */
+    @Scheduled(cron = "0 */10 * * * *", zone = "${bunnycure.scheduler.timezone:America/Santiago}")
+    public void checkAndSendUnavailabilityPushReminders() {
+        try {
+            String notificationsRaw = appSettingsService.get("schedule.unavailability.notifications", "");
+            boolean notify24h = true;
+            boolean notify1h = true;
+            boolean enabled = true;
+
+            if (notificationsRaw != null && !notificationsRaw.isBlank()) {
+                try {
+                    com.fasterxml.jackson.databind.JsonNode notifNode = objectMapper.readTree(notificationsRaw);
+                    if (notifNode.has("enabled") && !notifNode.get("enabled").asBoolean()) {
+                        enabled = false;
+                    }
+                    if (notifNode.has("notify24HoursBefore")) {
+                        notify24h = notifNode.get("notify24HoursBefore").asBoolean();
+                    }
+                    if (notifNode.has("notify1HourBefore")) {
+                        notify1h = notifNode.get("notify1HourBefore").asBoolean();
+                    }
+                } catch (Exception ex) {
+                    log.debug("[UNAVAILABILITY-PUSH] Error parseando config de notificaciones, usando defaults: {}", ex.getMessage());
+                }
+            }
+
+            if (!enabled) {
+                return;
+            }
+
+            String unavailabilitiesRaw = appSettingsService.get("schedule.unavailabilities", "");
+            if (unavailabilitiesRaw == null || unavailabilitiesRaw.isBlank()) {
+                return;
+            }
+
+            com.fasterxml.jackson.databind.JsonNode itemsNode = objectMapper.readTree(unavailabilitiesRaw);
+            if (!itemsNode.isArray()) {
+                return;
+            }
+
+            java.time.ZoneId zone = java.time.ZoneId.of(appSettingsService.get("app.timezone", "America/Santiago"));
+            java.time.ZonedDateTime now = java.time.ZonedDateTime.now(zone);
+
+            for (com.fasterxml.jackson.databind.JsonNode item : itemsNode) {
+                String id = item.has("id") ? item.get("id").asText() : null;
+                String startDateStr = item.has("startDate") ? item.get("startDate").asText() : null;
+                String type = item.has("type") ? item.get("type").asText() : "FULL_DAY";
+                String reason = item.has("reason") && !item.get("reason").asText().isBlank()
+                        ? item.get("reason").asText()
+                        : "Bloqueo de agenda";
+
+                if (id == null || startDateStr == null) {
+                    continue;
+                }
+
+                java.time.LocalDate startDate = java.time.LocalDate.parse(startDateStr);
+                java.time.LocalTime startTime;
+                if ("TIME_SLOT".equalsIgnoreCase(type) && item.has("startTime") && !item.get("startTime").asText().isBlank()) {
+                    startTime = java.time.LocalTime.parse(item.get("startTime").asText());
+                } else {
+                    startTime = java.time.LocalTime.of(9, 0); // Inicio estándar para día completo
+                }
+
+                java.time.ZonedDateTime eventStart = java.time.ZonedDateTime.of(startDate, startTime, zone);
+                long minutesUntilEvent = java.time.Duration.between(now, eventStart).toMinutes();
+
+                // 1. Notificación 24 horas antes (ventana entre 23h y 25h = 1380 a 1500 minutos)
+                if (notify24h && minutesUntilEvent >= 1380 && minutesUntilEvent <= 1500) {
+                    String sentKey = "push.unavailability." + id + ".24h";
+                    if (appSettingsService.get(sentKey, "").isBlank()) {
+                        String title = "🗓️ Recordatorio: " + reason;
+                        String body = "Tienes programado un bloqueo de agenda para mañana (" + startDateStr + (type.equals("TIME_SLOT") ? " a las " + startTime : "") + ").";
+                        webPushNotificationService.sendAdminCustomNotification(title, body, "/calendar");
+                        appSettingsService.set(sentKey, Instant.now().toString());
+                        log.info("[UNAVAILABILITY-PUSH] Notificación 24h enviada para id={}", id);
+                    }
+                }
+
+                // 2. Notificación 1 hora antes (ventana entre 45 y 75 minutos)
+                if (notify1h && minutesUntilEvent >= 45 && minutesUntilEvent <= 75) {
+                    String sentKey = "push.unavailability." + id + ".1h";
+                    if (appSettingsService.get(sentKey, "").isBlank()) {
+                        String title = "⏰ Recordatorio: " + reason;
+                        String body = "Tienes programado un bloqueo de agenda en 1 hora (" + (type.equals("TIME_SLOT") ? startTime.toString() : "Día completo") + ").";
+                        webPushNotificationService.sendAdminCustomNotification(title, body, "/calendar");
+                        appSettingsService.set(sentKey, Instant.now().toString());
+                        log.info("[UNAVAILABILITY-PUSH] Notificación 1h enviada para id={}", id);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("[UNAVAILABILITY-PUSH] Error evaluando notificaciones de bloqueos", e);
+        }
+    }
+
 }
