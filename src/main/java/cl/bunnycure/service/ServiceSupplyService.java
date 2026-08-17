@@ -18,7 +18,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +30,7 @@ public class ServiceSupplyService {
 
     public List<ServiceSupplyResponseDto> getSuppliesForService(Long serviceId) {
         List<ServiceSupply> supplies = serviceSupplyRepository.findByServiceIdWithProduct(serviceId);
-        return supplies.stream().map(this::toResponseDto).collect(Collectors.toList());
+        return supplies.stream().map(this::toResponseDto).toList();
     }
 
     @Transactional
@@ -61,7 +60,7 @@ public class ServiceSupplyService {
         List<ServiceSupply> saved = serviceSupplyRepository.saveAll(toSave);
         log.info("[Inventory-Supplies] Saved {} supplies for service {}", saved.size(), service.getName());
 
-        return saved.stream().map(this::toResponseDto).collect(Collectors.toList());
+        return saved.stream().map(this::toResponseDto).toList();
     }
 
     public ServiceCostSummaryDto getCostSummaryForService(Long serviceId) {
@@ -95,7 +94,7 @@ public class ServiceSupplyService {
         List<ServiceCatalog> allServices = serviceCatalogRepository.findAll();
         return allServices.stream()
                 .map(s -> getCostSummaryForService(s.getId()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public ServiceSupplyResponseDto toResponseDto(ServiceSupply supply) {

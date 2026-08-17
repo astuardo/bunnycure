@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -219,7 +218,7 @@ public class InventoryService {
                     return !d.isBefore(today) && !d.isAfter(sevenDaysAhead);
                 })
                 .filter(a -> a.getStatus() == AppointmentStatus.CONFIRMED || a.getStatus() == AppointmentStatus.PENDING)
-                .collect(Collectors.toList());
+                .toList();
 
         Map<Long, Integer> appointmentsPerProduct = new HashMap<>();
         Map<Long, BigDecimal> demand7DaysPerProduct = new HashMap<>();
@@ -257,7 +256,7 @@ public class InventoryService {
 
             List<ServiceSupply> productSupplies = serviceSupplyRepository.findAll().stream()
                     .filter(ss -> ss.getProduct().getId().equals(p.getId()))
-                    .collect(Collectors.toList());
+                    .toList();
 
             BigDecimal avgConsumptionPerService = BigDecimal.ZERO;
             if (!productSupplies.isEmpty()) {
@@ -316,7 +315,7 @@ public class InventoryService {
 
         List<InventoryMovement> movements = movementRepository.findByProductIdOrderByCreatedAtDesc(productId).stream()
                 .filter(m -> m.getMovementType() == MovementType.PURCHASE)
-                .collect(Collectors.toList());
+                .toList();
 
         List<ProductPriceAnalysisDto.PurchaseHistoryEntryDto> history = new ArrayList<>();
         BigDecimal totalSpent = BigDecimal.ZERO;

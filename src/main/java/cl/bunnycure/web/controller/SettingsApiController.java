@@ -31,7 +31,7 @@ public class SettingsApiController {
     private final AppSettingsService settingsService;
 
     // Lista de claves válidas de configuración
-    private static final Set<String> VALID_KEYS = Set.of(
+    private static final Set<String> VALID_KEYS = Set.copyOf(java.util.Arrays.asList(
             "inventory.auto_consumption.enabled",
             // Branding & Identidad
             "app.name", "app.slogan", "app.email", "app.logo-url",
@@ -73,7 +73,7 @@ public class SettingsApiController {
             "giftcard.template.svg",
             // Schedule Unavailabilities & Blocks
             "schedule.unavailabilities", "schedule.unavailability.colors", "schedule.unavailability.notifications"
-    );
+    ));
 
     private static final Set<String> VALID_REMINDER_STRATEGIES = Set.of(
             "2hours", "morning", "day_before", "both"

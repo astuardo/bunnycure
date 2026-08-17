@@ -11,8 +11,6 @@ import java.util.List;
 @Repository
 public interface ServiceSupplyRepository extends JpaRepository<ServiceSupply, Long> {
 
-    List<ServiceSupply> findByServiceId(Long serviceId);
-
     @Query("SELECT s FROM ServiceSupply s JOIN FETCH s.product WHERE s.service.id = :serviceId")
     List<ServiceSupply> findByServiceIdWithProduct(@Param("serviceId") Long serviceId);
 

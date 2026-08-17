@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SuppressWarnings("JpaDataSourceORMInspection")
 public class ServiceSupply {
 
     @Id
