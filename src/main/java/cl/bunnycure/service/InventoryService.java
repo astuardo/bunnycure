@@ -4,7 +4,7 @@ import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.*;
 import cl.bunnycure.domain.repository.*;
 import cl.bunnycure.web.dto.*;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -80,6 +80,7 @@ public class InventoryService {
     /**
      * Get pre-calculated supplies preview for an appointment.
      */
+    @Transactional(readOnly = true)
     public AppointmentSuppliesPreviewDto getSuppliesPreviewForAppointment(Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Cita no encontrada: " + appointmentId));
@@ -207,16 +208,12 @@ public class InventoryService {
     /**
      * Stock Projections for the next 7 days based on scheduled appointments.
      */
+    @Transactional(readOnly = true)
     public List<StockProjectionDto> getStockProjections7Days() {
         LocalDate today = LocalDate.now();
         LocalDate sevenDaysAhead = today.plusDays(7);
 
-        List<Appointment> upcomingAppointments = appointmentRepository.findAll().stream()
-                .filter(a -> a.getAppointmentDate() != null)
-                .filter(a -> {
-                    LocalDate d = a.getAppointmentDate();
-                    return !d.isBefore(today) && !d.isAfter(sevenDaysAhead);
-                })
+        List<Appointment> upcomingAppointments = appointmentRepository.findByDateRangeWithCustomer(today, sevenDaysAhead).stream()
                 .filter(a -> a.getStatus() == AppointmentStatus.CONFIRMED || a.getStatus() == AppointmentStatus.PENDING)
                 .toList();
 
@@ -309,6 +306,7 @@ public class InventoryService {
     /**
      * Product purchase price history and variation analysis.
      */
+    @Transactional(readOnly = true)
     public ProductPriceAnalysisDto getProductPriceAnalysis(Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Producto no existe: " + productId));
