@@ -15,10 +15,10 @@ import java.net.URISyntaxException;
  * Heroku proporciona DATABASE_URL en formato postgres://user:password@host:port/database
  * pero Spring Boot necesita jdbc:postgresql://host:port/database
  * 
- * OPTIMIZADO PARA HEROKU:
- * - Soporte explícito de SSL (sslmode=require)
- * - Tiempos de espera resilientes para arranques en frío de la base de datos
- * - Pool optimizado para memoria de dynos Eco/Basic
+ * OPTIMIZADO PARA HEROKU & AWS RDS:
+ * - Soporte explícito de SSL (sslmode=require) tanto en URL como en propiedades de driver
+ * - Pool cálido (minimumIdle=3) y keepaliveTime (30s) para evitar timeouts por desconexión en reposo
+ * - Tiempos de espera resilientes para arranques y consultas concurrentes
  */
 @Configuration
 @Profile("heroku")
@@ -56,9 +56,9 @@ public class HerokuDataSourceConfig {
         String username = credentials[0];
         String password = credentials[1];
         int port = dbUri.getPort() > 0 ? dbUri.getPort() : 5432;
-        String dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ":" + port + dbUri.getPath();
+        String dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ":" + port + dbUri.getPath() + "?sslmode=require";
 
-        System.out.println("Connecting to PostgreSQL at: " + dbUri.getHost() + ":" + port + dbUri.getPath());
+        System.out.println("Connecting to PostgreSQL at: " + dbUri.getHost() + ":" + port + dbUri.getPath() + " with sslmode=require");
         
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(dbUrl);
@@ -66,24 +66,25 @@ public class HerokuDataSourceConfig {
         config.setPassword(password);
         config.setDriverClassName("org.postgresql.Driver");
         
-        // Heroku PostgreSQL requires SSL
+        // PostgreSQL Driver properties
         config.addDataSourceProperty("sslmode", "require");
-        config.addDataSourceProperty("connectTimeout", "30");
-        config.addDataSourceProperty("socketTimeout", "60");
         config.addDataSourceProperty("tcpKeepAlive", "true");
+        config.addDataSourceProperty("connectTimeout", "30");
+        config.addDataSourceProperty("loginTimeout", "30");
         
-        // Pool size optimization for Heroku Eco/Basic
+        // Pool configuration for Heroku Eco/Basic with background schedulers
         config.setMaximumPoolSize(5);
-        config.setMinimumIdle(1);
-        config.setIdleTimeout(120000);  // 2 min
-        config.setMaxLifetime(600000);  // 10 min
-        config.setConnectionTimeout(30000); // 30s
-        config.setValidationTimeout(5000);
-        config.setInitializationFailTimeout(60000); // Wait up to 60s for DB on dyno cold starts
+        config.setMinimumIdle(3);                   // Mantener 3 conexiones cálidas listas
+        config.setKeepaliveTime(30000);             // Ping periódico de 30s para evitar cortes de NAT en AWS RDS
+        config.setIdleTimeout(300000);              // 5 minutos
+        config.setMaxLifetime(1200000);             // 20 minutos
+        config.setConnectionTimeout(30000);         // 30s
+        config.setValidationTimeout(5000);          // 5s
+        config.setInitializationFailTimeout(60000); // 60s en arranque inicial
         config.setLeakDetectionThreshold(60000);
         config.setAutoCommit(true);
         
-        System.out.println("✅ HikariCP Configured with SSL (sslmode=require, connectionTimeout=30s, initializationFailTimeout=60s)");
+        System.out.println("✅ HikariCP Configured with SSL & KeepAlive (maxPoolSize=5, minIdle=3, keepaliveTime=30s, connectionTimeout=30s)");
         
         return new HikariDataSource(config);
     }
