@@ -94,6 +94,7 @@ public class InventoryApiController {
     }
 
     @Operation(summary = "Importar datos de producto desde URL de compra")
+    @SuppressWarnings("SSRF")
     @PostMapping("/products/import-from-url")
     public ResponseEntity<ApiResponse<ProductImportPreviewDto>> importFromUrl(@Valid @RequestBody ImportProductFromUrlRequestDto request) {
         ProductImportPreviewDto preview = productImportService.previewFromUrl(request.getPurchaseUrl());

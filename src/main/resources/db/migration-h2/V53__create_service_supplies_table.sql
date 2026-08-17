@@ -1,3 +1,4 @@
+-- language=H2
 CREATE SEQUENCE IF NOT EXISTS service_supplies_seq START WITH 1 INCREMENT BY 1;
 
 CREATE TABLE IF NOT EXISTS service_supplies (

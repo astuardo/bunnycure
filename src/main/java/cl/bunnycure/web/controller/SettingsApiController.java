@@ -295,85 +295,7 @@ public class SettingsApiController {
     public ResponseEntity<ApiResponse<String>> resetToDefaults() {
         log.info("[API] Reseteando todas las configuraciones a valores por defecto");
 
-        Map<String, String> defaults = Map.ofEntries(
-                // Branding & Identidad
-                Map.entry("app.name", "BunnyCure"),
-                Map.entry("app.slogan", "Arte en tus manos ✨"),
-                Map.entry("app.email", "contacto@bunnycure.cl"),
-                Map.entry("app.logo-url", "/images/logo.png"),
-                Map.entry("app.website.url", "https://www.bunnycure.cl"),
-                Map.entry("app.instagram.url", "https://www.instagram.com/bunny.cure"),
-                Map.entry("app.instagram.handle", "@bunny.cure"),
-                Map.entry("app.phone.display", "+56 9 6449 9995"),
-                Map.entry("app.owner.name", "Dueña"),
-                Map.entry("app.primary-color", "#F472B6"),
-                Map.entry("app.secondary-color", "#8B5CF6"),
-                Map.entry("app.timezone", "America/Santiago"),
-                Map.entry("app.locale", "es_CL"),
-                Map.entry("app.currency", "CLP"),
-                Map.entry("app.service-tip", "Llega con las uñas limpias y sin esmalte"),
-
-                // WhatsApp
-                Map.entry("whatsapp.enabled", "true"),
-                Map.entry("whatsapp.number", "56988873031"),
-                Map.entry("whatsapp.human.number", "56988873031"),
-                Map.entry("whatsapp.admin-alert.number", "56964499995"),
-                Map.entry("whatsapp.admin-alert.enabled", "true"),
-                Map.entry("whatsapp.human.display-name", "Equipo BunnyCure"),
-                Map.entry("whatsapp.handoff.enabled", "true"),
-                Map.entry("whatsapp.handoff.client-message", "Si necesitas ayuda personalizada, escríbenos al WhatsApp de atención humana: {numero}."),
-                Map.entry("whatsapp.handoff.admin-prefill", "Hola {nombre}, te escribe BunnyCure por tu solicitud o cita. Te contacto para ayudarte personalmente."),
-                Map.entry("whatsapp.template.confirmation.name", "confirmacion_cita"),
-                Map.entry("whatsapp.template.reminder.name", "recordatorio_cita"),
-                Map.entry("whatsapp.template.cancellation.name", "cancelacion_cita"),
-                Map.entry("whatsapp.template.booking-review.name", "agenda_en_revision"),
-                Map.entry("whatsapp.template.booking-rejected.name", "solicitud_rechazada"),
-                Map.entry("whatsapp.template.admin-alert.name", ""),
-                Map.entry("whatsapp.template.admin-appointment-alert.name", "confirmacion_hora"),
-                Map.entry("whatsapp.template.language", "es_CL"),
-                Map.entry("whatsapp.template.admin-alert.language", "es_CL"),
-                Map.entry("whatsapp.template.confirmation.enabled", "true"),
-                Map.entry("whatsapp.template.reminder.enabled", "true"),
-                Map.entry("whatsapp.template.cancellation.enabled", "true"),
-                Map.entry("whatsapp.template.booking-review.enabled", "true"),
-                Map.entry("whatsapp.template.booking-rejected.enabled", "true"),
-                Map.entry("whatsapp.template.admin-alert.enabled", "false"),
-                Map.entry("whatsapp.template.admin-appointment-alert.enabled", "true"),
-                Map.entry("whatsapp.admin.booking-requests.url", ""),
-                Map.entry("whatsapp.business.name", "BunnyCure"),
-
-                // Mail
-                Map.entry("mail.enabled", "true"),
-
-                // Booking
-                Map.entry("booking.enabled", "true"),
-                Map.entry("booking.message.template", "Hola Bunny Cure! [conejo]\nMe gustaría reservar una cita:\n• Servicio: {servicio}\n• Fecha: {fecha}\n• Bloque: {bloque}\n• Nombre: {nombre}\n• Teléfono: {telefono}\n¿Tienen disponibilidad?"),
-                Map.entry("booking.block.morning", "09:00 – 13:00"),
-                Map.entry("booking.block.afternoon", "15:00 – 18:00"),
-                Map.entry("booking.block.night", "19:00 – 22:00"),
-                Map.entry("booking.block.morning.enabled", "true"),
-                Map.entry("booking.block.afternoon.enabled", "true"),
-                Map.entry("booking.block.night.enabled", "true"),
-
-                // Reminders
-                Map.entry("reminder.strategy", "2hours"),
-                Map.entry("reminder.two-hours.interval-minutes", "30"),
-
-                // Field Modes
-                Map.entry("field.email.mode", "OPTIONAL"),
-                Map.entry("field.gender.mode", "OPTIONAL"),
-                Map.entry("field.birth-date.mode", "OPTIONAL"),
-                Map.entry("field.emergency-phone.mode", "HIDDEN"),
-                Map.entry("field.health-notes.mode", "HIDDEN"),
-                Map.entry("field.general-notes.mode", "OPTIONAL"),
-
-                // Notification Templates
-                Map.entry("notification.template.default.title", "Recordatorio de Cita"),
-                Map.entry("notification.template.default.body", "Hola {customerName}, tienes una cita de {serviceName} el {date} a las {time}."),
-                Map.entry("notification.template.2hour.title", "¡Tu cita es pronto!"),
-                Map.entry("notification.template.2hour.body", "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). ¡Te esperamos!")
-        );
-
+        Map<String, String> defaults = createDefaultSettingsMap();
         settingsService.saveAll(defaults);
 
         return ResponseEntity.ok(ApiResponse.success("Configuraciones reseteadas a valores por defecto"));
@@ -382,6 +304,89 @@ public class SettingsApiController {
     // ────────────────────────────────────────────────────────────────────────────
     // Métodos privados auxiliares
     // ────────────────────────────────────────────────────────────────────────────
+
+    
+    private Map<String, String> createDefaultSettingsMap() {
+        Map<String, String> m = new java.util.LinkedHashMap<>();
+        // Branding & Identidad
+        m.put("app.name", "BunnyCure");
+        m.put("app.slogan", "Arte en tus manos 🐰");
+        m.put("app.email", "contacto@bunnycure.cl");
+        m.put("app.logo-url", "/images/logo.png");
+        m.put("app.website.url", "https://www.bunnycure.cl");
+        m.put("app.instagram.url", "https://www.instagram.com/bunny.cure");
+        m.put("app.instagram.handle", "@bunny.cure");
+        m.put("app.phone.display", "+56 9 6449 9995");
+        m.put("app.owner.name", "Dueña");
+        m.put("app.primary-color", "#F472B6");
+        m.put("app.secondary-color", "#8B5CF6");
+        m.put("app.timezone", "America/Santiago");
+        m.put("app.locale", "es_CL");
+        m.put("app.currency", "CLP");
+        m.put("app.service-tip", "Llega con las uñas limpias y sin esmalte");
+
+        // WhatsApp
+        m.put("whatsapp.enabled", "true");
+        m.put("whatsapp.number", "56988873031");
+        m.put("whatsapp.human.number", "56988873031");
+        m.put("whatsapp.admin-alert.number", "56964499995");
+        m.put("whatsapp.admin-alert.enabled", "true");
+        m.put("whatsapp.human.display-name", "Equipo BunnyCure");
+        m.put("whatsapp.handoff.enabled", "true");
+        m.put("whatsapp.handoff.client-message", "Si necesitas ayuda personalizada, escríbenos al WhatsApp de atención humana: {numero}.");
+        m.put("whatsapp.handoff.admin-prefill", "Hola {nombre}, te escribe BunnyCure por tu solicitud o cita. Te contacto para ayudarte personalmente.");
+        m.put("whatsapp.template.confirmation.name", "confirmacion_cita");
+        m.put("whatsapp.template.reminder.name", "recordatorio_cita");
+        m.put("whatsapp.template.cancellation.name", "cancelacion_cita");
+        m.put("whatsapp.template.booking-review.name", "agenda_en_revision");
+        m.put("whatsapp.template.booking-rejected.name", "solicitud_rechazada");
+        m.put("whatsapp.template.admin-alert.name", "");
+        m.put("whatsapp.template.admin-appointment-alert.name", "confirmacion_hora");
+        m.put("whatsapp.template.language", "es_CL");
+        m.put("whatsapp.template.admin-alert.language", "es_CL");
+        m.put("whatsapp.template.confirmation.enabled", "true");
+        m.put("whatsapp.template.reminder.enabled", "true");
+        m.put("whatsapp.template.cancellation.enabled", "true");
+        m.put("whatsapp.template.booking-review.enabled", "true");
+        m.put("whatsapp.template.booking-rejected.enabled", "true");
+        m.put("whatsapp.template.admin-alert.enabled", "false");
+        m.put("whatsapp.template.admin-appointment-alert.enabled", "true");
+        m.put("whatsapp.admin.booking-requests.url", "");
+        m.put("whatsapp.business.name", "BunnyCure");
+
+        // Mail
+        m.put("mail.enabled", "true");
+
+        // Booking
+        m.put("booking.enabled", "true");
+        m.put("booking.message.template", "Hola Bunny Cure! 🐰\nMe gustaría reservar una cita:\n• Servicio: {servicio}\n• Fecha: {fecha}\n• Bloque: {bloque}\n• Nombre: {nombre}\n• Teléfono: {telefono}\n¿Tienen disponibilidad?");
+        m.put("booking.block.morning", "09:00 - 13:00");
+        m.put("booking.block.afternoon", "15:00 - 18:00");
+        m.put("booking.block.night", "19:00 - 22:00");
+        m.put("booking.block.morning.enabled", "true");
+        m.put("booking.block.afternoon.enabled", "true");
+        m.put("booking.block.night.enabled", "true");
+
+        // Reminders
+        m.put("reminder.strategy", "2hours");
+        m.put("reminder.two-hours.interval-minutes", "30");
+
+        // Field Modes
+        m.put("field.email.mode", "OPTIONAL");
+        m.put("field.gender.mode", "OPTIONAL");
+        m.put("field.birth-date.mode", "OPTIONAL");
+        m.put("field.emergency-phone.mode", "HIDDEN");
+        m.put("field.health-notes.mode", "HIDDEN");
+        m.put("field.general-notes.mode", "OPTIONAL");
+
+        // Notification Templates
+        m.put("notification.template.default.title", "Recordatorio de Cita");
+        m.put("notification.template.default.body", "Hola {customerName}, tienes una cita de {serviceName} el {date} a las {time}.");
+        m.put("notification.template.2hour.title", "¡Tu cita es pronto!");
+        m.put("notification.template.2hour.body", "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). ¡Te esperamos!");
+
+        return m;
+    }
 
     private AppSettingsDto.BrandingSettings getBrandingSettings() {
         return AppSettingsDto.BrandingSettings.builder()

@@ -1,3 +1,4 @@
+-- language=PostgreSQL
 -- Flyway migration: create service_supplies table for service recipes (BOM)
 
 CREATE SEQUENCE IF NOT EXISTS service_supplies_seq START 1 INCREMENT 1;
