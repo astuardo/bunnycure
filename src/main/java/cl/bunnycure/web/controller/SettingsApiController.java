@@ -32,6 +32,7 @@ public class SettingsApiController {
 
     // Lista de claves válidas de configuración
     private static final Set<String> VALID_KEYS = Set.of(
+            "inventory.auto_consumption.enabled",
             // Branding & Identidad
             "app.name", "app.slogan", "app.email", "app.logo-url",
             "app.website.url", "app.instagram.url", "app.instagram.handle", "app.phone.display", "app.owner.name",

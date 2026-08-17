@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +23,7 @@ public class PurchaseService {
     private final InventoryMovementRepository movementRepository;
 
     /**
-     * Register a purchase: increases product stock (in consumption unit) and records movement.
+     * Register a purchase: updates purchase price, increases product stock and records movement.
      */
     @Transactional
     public InventoryMovement registerPurchase(PurchaseRequestDto req) {
@@ -30,8 +31,15 @@ public class PurchaseService {
                 .orElseThrow(() -> new IllegalArgumentException("Producto no existe: " + req.getProductId()));
 
         BigDecimal addedConsumption = product.getConversionFactor().multiply(req.getPurchaseQuantity());
+        BigDecimal currentStock = product.getStockConsumptionUnit() != null ? product.getStockConsumptionUnit() : BigDecimal.ZERO;
 
-        product.setStockConsumptionUnit(product.getStockConsumptionUnit().add(addedConsumption));
+        product.setStockConsumptionUnit(currentStock.add(addedConsumption));
+
+        BigDecimal oldPurchasePrice = product.getPurchasePrice();
+        if (req.getUnitPurchasePrice() != null && req.getUnitPurchasePrice().compareTo(BigDecimal.ZERO) > 0) {
+            product.setPurchasePrice(req.getUnitPurchasePrice());
+        }
+
         productRepository.save(product);
 
         InventoryMovement movement = InventoryMovement.builder()
@@ -46,8 +54,15 @@ public class PurchaseService {
 
         InventoryMovement saved = movementRepository.save(movement);
 
-        log.info("[Inventory] Registered purchase: {} {} ({} {}) -> +{} {} to stock for product {}",
-                req.getPurchaseQuantity(), product.getPurchaseUnit(), req.getUnitPurchasePrice(), "/unit",
+        if (oldPurchasePrice != null && req.getUnitPurchasePrice() != null && oldPurchasePrice.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal delta = req.getUnitPurchasePrice().subtract(oldPurchasePrice);
+            BigDecimal pct = delta.multiply(BigDecimal.valueOf(100)).divide(oldPurchasePrice, 2, RoundingMode.HALF_UP);
+            log.info("[Inventory-Purchase] Product {} purchase price changed: {} -> {} (delta: {}, {}%)",
+                    product.getName(), oldPurchasePrice, req.getUnitPurchasePrice(), delta, pct);
+        }
+
+        log.info("[Inventory-Purchase] Registered purchase: {} {} ({} /unit) -> +{} {} to stock for product {}",
+                req.getPurchaseQuantity(), product.getPurchaseUnit(), req.getUnitPurchasePrice(),
                 addedConsumption, product.getConsumptionUnit(), product.getName());
 
         return saved;

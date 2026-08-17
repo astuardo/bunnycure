@@ -7,19 +7,8 @@ import cl.bunnycure.service.ProductPriceMonitoringService;
 import cl.bunnycure.service.ProductImportService;
 import cl.bunnycure.service.PurchaseService;
 import cl.bunnycure.domain.repository.InventoryMovementRepository;
-import cl.bunnycure.web.dto.ApiResponse;
-import cl.bunnycure.web.dto.ConsumeRequestDto;
-import cl.bunnycure.web.dto.ErrorResponse;
-import cl.bunnycure.web.dto.ImportProductFromUrlRequestDto;
-import cl.bunnycure.web.dto.ProductDto;
-import cl.bunnycure.web.dto.ProductImportPreviewDto;
-import cl.bunnycure.web.dto.ProductResponseDto;
+import cl.bunnycure.web.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +22,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Tag(name = "Inventory", description = "Gestión de inventario y consumos")
+@Tag(name = "Inventory", description = "Gestión de inventario, consumos y compras")
 @RestController
 @RequestMapping("/api/inventory")
 @RequiredArgsConstructor
@@ -93,7 +82,6 @@ public class InventoryApiController {
             return ResponseEntity.noContent().build();
         } catch (DataIntegrityViolationException ex) {
             log.warn("No se pudo eliminar producto {}: está en uso", id);
-            // Return 400 with error message
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error("No se puede eliminar producto: está en uso", "PRODUCT_IN_USE"));
         }
     }
@@ -138,6 +126,34 @@ public class InventoryApiController {
         return ResponseEntity.ok(ApiResponse.success(movements));
     }
 
+    @Operation(summary = "Análisis de precios y variación histórica de compra por producto")
+    @GetMapping("/products/{id}/price-analysis")
+    public ResponseEntity<ApiResponse<ProductPriceAnalysisDto>> getProductPriceAnalysis(@PathVariable Long id) {
+        ProductPriceAnalysisDto analysis = inventoryService.getProductPriceAnalysis(id);
+        return ResponseEntity.ok(ApiResponse.success(analysis));
+    }
+
+    @Operation(summary = "Proyección de demanda de stock a 7 días y sugerencias de compra")
+    @GetMapping("/projections")
+    public ResponseEntity<ApiResponse<List<StockProjectionDto>>> getStockProjections() {
+        List<StockProjectionDto> projections = inventoryService.getStockProjections7Days();
+        return ResponseEntity.ok(ApiResponse.success(projections));
+    }
+
+    @Operation(summary = "Previsualización de insumos y cantidades a descontar para una cita")
+    @GetMapping("/appointments/{id}/supplies-preview")
+    public ResponseEntity<ApiResponse<AppointmentSuppliesPreviewDto>> getAppointmentSuppliesPreview(@PathVariable Long id) {
+        AppointmentSuppliesPreviewDto preview = inventoryService.getSuppliesPreviewForAppointment(id);
+        return ResponseEntity.ok(ApiResponse.success(preview));
+    }
+
+    @Operation(summary = "Completar cita con deducción confirmada o ajustada de insumos")
+    @PostMapping("/appointments/complete-with-supplies")
+    public ResponseEntity<ApiResponse<Void>> completeAppointmentWithSupplies(@Valid @RequestBody CompleteAppointmentWithSuppliesDto request) {
+        inventoryService.completeAppointmentWithSupplies(request, null);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
     private ProductResponseDto toDto(Product p) {
         return ProductResponseDto.builder()
                 .id(p.getId())
@@ -158,7 +174,7 @@ public class InventoryApiController {
     }
 
     private Product toEntity(ProductDto dto) {
-        Product p = Product.builder()
+        return Product.builder()
                 .name(dto.getName())
                 .purchasePrice(dto.getPurchasePrice())
                 .purchaseUrl(dto.getPurchaseUrl())
@@ -167,10 +183,8 @@ public class InventoryApiController {
                 .conversionFactor(dto.getConversionFactor())
                 .stockConsumptionUnit(dto.getStockConsumptionUnit())
                 .build();
-        return p;
     }
 
-    // Simple runtime exception to map to 404
     @ResponseStatus(HttpStatus.NOT_FOUND)
     static class ResourceNotFoundException extends RuntimeException {
         public ResourceNotFoundException(String msg) { super(msg); }
