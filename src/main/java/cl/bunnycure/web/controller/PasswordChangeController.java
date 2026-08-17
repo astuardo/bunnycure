@@ -15,6 +15,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.servlet.http.HttpSession;
 
+/**
+ * @deprecated En Fase 2, la vista de cambio de contraseña se deprecia a favor de la PWA React/Vite.
+ */
+@Deprecated(since = "Phase 2 - PWA Migration", forRemoval = true)
 @Slf4j
 @Controller
 @RequestMapping("/admin")

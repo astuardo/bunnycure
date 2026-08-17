@@ -14,6 +14,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * @deprecated En Fase 2, la vista de servicios del monolito se deprecia a favor de la PWA React/Vite.
+ */
+@Deprecated(since = "Phase 2 - PWA Migration", forRemoval = true)
 @Controller
 @RequestMapping("/admin/services")
 @RequiredArgsConstructor

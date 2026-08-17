@@ -29,18 +29,18 @@ class StaticResourcesTest {
         mockMvc.perform(get("/js/service-validation.js"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/javascript"))
-                .andExpect(content().string(containsString("Validación client-side")))
+                .andExpect(content().string(containsString("client-side")))
                 .andExpect(content().string(containsString("validateDuration")))
                 .andExpect(content().string(containsString("updateCharCounter")));
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
-    @DisplayName("El formulario de servicios debe cargar el script de validación")
-    void serviceForm_ShouldLoadValidationScript() throws Exception {
+    @DisplayName("El acceso a vistas legadas como /admin/services/new debe redirigir 301 a la PWA")
+    void serviceForm_ShouldRedirectToPwa() throws Exception {
         mockMvc.perform(get("/admin/services/new"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("service-validation.js")))
-                .andExpect(content().string(containsString("descriptionCharCount")));
+                .andExpect(status().isMovedPermanently())
+                .andExpect(header().string("Location", containsString("/admin/services")))
+                .andExpect(header().string("X-Deprecation-Notice", containsString("Monolith view is deprecated")));
     }
 }

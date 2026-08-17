@@ -22,6 +22,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import org.springframework.test.context.TestPropertySource;
+
 /**
  * Tests E2E para el controlador de Servicios (rubros)
  * Estos tests verifican el flujo completo desde la petición HTTP hasta la base de datos
@@ -29,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@TestPropertySource(properties = "app.monolith.deprecation.redirect-to-pwa=false")
 @DisplayName("E2E: Gestión de Servicios/Rubros")
 class ServiceCatalogControllerE2ETest {
 
@@ -374,7 +377,7 @@ class ServiceCatalogControllerE2ETest {
     void accessWithoutAuth_ShouldRedirectToLogin() throws Exception {
         mockMvc.perform(get("/admin/services"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrlPattern("**/login"));
+                .andExpect(header().string("Location", containsString("/login")));
     }
 
     @Test

@@ -1,16 +1,37 @@
 package cl.bunnycure.web.controller;
 
+import cl.bunnycure.service.PwaRedirectService;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
+/**
+ * @deprecated En Fase 2, las vistas del monolito se deprecian a favor de la PWA React/Vite.
+ * Las peticiones son redirigidas con HTTP 301 mediante {@link cl.bunnycure.config.PwaRedirectFilter}.
+ */
+@Deprecated(since = "Phase 2 - PWA Migration", forRemoval = true)
 @Controller
+@RequiredArgsConstructor
 public class HomeController {
 
+    private final PwaRedirectService pwaRedirectService;
+
     @GetMapping("/")
-    public String home(HttpServletRequest request) {
+    public Object home(HttpServletRequest request) {
+        if (pwaRedirectService.isRedirectionEnabled()) {
+            String redirectUrl = pwaRedirectService.resolvePwaRedirectUrl(request);
+            return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
+                    .header(HttpHeaders.LOCATION, redirectUrl)
+                    .header("X-Deprecation-Notice", "Monolith view is deprecated. Redirected to BunnyCure PWA.")
+                    .build();
+        }
+
         String host = request.getHeader("Host");
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         

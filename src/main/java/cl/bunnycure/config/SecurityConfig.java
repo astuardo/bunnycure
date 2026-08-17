@@ -31,18 +31,21 @@ public class SecurityConfig {
 	private final CorsConfigurationSource corsConfigurationSource;
 	private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	private final PwaRedirectFilter pwaRedirectFilter;
 
 	public SecurityConfig(
 			Environment env,
 			PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler,
 			CorsConfigurationSource corsConfigurationSource,
 			RestAuthenticationEntryPoint restAuthenticationEntryPoint,
-			@Lazy JwtAuthenticationFilter jwtAuthenticationFilter) {
+			@Lazy JwtAuthenticationFilter jwtAuthenticationFilter,
+			PwaRedirectFilter pwaRedirectFilter) {
 		this.env = env;
 		this.passwordChangeSuccessHandler = passwordChangeSuccessHandler;
 		this.corsConfigurationSource = corsConfigurationSource;
 		this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+		this.pwaRedirectFilter = pwaRedirectFilter;
 	}
 
 	@Bean
@@ -65,22 +68,22 @@ public class SecurityConfig {
 				auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll();
 			}
 			
-			// Login
+			// Login y recuperación de password
 			auth.requestMatchers("/login", "/login/**").permitAll();
 			auth.requestMatchers("/forgot-password", "/reset-password").permitAll();
 			
-			// Cambio de contraseña (requiere autenticación pero no puede ser bloqueado)
+			// Cambio de contraseña
 			auth.requestMatchers("/admin/change-password").authenticated();
 			
-			// Admin section: require ADMIN role
+			// Admin section: require ADMIN role (para monolito cuando PwaRedirectFilter está inactivo)
 			auth.requestMatchers("/admin/**").hasRole("ADMIN");
 			
 			// Portal público: GET y POST de reservas
 			auth.requestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit").permitAll();
 			
-			// API pública: búsqueda de clientes por teléfono
+			// API pública: búsqueda de clientes por teléfono y gift cards
 			auth.requestMatchers("/api/customers/lookup").permitAll();
-			auth.requestMatchers("/api/public/giftcards/**").permitAll();
+			auth.requestMatchers("/api/public/**").permitAll();
 			auth.requestMatchers("/w/**").permitAll();
 			
 			// API pública: servicios (para portal de reservas)
@@ -128,8 +131,9 @@ public class SecurityConfig {
 				.authenticationEntryPoint(restAuthenticationEntryPoint)
 		);
 
-		// ── JWT Filter ───────────────────────────────────────────────────
-		// Agregar filtro JWT antes del UsernamePasswordAuthenticationFilter
+		// ── PWA Redirect Filter & JWT Filter ───────────────────────────────────
+		// Redirecciona vistas legadas del monolito a la PWA con 301
+		http.addFilterBefore(pwaRedirectFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 		// Permite autenticación dual: JWT (móvil) + Session Cookie (desktop)
 		http.addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 

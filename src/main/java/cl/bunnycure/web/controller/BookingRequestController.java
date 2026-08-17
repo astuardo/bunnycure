@@ -15,6 +15,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
 
+/**
+ * @deprecated En Fase 2, la vista de solicitudes de reserva del monolito se deprecia a favor de la PWA React/Vite.
+ */
+@Deprecated(since = "Phase 2 - PWA Migration", forRemoval = true)
 @Controller
 @RequestMapping("/admin/booking-requests")
 @RequiredArgsConstructor

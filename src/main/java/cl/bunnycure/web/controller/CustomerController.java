@@ -16,6 +16,10 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+/**
+ * @deprecated En Fase 2, la vista de clientes del monolito se deprecia a favor de la PWA React/Vite.
+ */
+@Deprecated(since = "Phase 2 - PWA Migration", forRemoval = true)
 @Controller
 @RequestMapping("/customers")
 @RequiredArgsConstructor

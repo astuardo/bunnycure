@@ -9,6 +9,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Map;
 
+/**
+ * @deprecated En Fase 2, la vista de configuración del monolito se deprecia a favor de Settings en la PWA.
+ */
+@Deprecated(since = "Phase 2 - PWA Migration", forRemoval = true)
 @Controller
 @RequestMapping("/admin/settings")
 @RequiredArgsConstructor

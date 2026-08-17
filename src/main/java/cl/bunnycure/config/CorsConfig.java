@@ -19,19 +19,19 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
     
-    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:4173,http://localhost:3000}")
+    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:4173,http://localhost:3000,https://bunnycure-frontend.vercel.app}")
     private String allowedOriginsConfig;
     
-    @Value("${cors.allowed-origin-patterns:}")
+    @Value("${cors.allowed-origin-patterns:https://*.vercel.app,https://*.bunnycure.cl}")
     private String allowedOriginPatternsConfig;
     
-    @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,PATCH,OPTIONS}")
+    @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD}")
     private String allowedMethodsConfig;
     
-    @Value("${cors.allowed-headers:Authorization,Content-Type,Accept,Origin,X-XSRF-TOKEN,X-CSRF-TOKEN}")
+    @Value("${cors.allowed-headers:Authorization,Content-Type,Accept,Origin,X-XSRF-TOKEN,X-CSRF-TOKEN,X-Requested-With,Baggage,Sentry-Trace}")
     private String allowedHeadersConfig;
     
-    @Value("${cors.exposed-headers:}")
+    @Value("${cors.exposed-headers:Authorization,Location,Content-Disposition,Set-Cookie,X-XSRF-TOKEN,X-Deprecation-Notice}")
     private String exposedHeadersConfig;
     
     @Value("${cors.allow-credentials:true}")
@@ -45,13 +45,31 @@ public class CorsConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         
         // Orígenes permitidos (frontend URLs específicas)
-        List<String> origins = parseCsvList(allowedOriginsConfig);
-        configuration.setAllowedOrigins(origins);
+        List<String> rawOrigins = parseCsvList(allowedOriginsConfig);
+        List<String> origins = new ArrayList<>();
+        List<String> patterns = new ArrayList<>(parseCsvList(allowedOriginPatternsConfig));
+
+        for (String origin : rawOrigins) {
+            if ("*".equals(origin)) {
+                if (allowCredentials) {
+                    // Spring CORS no permite "*" en allowedOrigins cuando allowCredentials=true
+                    if (!patterns.contains("*")) {
+                        patterns.add("*");
+                    }
+                } else {
+                    origins.add(origin);
+                }
+            } else {
+                origins.add(origin);
+            }
+        }
+
+        if (!origins.isEmpty()) {
+            configuration.setAllowedOrigins(origins);
+        }
         
-        // Patrones de origen permitidos (para preview deployments)
-        // Ejemplo: https://*.vercel.app permite todos los preview deployments
-        if (!allowedOriginPatternsConfig.isEmpty()) {
-            List<String> patterns = parseCsvList(allowedOriginPatternsConfig);
+        // Patrones de origen permitidos (para preview deployments Vercel y subdominios)
+        if (!patterns.isEmpty()) {
             configuration.setAllowedOriginPatterns(patterns);
         }
         
@@ -63,7 +81,7 @@ public class CorsConfig {
         List<String> headers = parseCsvList(allowedHeadersConfig);
         configuration.setAllowedHeaders(headers);
         
-        // Headers expuestos en la respuesta (si se necesitan)
+        // Headers expuestos en la respuesta
         if (!exposedHeadersConfig.isEmpty()) {
             List<String> exposed = parseCsvList(exposedHeadersConfig);
             configuration.setExposedHeaders(exposed);
@@ -77,21 +95,17 @@ public class CorsConfig {
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         
-        // Aplicar CORS a rutas públicas y API
-        source.registerCorsConfiguration("/api/**", configuration);
-        source.registerCorsConfiguration("/login", configuration);
-        source.registerCorsConfiguration("/logout", configuration);
-        source.registerCorsConfiguration("/dashboard", configuration);
-        source.registerCorsConfiguration("/admin/**", configuration);
-        source.registerCorsConfiguration("/reservar/**", configuration);
-        source.registerCorsConfiguration("/forgot-password", configuration);
-        source.registerCorsConfiguration("/reset-password", configuration);
+        // Aplicar CORS globalmente a todas las rutas
+        source.registerCorsConfiguration("/**", configuration);
         
         return source;
     }
 
     private List<String> parseCsvList(String value) {
         List<String> entries = new ArrayList<>();
+        if (value == null) {
+            return entries;
+        }
 
         for (String item : value.split(",")) {
             String trimmed = item.trim();

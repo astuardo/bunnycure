@@ -48,6 +48,9 @@ class BookingControllerTest {
     @Mock
     private BookingRequestService bookingRequestService;
 
+    @Mock
+    private cl.bunnycure.service.PwaRedirectService pwaRedirectService;
+
     @InjectMocks
     private BookingController controller;
 
@@ -329,5 +332,16 @@ class BookingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("whatsappHandoffClientMessage", "¡Escríbenos ahora mismo!"))
                 .andExpect(model().attribute("messageTemplate", "Deseo agendar {servicio} para el {fecha}"));
+    }
+
+    @Test
+    void shouldRedirect301ToPwaWhenEnabled() throws Exception {
+        when(pwaRedirectService.isRedirectionEnabled()).thenReturn(true);
+        when(pwaRedirectService.resolvePwaRedirectUrl(any())).thenReturn("https://bunnycure-frontend.vercel.app/reservar");
+
+        mockMvc.perform(get("/reservar"))
+                .andExpect(status().isMovedPermanently())
+                .andExpect(header().string("Location", "https://bunnycure-frontend.vercel.app/reservar"))
+                .andExpect(header().string("X-Deprecation-Notice", "Monolith view is deprecated. Redirected to BunnyCure PWA."));
     }
 }

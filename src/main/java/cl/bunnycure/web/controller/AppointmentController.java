@@ -30,6 +30,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * @deprecated En Fase 2, la vista de agenda/citas del monolito se deprecia a favor de la PWA React/Vite.
+ */
+@Deprecated(since = "Phase 2 - PWA Migration", forRemoval = true)
 @Controller
 @RequestMapping("/appointments")
 @RequiredArgsConstructor

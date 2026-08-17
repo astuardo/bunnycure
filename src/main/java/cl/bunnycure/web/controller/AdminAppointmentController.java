@@ -14,6 +14,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * @deprecated En Fase 2, las vistas de administración de citas se deprecian a favor de la PWA React/Vite.
+ */
+@Deprecated(since = "Phase 2 - PWA Migration", forRemoval = true)
 @Slf4j
 @Controller
 @RequestMapping("/admin/appointments")

@@ -5,7 +5,12 @@ import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.service.AppSettingsService;
 import cl.bunnycure.service.BookingRequestService;
+import cl.bunnycure.service.PwaRedirectService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +18,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * @deprecated En Fase 2, la vista del Dashboard se deprecia a favor del módulo Dashboard de la PWA.
+ */
+@Deprecated(since = "Phase 2 - PWA Migration", forRemoval = true)
 @Controller
 @RequiredArgsConstructor
 public class DashboardController extends BaseController {
@@ -21,9 +30,17 @@ public class DashboardController extends BaseController {
     private final CustomerRepository    customerRepository;
     private final BookingRequestService bookingRequestService;
     private final AppSettingsService appSettingsService;
+    private final PwaRedirectService pwaRedirectService;
 
     @GetMapping("/dashboard")
-    public String dashboard(Model model) {
+    public Object dashboard(Model model, HttpServletRequest request) {
+        if (pwaRedirectService.isRedirectionEnabled()) {
+            String redirectUrl = pwaRedirectService.resolvePwaRedirectUrl(request);
+            return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
+                    .header(HttpHeaders.LOCATION, redirectUrl)
+                    .header("X-Deprecation-Notice", "Monolith view is deprecated. Redirected to BunnyCure PWA.")
+                    .build();
+        }
         LocalDate today = LocalDate.now();
 
         // Fecha formateada en Java para evitar problemas de escape en Thymeleaf

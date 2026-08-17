@@ -65,8 +65,8 @@ class BookingRequestServiceTest {
     @Test
     void approve_shouldUseAdminSelectedDateAndTime_insteadOfPreferredDate() {
         Long requestId = 169L;
-        LocalDate preferredDate = LocalDate.of(2026, 3, 20);
-        LocalDate approvedDate = LocalDate.of(2026, 3, 27);
+        LocalDate preferredDate = LocalDate.now().plusDays(2);
+        LocalDate approvedDate = LocalDate.now().plusDays(7);
         LocalTime approvedTime = LocalTime.of(16, 30);
 
         ServiceCatalog requestedService = ServiceCatalog.builder()
