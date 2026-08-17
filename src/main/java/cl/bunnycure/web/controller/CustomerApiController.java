@@ -263,11 +263,13 @@ public class CustomerApiController {
      * Convierte una entidad Customer a CustomerDto.
      */
     private CustomerDto toDto(Customer customer) {
+        if (customer == null) return null;
         return CustomerDto.builder()
                 .id(customer.getId())
                 .publicId(customer.getPublicId())
                 .fullName(customer.getFullName())
                 .phone(customer.getPhone())
+                .rut(customer.getRut())
                 .email(customer.getEmail())
                 .gender(customer.getGender())
                 .birthDate(customer.getBirthDate())
@@ -278,6 +280,8 @@ public class CustomerApiController {
                 .loyaltyStamps(customer.getLoyaltyStamps())
                 .totalCompletedVisits(customer.getTotalCompletedVisits())
                 .currentRewardIndex(customer.getCurrentRewardIndex())
+                .createdAt(customer.getCreatedAt())
+                .updatedAt(customer.getUpdatedAt())
                 .build();
     }
 

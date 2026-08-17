@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -37,7 +38,7 @@ public class CustomerDto {
     private String rut;
 
     @Email(message = "Email inválido")
-    private String email;  // Ahora es opcional
+    private String email;  // Opcional
 
     @Pattern(regexp = "^$|^(?i)(M|F|MASCULINO|FEMENINO|MALE|FEMALE)$", message = "El género debe ser M, F, Masculino o Femenino")
     private String gender;
@@ -59,4 +60,7 @@ public class CustomerDto {
     private Integer loyaltyStamps;
     private Integer totalCompletedVisits;
     private Integer currentRewardIndex;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
