@@ -31,18 +31,29 @@ public class StatsService {
 
         List<Appointment> monthAppointments = appointmentRepository.findByDateRangeWithCustomer(startOfMonth, endOfMonth);
         
-        // Filtrar solo las que no están canceladas para ingresos
+        // Filtrar solo las que no están canceladas
         List<Appointment> activeAppointments = monthAppointments.stream()
                 .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED)
                 .toList();
 
-        BigDecimal totalRevenue = BigDecimal.ZERO;
+        BigDecimal projectedRevenue = BigDecimal.ZERO;
+        BigDecimal completedRevenue = BigDecimal.ZERO;
+        long completedCount = 0;
+        long pendingOrConfirmedCount = 0;
+
         Map<Long, DashboardStatsDto.ServiceStatDto> serviceStatsMap = new HashMap<>();
         Map<Long, DashboardStatsDto.CustomerStatDto> customerStatsMap = new HashMap<>();
 
         for (Appointment apt : activeAppointments) {
             BigDecimal aptTotal = calculateAppointmentTotal(apt);
-            totalRevenue = totalRevenue.add(aptTotal);
+            projectedRevenue = projectedRevenue.add(aptTotal);
+
+            if (apt.getStatus() == AppointmentStatus.COMPLETED) {
+                completedRevenue = completedRevenue.add(aptTotal);
+                completedCount++;
+            } else {
+                pendingOrConfirmedCount++;
+            }
 
             // Estadísticas por cliente
             Long customerId = apt.getCustomer().getId();
@@ -84,8 +95,12 @@ public class StatsService {
                 .orElse(null);
 
         return DashboardStatsDto.builder()
-                .totalRevenueMonth(totalRevenue)
+                .totalRevenueMonth(projectedRevenue)
+                .completedRevenueMonth(completedRevenue)
+                .projectedRevenueMonth(projectedRevenue)
                 .totalAppointmentsMonth((long) activeAppointments.size())
+                .completedAppointmentsMonth(completedCount)
+                .pendingOrConfirmedAppointmentsMonth(pendingOrConfirmedCount)
                 .topServices(topServices)
                 .topCustomer(topCustomer)
                 .build();

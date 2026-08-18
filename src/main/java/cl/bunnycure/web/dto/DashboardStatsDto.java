@@ -12,8 +12,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DashboardStatsDto {
-    private BigDecimal totalRevenueMonth;
-    private Long totalAppointmentsMonth;
+    private BigDecimal totalRevenueMonth;          // Proyectado (citas activas)
+    private BigDecimal completedRevenueMonth;      // Real cobrado (citas completadas)
+    private BigDecimal projectedRevenueMonth;      // Alias explícito
+    private Long totalAppointmentsMonth;           // Total de citas activas del mes
+    private Long completedAppointmentsMonth;       // Citas completadas en el mes
+    private Long pendingOrConfirmedAppointmentsMonth; // Citas por atender en el mes
     private List<ServiceStatDto> topServices;
     private CustomerStatDto topCustomer;
 
