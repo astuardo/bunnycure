@@ -46,6 +46,7 @@ public class AppointmentApiController {
     private final WhatsAppHandoffService whatsAppHandoffService;
     private final SimpleApiService simpleApiService;
     private final NotificationService notificationService;
+    private final cl.bunnycure.service.AppointmentReminderService reminderService;
 
     @Operation(
             summary = "Listar citas",
@@ -370,6 +371,22 @@ public class AppointmentApiController {
         result.put("status", "DISPATCHED");
         
         log.info("[API] WhatsApp review template dispatched for appointment {} to {}", id, appointment.getCustomer().getPhone());
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @Operation(
+            summary = "Enviar recordatorio de cita por WhatsApp",
+            description = "Despacha recordatorio individual de WhatsApp para la cita indicada.")
+    @PostMapping("/{id}/whatsapp/reminder")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> sendWhatsAppReminder(
+            @Parameter(description = "ID de la cita", required = true)
+            @PathVariable Long id) {
+        log.info("[API] Manual reminder dispatch requested for appointment {}", id);
+        reminderService.sendManualReminder(id);
+        Map<String, Object> result = new HashMap<>();
+        result.put("appointmentId", id);
+        result.put("status", "DISPATCHED");
+        result.put("message", "Recordatorio enviado correctamente");
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

@@ -35,6 +35,7 @@ public class CustomerApiController {
 
     private final CustomerService customerService;
     private final GoogleWalletService googleWalletService;
+    private final cl.bunnycure.service.CustomerServiceRecordService customerServiceRecordService;
 
     @Value("${bunnycure.google.wallet.qr-base-url:}")
     private String walletQrBaseUrl;
@@ -248,6 +249,94 @@ public class CustomerApiController {
         response.put("qrUrl", qrUrl);
 
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "Listar registros de servicio y fotos del cliente")
+    @GetMapping("/{id}/service-records")
+    public ResponseEntity<ApiResponse<List<CustomerServiceRecordResponseDto>>> listServiceRecords(
+            @PathVariable Long id) {
+        var records = customerServiceRecordService.findLatestByCustomerId(id);
+        List<CustomerServiceRecordResponseDto> dtos = records.stream()
+                .map(r -> CustomerServiceRecordResponseDto.builder()
+                        .id(r.getId())
+                        .customerId(id)
+                        .serviceDetail(r.getServiceDetail())
+                        .photoCaption(r.getPhotoCaption())
+                        .mimeType(r.getMimeType())
+                        .hasPhoto(r.getPhotoData() != null && r.getPhotoData().length > 0)
+                        .createdAt(r.getCreatedAt())
+                        .build())
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(dtos));
+    }
+
+    @Operation(summary = "Crear nuevo registro de servicio con foto para el cliente")
+    @PostMapping("/{id}/service-records")
+    public ResponseEntity<ApiResponse<CustomerServiceRecordResponseDto>> createServiceRecord(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateCustomerServiceRecordRequestDto request) {
+        byte[] photoBytes = null;
+        if (request.getPhotoBase64() != null && !request.getPhotoBase64().isBlank()) {
+            String base64Data = request.getPhotoBase64();
+            if (base64Data.contains(",")) {
+                base64Data = base64Data.substring(base64Data.indexOf(",") + 1);
+            }
+            try {
+                photoBytes = java.util.Base64.getDecoder().decode(base64Data);
+            } catch (IllegalArgumentException e) {
+                log.warn("[API] Base64 inválido para foto de servicio: {}", e.getMessage());
+            }
+        }
+
+        var saved = customerServiceRecordService.createDirectRecord(
+                id,
+                request.getServiceDetail(),
+                request.getPhotoCaption(),
+                photoBytes,
+                request.getMimeType()
+        );
+
+        CustomerServiceRecordResponseDto dto = CustomerServiceRecordResponseDto.builder()
+                .id(saved.getId())
+                .customerId(id)
+                .serviceDetail(saved.getServiceDetail())
+                .photoCaption(saved.getPhotoCaption())
+                .mimeType(saved.getMimeType())
+                .hasPhoto(saved.getPhotoData() != null && saved.getPhotoData().length > 0)
+                .createdAt(saved.getCreatedAt())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(dto));
+    }
+
+    @Operation(summary = "Obtener foto binaria de un registro de servicio")
+    @GetMapping("/{id}/service-records/{recordId}/photo")
+    public ResponseEntity<byte[]> getServiceRecordPhoto(
+            @PathVariable Long id,
+            @PathVariable Long recordId) {
+        var recordOpt = customerServiceRecordService.findById(recordId);
+        if (recordOpt.isEmpty() || recordOpt.get().getPhotoData() == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var record = recordOpt.get();
+        String mime = record.getMimeType() != null ? record.getMimeType() : "image/jpeg";
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, mime)
+                .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .body(record.getPhotoData());
+    }
+
+    @Operation(summary = "Eliminar registro de servicio del cliente")
+    @DeleteMapping("/{id}/service-records/{recordId}")
+    public ResponseEntity<ApiResponse<Void>> deleteServiceRecord(
+            @PathVariable Long id,
+            @PathVariable Long recordId) {
+        boolean deleted = customerServiceRecordService.deleteByIdForCustomer(recordId, id);
+        if (!deleted) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
     }
 
     /**

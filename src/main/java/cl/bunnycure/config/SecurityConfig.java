@@ -1,9 +1,7 @@
 package cl.bunnycure.config;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -11,8 +9,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
@@ -27,7 +23,6 @@ import java.util.Arrays;
 public class SecurityConfig {
 
 	private final Environment env;
-	private final PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler;
 	private final CorsConfigurationSource corsConfigurationSource;
 	private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -35,13 +30,11 @@ public class SecurityConfig {
 
 	public SecurityConfig(
 			Environment env,
-			PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler,
 			CorsConfigurationSource corsConfigurationSource,
 			RestAuthenticationEntryPoint restAuthenticationEntryPoint,
 			JwtAuthenticationFilter jwtAuthenticationFilter,
 			PwaRedirectFilter pwaRedirectFilter) {
 		this.env = env;
-		this.passwordChangeSuccessHandler = passwordChangeSuccessHandler;
 		this.corsConfigurationSource = corsConfigurationSource;
 		this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -68,18 +61,9 @@ public class SecurityConfig {
 				auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll();
 			}
 			
-			// Login y recuperación de password
-			auth.requestMatchers("/login", "/login/**").permitAll();
-			auth.requestMatchers("/forgot-password", "/reset-password").permitAll();
-			
-			// Cambio de contraseña
-			auth.requestMatchers("/admin/change-password").authenticated();
-			
-			// Admin section: require ADMIN role (para monolito cuando PwaRedirectFilter está inactivo)
-			auth.requestMatchers("/admin/**").hasRole("ADMIN");
-			
-			// Portal público: GET y POST de reservas
-			auth.requestMatchers("/", "/reservar", "/reservar/**", "/reservar/submit").permitAll();
+			// Rutas públicas de vistas (manejadas por PwaRedirectFilter hacia la PWA)
+			auth.requestMatchers("/", "/reservar", "/reservar/**", "/login", "/forgot-password", "/reset-password").permitAll();
+			auth.requestMatchers("/admin/**", "/dashboard/**", "/appointments/**", "/customers/**").permitAll();
 			
 			// API pública: búsqueda de clientes por teléfono y gift cards
 			auth.requestMatchers("/api/customers/lookup").permitAll();
@@ -93,15 +77,21 @@ public class SecurityConfig {
 			auth.requestMatchers("/api/auth/login", "/api/auth/logout", "/api/auth/refresh").permitAll();
 			auth.requestMatchers("/api/auth/csrf").permitAll();
 			
+			// Notificaciones Web Push (VAPID)
+			auth.requestMatchers("/api/push-subscriptions/**").permitAll();
+			
 			// API REST endpoints (requieren autenticación)
-			auth.requestMatchers("/api/auth/**").authenticated(); // otros endpoints de autenticación
-			auth.requestMatchers("/api/users/**").hasRole("ADMIN"); // gestión de usuarios solo para ADMIN
-			auth.requestMatchers("/api/settings/**").hasRole("ADMIN"); // configuración del sistema solo para ADMIN
-			auth.requestMatchers("/api/inventory/**").hasRole("ADMIN"); // inventario y consumos solo para ADMIN
+			auth.requestMatchers("/api/auth/**").authenticated();
+			auth.requestMatchers("/api/users/**").hasRole("ADMIN");
+			auth.requestMatchers("/api/settings/**").hasRole("ADMIN");
+			auth.requestMatchers("/api/inventory/**").hasRole("ADMIN");
 			auth.requestMatchers("/api/appointments/**").authenticated();
-			auth.requestMatchers("/api/customers/**").authenticated(); // excepto /lookup que ya está permitido arriba
-			auth.requestMatchers("/api/services/**").authenticated(); // excepto GET /services que ya está permitido arriba
+			auth.requestMatchers("/api/customers/**").authenticated();
+			auth.requestMatchers("/api/services/**").authenticated();
 			auth.requestMatchers("/api/booking-requests/**").authenticated();
+			auth.requestMatchers("/api/reminders/**").authenticated();
+			auth.requestMatchers("/api/loyalty-rewards/**").authenticated();
+			auth.requestMatchers("/api/stats/**").authenticated();
 			
 			// Webhook de WhatsApp (solo endpoint oficial público)
 			auth.requestMatchers(HttpMethod.GET, "/api/webhooks/whatsapp").permitAll();
@@ -137,26 +127,6 @@ public class SecurityConfig {
 		// Permite autenticación dual: JWT (móvil) + Session Cookie (desktop)
 		http.addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
-		// ── Login ─────────────────────────────────────────────────────────────
-		http.formLogin(form -> form
-				.loginPage("/login")
-				.loginProcessingUrl("/login")
-				.successHandler(passwordChangeSuccessHandler)
-				.failureUrl("/login?error=true")
-				.usernameParameter("username")
-				.passwordParameter("password")
-				.permitAll()
-		);
-
-		// ── Logout ────────────────────────────────────────────────────────────
-		http.logout(logout -> logout
-				.logoutUrl("/logout")
-				.logoutSuccessUrl("/login?logout=true")
-				.invalidateHttpSession(true)
-				.deleteCookies("JSESSIONID")
-				.permitAll()
-		);
-
 		// ── Headers según perfil ──────────────────────────────────────────────
 		http.csrf(csrf -> csrf
 				.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
@@ -181,10 +151,6 @@ public class SecurityConfig {
 		return http.build();
 	}
 
-	// ── UserDetails ───────────────────────────────────────────────────────────
-	// Nota: UserDetailsService se obtiene automáticamente desde UserService
-	// que implementa UserDetailsService y carga usuarios desde BD
-
 	@Bean
 	public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
 		return authConfig.getAuthenticationManager();
@@ -202,6 +168,7 @@ public class SecurityConfig {
 					new AntPathRequestMatcher("/api/customers/lookup"),
 					new AntPathRequestMatcher("/api/public/**"),
 					new AntPathRequestMatcher("/api/webhooks/**"),
+					new AntPathRequestMatcher("/api/push-subscriptions/**"),
 					new AntPathRequestMatcher("/login"),
 					new AntPathRequestMatcher("/forgot-password"),
 					new AntPathRequestMatcher("/reset-password")
@@ -217,6 +184,7 @@ public class SecurityConfig {
 				new AntPathRequestMatcher("/api/customers/lookup"),
 				new AntPathRequestMatcher("/api/public/**"),
 				new AntPathRequestMatcher("/api/webhooks/**"),
+				new AntPathRequestMatcher("/api/push-subscriptions/**"),
 				new AntPathRequestMatcher("/login"),
 				new AntPathRequestMatcher("/forgot-password"),
 				new AntPathRequestMatcher("/reset-password")
@@ -227,16 +195,4 @@ public class SecurityConfig {
 		String authorization = request.getHeader("Authorization");
 		return authorization != null && authorization.startsWith("Bearer ");
 	}
-
-	/**
-	 * NOTA: La configuración de cookies de sesión se maneja en application-heroku.properties:
-	 * - server.servlet.session.timeout=8h
-	 * - server.servlet.session.cookie.max-age=28800
-	 * - server.servlet.session.cookie.same-site=none
-	 * - server.servlet.session.cookie.secure=true
-	 * - server.servlet.session.cookie.http-only=true
-	 * 
-	 * Estas propiedades configuran automáticamente la cookie JSESSIONID
-	 * con persistencia de 8 horas y soporte cross-origin para PWA móvil.
-	 */
 }

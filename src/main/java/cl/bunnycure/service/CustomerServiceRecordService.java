@@ -56,6 +56,27 @@ public class CustomerServiceRecordService {
     }
 
     @Transactional
+    public CustomerServiceRecord createDirectRecord(Long customerId, String serviceDetail, String photoCaption, byte[] photoData, String mimeType) {
+        Customer customer = customerService.findById(customerId);
+
+        CustomerServiceRecord record = new CustomerServiceRecord();
+        record.setCustomer(customer);
+        record.setSourceMessageId("pwa_" + java.util.UUID.randomUUID().toString());
+        record.setWhatsappMediaId("pwa_media_" + java.util.UUID.randomUUID().toString());
+        record.setSourceFromPhone("pwa");
+        record.setClientPhoneInPayload(customer.getPhone() != null ? customer.getPhone() : "");
+        record.setServiceDetail(serviceDetail != null ? serviceDetail : "Servicio");
+        record.setPhotoCaption(photoCaption);
+        record.setMimeType(mimeType != null ? mimeType : "image/jpeg");
+        record.setPhotoData(photoData);
+
+        CustomerServiceRecord saved = customerServiceRecordRepository.save(record);
+        applyFifoLimit(saved.getCustomer().getId());
+        log.info("[RECORD] ✅ Registro de servicio directo creado. id={} customerId={}", saved.getId(), customerId);
+        return saved;
+    }
+
+    @Transactional
     public Optional<CustomerServiceRecord> registerFromIncomingImage(WhatsAppWebhookDto.Message message) {
         if (message == null || message.getImage() == null) {
             return Optional.empty();
