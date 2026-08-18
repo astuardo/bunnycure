@@ -39,6 +39,16 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     """)
     List<Object[]> findAllWithAppointmentCount();
 
+    @Query("""
+        SELECT c, COUNT(a) as appointmentCount
+        FROM Customer c
+        LEFT JOIN c.appointments a
+        WHERE LOWER(c.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
+        GROUP BY c
+        ORDER BY c.fullName ASC
+    """)
+    List<Object[]> searchWithAppointmentCount(@org.springframework.data.repository.query.Param("query") String query);
+
     @Query("SELECT COUNT(a) FROM Appointment a WHERE a.customer.id = :customerId")
     long countAppointmentsByCustomerId(Long customerId);
 }

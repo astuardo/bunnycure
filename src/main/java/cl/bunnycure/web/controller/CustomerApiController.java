@@ -2,11 +2,8 @@ package cl.bunnycure.web.controller;
 
 import cl.bunnycure.domain.model.Customer;
 import cl.bunnycure.service.CustomerService;
-import cl.bunnycure.web.dto.ApiResponse;
-import cl.bunnycure.web.dto.CustomerDto;
-import cl.bunnycure.web.dto.CustomerLookupResponseDto;
-import cl.bunnycure.web.dto.CustomerSummary;
-import cl.bunnycure.web.dto.ErrorResponse;
+import cl.bunnycure.service.GoogleWalletService;
+import cl.bunnycure.web.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -24,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * REST API Controller para gestión de clientes.
@@ -38,7 +34,8 @@ import java.util.stream.Collectors;
 public class CustomerApiController {
 
     private final CustomerService customerService;
-    private final cl.bunnycure.service.GoogleWalletService googleWalletService;
+    private final GoogleWalletService googleWalletService;
+
     @Value("${bunnycure.google.wallet.qr-base-url:}")
     private String walletQrBaseUrl;
 
@@ -46,7 +43,7 @@ public class CustomerApiController {
             summary = "Listar clientes",
             description = """
                     Obtiene lista de todos los clientes o filtra por búsqueda de texto.
-                    La búsqueda es case-insensitive y busca en el nombre completo.
+                    La búsqueda es case-insensitive y busca en el nombre completo con conteo agregado.
                     """)
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -62,19 +59,14 @@ public class CustomerApiController {
     public ResponseEntity<ApiResponse<List<CustomerSummary>>> list(
             @Parameter(description = "Texto de búsqueda en nombre del cliente")
             @RequestParam(required = false) String search) {
-        
-        List<Customer> customers;
-        
+
+        List<CustomerSummary> summaries;
         if (search != null && !search.isBlank()) {
-            customers = customerService.search(search);
+            summaries = customerService.searchSummary(search);
         } else {
-            customers = customerService.findAll();
+            summaries = customerService.findAllSummary();
         }
-        
-        List<CustomerSummary> summaries = customers.stream()
-                .map(this::toSummary)
-                .collect(Collectors.toList());
-        
+
         return ResponseEntity.ok(ApiResponse.success(summaries));
     }
 
@@ -97,10 +89,10 @@ public class CustomerApiController {
     public ResponseEntity<ApiResponse<CustomerDto>> getById(
             @Parameter(description = "ID del cliente", required = true)
             @PathVariable Long id) {
-        
+
         Customer customer = customerService.findById(id);
         CustomerDto dto = toDto(customer);
-        
+
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
@@ -125,12 +117,12 @@ public class CustomerApiController {
     @PostMapping
     public ResponseEntity<ApiResponse<CustomerDto>> create(
             @Valid @RequestBody CustomerDto request) {
-        
+
         log.info("[API] Creating customer: {}", request.getFullName());
-        
+
         Customer created = customerService.create(request);
         CustomerDto dto = toDto(created);
-        
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(dto));
     }
@@ -154,14 +146,13 @@ public class CustomerApiController {
     public ResponseEntity<ApiResponse<CustomerDto>> update(
             @Parameter(description = "ID del cliente", required = true)
             @PathVariable Long id,
-            
             @Valid @RequestBody CustomerDto request) {
-        
+
         log.info("[API] Updating customer {}", id);
-        
+
         Customer updated = customerService.update(id, request);
         CustomerDto dto = toDto(updated);
-        
+
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
@@ -191,11 +182,11 @@ public class CustomerApiController {
     public ResponseEntity<ApiResponse<Void>> delete(
             @Parameter(description = "ID del cliente", required = true)
             @PathVariable Long id) {
-        
+
         log.info("[API] Deleting customer {}", id);
-        
+
         customerService.delete(id);
-        
+
         return ResponseEntity.noContent().build();
     }
 
@@ -230,7 +221,7 @@ public class CustomerApiController {
     public ResponseEntity<ApiResponse<CustomerDto>> adjustLoyalty(
             @PathVariable Long id,
             @RequestParam int delta) {
-        
+
         log.info("[API] Adjusting loyalty for customer {}: delta={}", id, delta);
         Customer updated = customerService.adjustLoyaltyStamps(id, delta);
         return ResponseEntity.ok(ApiResponse.success(toDto(updated)));
@@ -240,7 +231,7 @@ public class CustomerApiController {
     @GetMapping("/{id}/wallet/google-link")
     public ResponseEntity<ApiResponse<java.util.Map<String, String>>> getGoogleWalletLink(
             @PathVariable Long id) {
-        
+
         log.info("[API] Generating Google Wallet link for customer {}", id);
         Customer customer = customerService.findById(id);
         String url = googleWalletService.createWalletLink(customer);
@@ -255,7 +246,7 @@ public class CustomerApiController {
         java.util.Map<String, String> response = new java.util.HashMap<>();
         response.put("url", url);
         response.put("qrUrl", qrUrl);
-        
+
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -284,12 +275,4 @@ public class CustomerApiController {
                 .updatedAt(customer.getUpdatedAt())
                 .build();
     }
-
-    /**
-     * Convierte una entidad Customer a CustomerSummary.
-     */
-    private CustomerSummary toSummary(Customer customer) {
-        return new CustomerSummary(customer, 0);
-    }
 }
-

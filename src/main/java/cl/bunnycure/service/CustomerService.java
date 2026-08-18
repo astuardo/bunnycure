@@ -61,11 +61,12 @@ public class CustomerService {
     }
 
     public List<CustomerSummary> searchSummary(String query) {
-        // Para búsqueda usamos findByFullNameContaining y contamos en memoria
-        return customerRepository.findByFullNameContainingIgnoreCase(query)
+        if (query == null || query.isBlank()) {
+            return findAllSummary();
+        }
+        return customerRepository.searchWithAppointmentCount(query.trim())
                 .stream()
-                .map(c -> new CustomerSummary(c,
-                        customerRepository.countAppointmentsByCustomerId(c.getId())))
+                .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]))
                 .toList();
     }
 

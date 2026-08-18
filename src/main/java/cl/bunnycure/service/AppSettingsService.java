@@ -3,6 +3,8 @@ package cl.bunnycure.service;
 import cl.bunnycure.domain.model.AppSettings;
 import cl.bunnycure.domain.repository.AppSettingsRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,18 +18,21 @@ public class AppSettingsService {
 
     private final AppSettingsRepository repository;
 
+    @Cacheable(value = "appSettings", key = "#key")
     public String get(String key, String defaultValue) {
         return repository.findById(key)
                 .map(AppSettings::getValue)
                 .orElse(defaultValue);
     }
 
+    @Cacheable(value = "appSettings", key = "#key + ':bool'")
     public boolean getBoolean(String key, boolean defaultValue) {
         return repository.findById(key)
                 .map(s -> Boolean.parseBoolean(s.getValue()))
                 .orElse(defaultValue);
     }
 
+    @CacheEvict(value = "appSettings", allEntries = true)
     @Transactional
     public void set(String key, String value) {
         var setting = repository.findById(key)
@@ -36,9 +41,20 @@ public class AppSettingsService {
         repository.save(setting);
     }
 
+    @CacheEvict(value = "appSettings", allEntries = true)
     @Transactional
     public void saveAll(Map<String, String> settings) {
-        settings.forEach(this::set);
+        settings.forEach((k, v) -> {
+            var setting = repository.findById(k)
+                    .orElse(new AppSettings(k, v, null));
+            setting.setValue(v);
+            repository.save(setting);
+        });
+    }
+
+    @CacheEvict(value = "appSettings", allEntries = true)
+    public void clearCache() {
+        // Invalida toda la caché de appSettings
     }
 
     // ── Claves tipadas ────────────────────────────────────────────────────
