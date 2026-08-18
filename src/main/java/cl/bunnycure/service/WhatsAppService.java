@@ -726,7 +726,7 @@ public class WhatsAppService {
 
     /**
      * Envía la plantilla valoracion_servicio_google de Meta para solicitar reseña en Google.
-     * HEADER {{1}}=cliente, BODY {{1}}=servicio
+     * BODY {{1}}=cliente, BODY {{2}}=servicio
      */
     @Async
     public void sendValoracionServicioGoogleTemplate(Appointment appointment) {
@@ -760,8 +760,8 @@ public class WhatsAppService {
                 phone,
                 config.getReviewTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                cliente,
-                List.of(servicio),
+                null,
+                Arrays.asList(cliente, servicio),
                 appointment
         );
     }

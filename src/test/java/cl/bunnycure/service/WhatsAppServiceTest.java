@@ -352,6 +352,18 @@ class WhatsAppServiceTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> template = (Map<String, Object>) body.get("template");
         assertEquals("valoracion_servicio_google", template.get("name"));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> components = (List<Map<String, Object>>) template.get("components");
+        assertNotNull(components);
+        assertEquals(1, components.size());
+        assertEquals("body", components.get(0).get("type"));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> params = (List<Map<String, String>>) components.get(0).get("parameters");
+        assertEquals(2, params.size());
+        assertEquals("María González", params.get(0).get("text"));
+        assertEquals("Manicure Clásica", params.get(1).get("text"));
     }
 
     @Test
