@@ -73,18 +73,18 @@ public class HerokuDataSourceConfig {
         config.addDataSourceProperty("loginTimeout", "30");
         
         // Pool configuration for Heroku Eco/Basic with background schedulers
-        config.setMaximumPoolSize(5);
-        config.setMinimumIdle(3);                   // Mantener 3 conexiones cálidas listas
+        config.setMaximumPoolSize(10);              // Capacidad para hasta 10 hilos/consultas concurrentes
+        config.setMinimumIdle(5);                   // Mantener 5 conexiones cálidas listas para respuesta instantánea
         config.setKeepaliveTime(30000);             // Ping periódico de 30s para evitar cortes de NAT en AWS RDS
         config.setIdleTimeout(300000);              // 5 minutos
         config.setMaxLifetime(1200000);             // 20 minutos
-        config.setConnectionTimeout(30000);         // 30s
-        config.setValidationTimeout(5000);          // 5s
+        config.setConnectionTimeout(20000);         // 20s
+        config.setValidationTimeout(3000);          // 3s
         config.setInitializationFailTimeout(60000); // 60s en arranque inicial
         config.setLeakDetectionThreshold(60000);
         config.setAutoCommit(true);
         
-        System.out.println("✅ HikariCP Configured with SSL & KeepAlive (maxPoolSize=5, minIdle=3, keepaliveTime=30s, connectionTimeout=30s)");
+        System.out.println("✅ HikariCP Configured with SSL & KeepAlive (maxPoolSize=10, minIdle=5, keepaliveTime=30s, connectionTimeout=20s)");
         
         return new HikariDataSource(config);
     }

@@ -44,6 +44,8 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
         FROM Customer c
         LEFT JOIN c.appointments a
         WHERE LOWER(c.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
+           OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :query, '%'))
+           OR LOWER(c.rut) LIKE LOWER(CONCAT('%', :query, '%'))
         GROUP BY c
         ORDER BY c.fullName ASC
     """)
