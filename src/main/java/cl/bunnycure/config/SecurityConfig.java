@@ -38,7 +38,7 @@ public class SecurityConfig {
 			PasswordChangeAuthenticationSuccessHandler passwordChangeSuccessHandler,
 			CorsConfigurationSource corsConfigurationSource,
 			RestAuthenticationEntryPoint restAuthenticationEntryPoint,
-			@Lazy JwtAuthenticationFilter jwtAuthenticationFilter,
+			JwtAuthenticationFilter jwtAuthenticationFilter,
 			PwaRedirectFilter pwaRedirectFilter) {
 		this.env = env;
 		this.passwordChangeSuccessHandler = passwordChangeSuccessHandler;
@@ -188,11 +188,6 @@ public class SecurityConfig {
 	@Bean
 	public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
 		return authConfig.getAuthenticationManager();
-	}
-
-	@Bean
-	public PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder();
 	}
 
 	private RequestMatcher[] csrfIgnoredMatchers(boolean isLocal) {

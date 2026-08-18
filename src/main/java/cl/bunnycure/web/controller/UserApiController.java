@@ -355,20 +355,17 @@ public class UserApiController {
             
             @Valid @RequestBody ChangePasswordRequest request) {
         
-        try {
-            User user = userService.findById(id);
-            
-            log.info("[API] Cambiando contraseña del usuario: {}", user.getUsername());
-            
-            userService.changePassword(id, request.getNewPassword());
-            
-            return ResponseEntity.ok(ApiResponse.success("Contraseña actualizada exitosamente"));
-            
-        } catch (RuntimeException e) {
-            log.error("[API] Error al cambiar contraseña del usuario {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.error("Usuario no encontrado", "USER_NOT_FOUND"));
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new cl.bunnycure.exception.ValidationException("La nueva contraseña y la confirmación no coinciden");
         }
+        
+        User user = userService.findById(id);
+        
+        log.info("[API] Cambiando contraseña del usuario: {}", user.getUsername());
+        
+        userService.changePassword(id, request.getNewPassword());
+        
+        return ResponseEntity.ok(ApiResponse.success("Contraseña actualizada exitosamente"));
     }
 
     /**

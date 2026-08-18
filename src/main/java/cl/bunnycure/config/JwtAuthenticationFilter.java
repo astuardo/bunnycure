@@ -69,14 +69,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Extraer el token JWT
         jwt = authHeader.substring(7);
-        log.info("[JWT-FILTER] ========== JWT DETECTADO ==========");
-        log.info("[JWT-FILTER] Request: {} {}", method, requestUri);
-        log.info("[JWT-FILTER] Procesando token JWT recibido");
+        log.debug("[JWT-FILTER] Request: {} {}", method, requestUri);
 
         try {
             // Extraer username del token
             username = jwtService.extractUsername(jwt);
-            log.info("[JWT-FILTER] Username extraído del token: {}", username);
+            log.debug("[JWT-FILTER] Username extraído del token: {}", username);
 
             // Si hay username y el usuario no está ya autenticado
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -88,7 +86,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 // Validar el token
                 if (jwtService.validateToken(jwt, userDetails)) {
-                    log.info("[JWT-FILTER] ✓ Token VÁLIDO para usuario: {}", username);
+                    log.debug("[JWT-FILTER] ✓ Token VÁLIDO para usuario: {}", username);
 
                     // Crear authentication token
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -103,8 +101,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     // Setear en el contexto de seguridad
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    log.info("[JWT-FILTER] ✓ Usuario autenticado vía JWT: {}", username);
-                    log.info("[JWT-FILTER] =========================================");
+                    log.debug("[JWT-FILTER] ✓ Usuario autenticado vía JWT: {}", username);
                 } else {
                     log.warn("[JWT-FILTER] ✗ Token INVÁLIDO o EXPIRADO");
                 }
