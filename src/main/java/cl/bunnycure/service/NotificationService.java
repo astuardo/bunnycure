@@ -124,6 +124,34 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Envía la plantilla de valoración/reseña en Google por WhatsApp a la clienta.
+     * Respeta la preferencia de notificaciones (NotificationPreference.allowsWhatsApp()).
+     */
+    @Async
+    public void sendAppointmentReviewRequest(Appointment appointment) {
+        if (appointment == null || appointment.getCustomer() == null) {
+            return;
+        }
+
+        Customer customer = appointment.getCustomer();
+        cl.bunnycure.domain.enums.NotificationPreference pref = customer.getNotificationPreference();
+
+        if (pref != null && pref.allowsWhatsApp() && customer.getPhone() != null && !customer.getPhone().isBlank()) {
+            log.info("[NOTIFICATION] Enviando solicitud de valoración de Google por WhatsApp a {}", 
+                    customer.getPhone());
+            whatsAppService.sendValoracionServicioGoogleTemplate(appointment);
+        } else {
+            log.info("[NOTIFICATION-SKIP] Cliente {} no permite WhatsApp o no tiene teléfono configurado",
+                    customer.getFullName());
+        }
+    }
+
+    @Async
+    public void sendGoogleReviewRequest(Appointment appointment) {
+        sendAppointmentReviewRequest(appointment);
+    }
+
     // ── Solicitudes de reserva ───────────────────────────────────────────────
 
     /**

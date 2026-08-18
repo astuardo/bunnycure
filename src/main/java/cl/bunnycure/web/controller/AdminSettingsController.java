@@ -56,6 +56,7 @@ public class AdminSettingsController {
         model.addAttribute("waTemplateBookingRejectedName", settingsService.get("whatsapp.template.booking-rejected.name", "solicitud_rechazada"));
         model.addAttribute("waTemplateAdminAlertName", settingsService.get("whatsapp.template.admin-alert.name", ""));
         model.addAttribute("waTemplateAdminAppointmentAlertName", settingsService.get("whatsapp.template.admin-appointment-alert.name", "confirmacion_hora"));
+        model.addAttribute("waTemplateReviewName", settingsService.get("whatsapp.template.review.name", "valoracion_servicio_google"));
         model.addAttribute("waTemplateLanguage", settingsService.get("whatsapp.template.language", "es_CL"));
         model.addAttribute("waTemplateAdminAlertLanguage", settingsService.get("whatsapp.template.admin-alert.language", "es_CL"));
         model.addAttribute("waTemplateConfirmationEnabled", settingsService.getBoolean("whatsapp.template.confirmation.enabled", true));
@@ -65,6 +66,7 @@ public class AdminSettingsController {
         model.addAttribute("waTemplateBookingRejectedEnabled", settingsService.getBoolean("whatsapp.template.booking-rejected.enabled", true));
         model.addAttribute("waTemplateAdminAlertEnabled", settingsService.getBoolean("whatsapp.template.admin-alert.enabled", false));
         model.addAttribute("waTemplateAdminAppointmentAlertEnabled", settingsService.getBoolean("whatsapp.template.admin-appointment-alert.enabled", true));
+        model.addAttribute("waTemplateReviewEnabled", settingsService.getBoolean("whatsapp.template.review.enabled", true));
         model.addAttribute("waAdminBookingRequestsUrl", settingsService.get("whatsapp.admin.booking-requests.url", ""));
         model.addAttribute("waBusinessName", settingsService.get("whatsapp.business.name", settingsService.getAppName()));
         model.addAttribute("whatsappHandoffClientMessage", settingsService.getWhatsappHandoffClientMessage());
@@ -147,6 +149,7 @@ public class AdminSettingsController {
                 Map.entry("whatsapp.template.booking-rejected.name", params.getOrDefault("waTemplateBookingRejectedName", "solicitud_rechazada")),
                 Map.entry("whatsapp.template.admin-alert.name", params.getOrDefault("waTemplateAdminAlertName", "")),
                 Map.entry("whatsapp.template.admin-appointment-alert.name", params.getOrDefault("waTemplateAdminAppointmentAlertName", "confirmacion_hora")),
+                Map.entry("whatsapp.template.review.name", params.getOrDefault("waTemplateReviewName", "valoracion_servicio_google")),
                 Map.entry("whatsapp.template.language", params.getOrDefault("waTemplateLanguage", "es_CL")),
                 Map.entry("whatsapp.template.admin-alert.language", params.getOrDefault("waTemplateAdminAlertLanguage", "es_CL")),
                 Map.entry("whatsapp.template.confirmation.enabled", params.getOrDefault("waTemplateConfirmationEnabled", "false")),
@@ -156,6 +159,7 @@ public class AdminSettingsController {
                 Map.entry("whatsapp.template.booking-rejected.enabled", params.getOrDefault("waTemplateBookingRejectedEnabled", "false")),
                 Map.entry("whatsapp.template.admin-alert.enabled", params.getOrDefault("waTemplateAdminAlertEnabled", "false")),
                 Map.entry("whatsapp.template.admin-appointment-alert.enabled", params.getOrDefault("waTemplateAdminAppointmentAlertEnabled", "false")),
+                Map.entry("whatsapp.template.review.enabled", params.getOrDefault("waTemplateReviewEnabled", "false")),
                 Map.entry("whatsapp.admin.booking-requests.url", params.getOrDefault("waAdminBookingRequestsUrl", "")),
                 Map.entry("whatsapp.business.name", params.getOrDefault("waBusinessName", "BunnyCure")),
                 Map.entry("whatsapp.handoff.client-message", params.getOrDefault("whatsappHandoffClientMessage", "")),

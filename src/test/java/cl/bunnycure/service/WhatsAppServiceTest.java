@@ -315,6 +315,74 @@ class WhatsAppServiceTest {
         assertEquals("template", calls.get(1).getBody().get("type"));
     }
 
+    @Test
+    void sendValoracionServicioGoogleTemplate_Success() {
+        // Arrange
+        Appointment appointment = createTestAppointment();
+        when(config.isUseTemplateForReview()).thenReturn(true);
+        when(config.getReviewTemplateName()).thenReturn("valoracion_servicio_google");
+        when(config.getCitaConfirmadaLanguageCode()).thenReturn("es_CL");
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("123456789");
+
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                requestCaptor.capture(),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>("{\"messages\":[{\"id\":\"wamid.HBgL\"}]}", HttpStatus.OK));
+
+        // Act
+        boolean sent = whatsAppService.sendValoracionServicioGoogleTemplateSync(appointment);
+
+        // Assert
+        assertTrue(sent);
+        verify(restTemplate).exchange(
+                eq("https://graph.facebook.com/v22.0/123456789/messages"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        );
+
+        Map<String, Object> body = requestCaptor.getValue().getBody();
+        assertNotNull(body);
+        assertEquals("56912345678", body.get("to"));
+        assertEquals("template", body.get("type"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> template = (Map<String, Object>) body.get("template");
+        assertEquals("valoracion_servicio_google", template.get("name"));
+    }
+
+    @Test
+    void sendValoracionServicioGoogleTemplate_SkipWhenDisabled() {
+        // Arrange
+        Appointment appointment = createTestAppointment();
+        when(config.isUseTemplateForReview()).thenReturn(false);
+
+        // Act
+        boolean sent = whatsAppService.sendValoracionServicioGoogleTemplateSync(appointment);
+
+        // Assert
+        assertFalse(sent);
+        verify(restTemplate, never()).exchange(anyString(), any(), any(), any(Class.class));
+    }
+
+    @Test
+    void sendValoracionServicioGoogleTemplate_SkipWhenNoPhone() {
+        // Arrange
+        Appointment appointment = createTestAppointment();
+        appointment.getCustomer().setPhone(null);
+        when(config.isUseTemplateForReview()).thenReturn(true);
+
+        // Act
+        boolean sent = whatsAppService.sendValoracionServicioGoogleTemplateSync(appointment);
+
+        // Assert
+        assertFalse(sent);
+        verify(restTemplate, never()).exchange(anyString(), any(), any(), any(Class.class));
+    }
+
     // Métodos auxiliares para crear objetos de prueba
 
     private Appointment createTestAppointment() {

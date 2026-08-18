@@ -41,17 +41,27 @@ public class SettingsApiController {
             // WhatsApp
             "whatsapp.enabled",
             "whatsapp.number", "whatsapp.human.number", "whatsapp.admin-alert.number",
+            "inventory.auto_consumption.enabled",
+            // Branding & Identidad
+            "app.name", "app.slogan", "app.email", "app.logo-url",
+            "app.website.url", "app.instagram.url", "app.instagram.handle", "app.phone.display", "app.owner.name",
+            "app.primary-color", "app.secondary-color",
+            "app.timezone", "app.locale", "app.currency", "app.service-tip",
+            // WhatsApp
+            "whatsapp.enabled",
+            "whatsapp.number", "whatsapp.human.number", "whatsapp.admin-alert.number",
             "whatsapp.admin-alert.enabled",
             "whatsapp.human.display-name",
             "whatsapp.handoff.enabled", "whatsapp.handoff.client-message", "whatsapp.handoff.admin-prefill",
             "whatsapp.template.confirmation.name", "whatsapp.template.reminder.name",
             "whatsapp.template.cancellation.name", "whatsapp.template.booking-review.name",
             "whatsapp.template.booking-rejected.name", "whatsapp.template.admin-alert.name",
-            "whatsapp.template.admin-appointment-alert.name", "whatsapp.template.language",
+            "whatsapp.template.admin-appointment-alert.name", "whatsapp.template.review.name", "whatsapp.template.language",
             "whatsapp.template.admin-alert.language", "whatsapp.template.confirmation.enabled",
             "whatsapp.template.reminder.enabled", "whatsapp.template.cancellation.enabled",
             "whatsapp.template.booking-review.enabled", "whatsapp.template.booking-rejected.enabled",
             "whatsapp.template.admin-alert.enabled", "whatsapp.template.admin-appointment-alert.enabled",
+            "whatsapp.template.review.enabled",
             "whatsapp.admin.booking-requests.url", "whatsapp.business.name",
             // Mail
             "mail.enabled",
@@ -342,6 +352,7 @@ public class SettingsApiController {
         m.put("whatsapp.template.booking-rejected.name", "solicitud_rechazada");
         m.put("whatsapp.template.admin-alert.name", "");
         m.put("whatsapp.template.admin-appointment-alert.name", "confirmacion_hora");
+        m.put("whatsapp.template.review.name", "valoracion_servicio_google");
         m.put("whatsapp.template.language", "es_CL");
         m.put("whatsapp.template.admin-alert.language", "es_CL");
         m.put("whatsapp.template.confirmation.enabled", "true");
@@ -351,6 +362,7 @@ public class SettingsApiController {
         m.put("whatsapp.template.booking-rejected.enabled", "true");
         m.put("whatsapp.template.admin-alert.enabled", "false");
         m.put("whatsapp.template.admin-appointment-alert.enabled", "true");
+        m.put("whatsapp.template.review.enabled", "true");
         m.put("whatsapp.admin.booking-requests.url", "");
         m.put("whatsapp.business.name", "BunnyCure");
 
@@ -426,6 +438,7 @@ public class SettingsApiController {
                 .templateBookingRejectedName(settingsService.get("whatsapp.template.booking-rejected.name", "solicitud_rechazada"))
                 .templateAdminAlertName(settingsService.get("whatsapp.template.admin-alert.name", ""))
                 .templateAdminAppointmentAlertName(settingsService.get("whatsapp.template.admin-appointment-alert.name", "confirmacion_hora"))
+                .templateReviewName(settingsService.get("whatsapp.template.review.name", "valoracion_servicio_google"))
                 .templateLanguage(settingsService.get("whatsapp.template.language", "es_CL"))
                 .templateAdminAlertLanguage(settingsService.get("whatsapp.template.admin-alert.language", "es_CL"))
                 .templateConfirmationEnabled(settingsService.getBoolean("whatsapp.template.confirmation.enabled", true))
@@ -435,6 +448,7 @@ public class SettingsApiController {
                 .templateBookingRejectedEnabled(settingsService.getBoolean("whatsapp.template.booking-rejected.enabled", true))
                 .templateAdminAlertEnabled(settingsService.getBoolean("whatsapp.template.admin-alert.enabled", false))
                 .templateAdminAppointmentAlertEnabled(settingsService.getBoolean("whatsapp.template.admin-appointment-alert.enabled", true))
+                .templateReviewEnabled(settingsService.getBoolean("whatsapp.template.review.enabled", true))
                 .adminBookingRequestsUrl(settingsService.get("whatsapp.admin.booking-requests.url", ""))
                 .businessName(settingsService.get("whatsapp.business.name", settingsService.getAppName()))
                 .build();

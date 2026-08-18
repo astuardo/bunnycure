@@ -66,6 +66,7 @@ public class AppSettingsDto {
         private String templateBookingRejectedName;
         private String templateAdminAlertName;
         private String templateAdminAppointmentAlertName;
+        private String templateReviewName;
         private String templateLanguage;
         private String templateAdminAlertLanguage;
         private Boolean templateConfirmationEnabled;
@@ -75,6 +76,7 @@ public class AppSettingsDto {
         private Boolean templateBookingRejectedEnabled;
         private Boolean templateAdminAlertEnabled;
         private Boolean templateAdminAppointmentAlertEnabled;
+        private Boolean templateReviewEnabled;
         private String adminBookingRequestsUrl;
         private String businessName;
     }

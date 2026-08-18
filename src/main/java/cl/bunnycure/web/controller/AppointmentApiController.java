@@ -4,6 +4,7 @@ import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.exception.ValidationException;
 import cl.bunnycure.service.AppointmentService;
+import cl.bunnycure.service.NotificationService;
 import cl.bunnycure.service.SimpleApiService;
 import cl.bunnycure.service.WhatsAppHandoffService;
 import cl.bunnycure.web.dto.*;
@@ -44,6 +45,7 @@ public class AppointmentApiController {
     private final AppointmentService appointmentService;
     private final WhatsAppHandoffService whatsAppHandoffService;
     private final SimpleApiService simpleApiService;
+    private final NotificationService notificationService;
 
     @Operation(
             summary = "Listar citas",
@@ -324,6 +326,51 @@ public class AppointmentApiController {
         
         log.info("[API] WhatsApp handoff URL generated: {}", url);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Enviar solicitud de valoración en Google por WhatsApp",
+            description = "Despacha la plantilla de WhatsApp valoracion_servicio_google de Meta a la clienta asociada a la cita.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Plantilla de valoración despachada exitosamente"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "La clienta no posee teléfono registrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "Cita no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    @PostMapping("/{id}/whatsapp/review")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> sendWhatsAppReview(
+            @Parameter(description = "ID de la cita", required = true)
+            @PathVariable Long id) {
+        
+        log.info("[API] WhatsApp review template dispatch requested for appointment {}", id);
+        
+        Appointment appointment = appointmentService.findById(id);
+        
+        if (appointment.getCustomer() == null || appointment.getCustomer().getPhone() == null || appointment.getCustomer().getPhone().isBlank()) {
+            throw new ValidationException("La clienta asociada a la cita no posee número de teléfono registrado");
+        }
+        
+        notificationService.sendAppointmentReviewRequest(appointment);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("appointmentId", id);
+        result.put("customerName", appointment.getCustomer().getFullName());
+        result.put("phone", appointment.getCustomer().getPhone());
+        result.put("template", "valoracion_servicio_google");
+        result.put("status", "DISPATCHED");
+        
+        log.info("[API] WhatsApp review template dispatched for appointment {} to {}", id, appointment.getCustomer().getPhone());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @Operation(

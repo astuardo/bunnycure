@@ -725,6 +725,48 @@ public class WhatsAppService {
     }
 
     /**
+     * Envía la plantilla valoracion_servicio_google de Meta para solicitar reseña en Google.
+     * HEADER {{1}}=cliente, BODY {{1}}=servicio
+     */
+    @Async
+    public void sendValoracionServicioGoogleTemplate(Appointment appointment) {
+        sendValoracionServicioGoogleTemplateSync(appointment);
+    }
+
+    public boolean sendValoracionServicioGoogleTemplateSync(Appointment appointment) {
+        if (!config.isUseTemplateForReview()) {
+            log.info("[WHATSAPP-SKIP] Template de valoración de Google deshabilitado");
+            return false;
+        }
+
+        if (appointment == null || appointment.getCustomer() == null) {
+            log.warn("[WHATSAPP-SKIP] Cita o cliente nulo");
+            return false;
+        }
+
+        String phone = appointment.getCustomer().getPhone();
+        if (phone == null || phone.isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Cliente {} no tiene teléfono configurado",
+                    appointment.getCustomer().getFullName());
+            return false;
+        }
+
+        String cliente = appointment.getCustomer().getFullName();
+        String servicio = appointment.getService() != null && appointment.getService().getName() != null
+                ? appointment.getService().getName()
+                : "Servicio";
+
+        return sendTemplateSync(
+                phone,
+                config.getReviewTemplateName(),
+                config.getCitaConfirmadaLanguageCode(),
+                cliente,
+                List.of(servicio),
+                appointment
+        );
+    }
+
+    /**
      * Envía notificación al admin cuando se crea una cita desde el dashboard.
      * Template: confirmacion_hora
      * HEADER {{1}}=nombre_dueña, BODY {{1}}=cliente, {{2}}=servicio, {{3}}=fecha, {{4}}=hora, {{5}}=whatsapp_url, {{6}}=calendar_url
