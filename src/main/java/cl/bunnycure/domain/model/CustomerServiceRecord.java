@@ -55,6 +55,10 @@ public class CustomerServiceRecord {
     @Column(name = "photo_data", columnDefinition = "bytea")
     private byte[] photoData;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "specialist_id")
+    private User specialist;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

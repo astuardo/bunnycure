@@ -36,6 +36,7 @@ public class CustomerApiController {
     private final CustomerService customerService;
     private final GoogleWalletService googleWalletService;
     private final cl.bunnycure.service.CustomerServiceRecordService customerServiceRecordService;
+    private final cl.bunnycure.service.UserService userService;
 
     @Value("${bunnycure.google.wallet.qr-base-url:}")
     private String walletQrBaseUrl;
@@ -43,8 +44,7 @@ public class CustomerApiController {
     @Operation(
             summary = "Listar clientes",
             description = """
-                    Obtiene lista de todos los clientes o filtra por búsqueda de texto.
-                    La búsqueda es case-insensitive y busca en el nombre completo con conteo agregado.
+                    Obtiene lista de todos los clientes o filtra por búsqueda de texto y especialista.
                     """)
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -58,11 +58,33 @@ public class CustomerApiController {
     })
     @GetMapping
     public ResponseEntity<ApiResponse<List<CustomerSummary>>> list(
-            @Parameter(description = "Texto de búsqueda en nombre del cliente")
-            @RequestParam(required = false) String search) {
+            @Parameter(description = "Texto de búsqueda en nombre, teléfono o RUT del cliente")
+            @RequestParam(required = false) String search,
+            @Parameter(description = "ID opcional de especialista para filtrar clientas")
+            @RequestParam(required = false) Long specialistId,
+            org.springframework.security.core.Authentication authentication) {
+
+        Long effectiveSpecialistId = specialistId;
+        if (authentication != null && authentication.isAuthenticated()) {
+            boolean isOnlySpecialist = authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_SPECIALIST") || a.getAuthority().equals("ROLE_STAFF"))
+                    && authentication.getAuthorities().stream()
+                    .noneMatch(a -> a.getAuthority().equals("ROLE_SALON_ADMIN") || a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPER_ADMIN") || a.getAuthority().equals("ROLE_RECEPTIONIST"));
+
+            if (isOnlySpecialist) {
+                try {
+                    cl.bunnycure.domain.model.User user = userService.findByUsername(authentication.getName());
+                    effectiveSpecialistId = user.getId();
+                } catch (Exception e) {
+                    log.warn("[API] No se pudo resolver ID para especialista {}", authentication.getName());
+                }
+            }
+        }
 
         List<CustomerSummary> summaries;
-        if (search != null && !search.isBlank()) {
+        if (effectiveSpecialistId != null) {
+            summaries = customerService.searchSpecialistSummary(effectiveSpecialistId, search);
+        } else if (search != null && !search.isBlank()) {
             summaries = customerService.searchSummary(search);
         } else {
             summaries = customerService.findAllSummary();

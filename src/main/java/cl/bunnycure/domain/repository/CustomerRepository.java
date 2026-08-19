@@ -51,6 +51,32 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     """)
     List<Object[]> searchWithAppointmentCount(@org.springframework.data.repository.query.Param("query") String query);
 
+    @Query("""
+        SELECT c, COUNT(a) as appointmentCount
+        FROM Customer c
+        INNER JOIN c.appointments a
+        WHERE a.specialist.id = :specialistId
+        GROUP BY c
+        ORDER BY c.fullName ASC
+    """)
+    List<Object[]> findSpecialistCustomers(@org.springframework.data.repository.query.Param("specialistId") Long specialistId);
+
+    @Query("""
+        SELECT c, COUNT(a) as appointmentCount
+        FROM Customer c
+        INNER JOIN c.appointments a
+        WHERE a.specialist.id = :specialistId
+          AND (LOWER(c.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
+           OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :query, '%'))
+           OR LOWER(c.rut) LIKE LOWER(CONCAT('%', :query, '%')))
+        GROUP BY c
+        ORDER BY c.fullName ASC
+    """)
+    List<Object[]> searchSpecialistCustomers(
+            @org.springframework.data.repository.query.Param("specialistId") Long specialistId,
+            @org.springframework.data.repository.query.Param("query") String query
+    );
+
     @Query("SELECT COUNT(a) FROM Appointment a WHERE a.customer.id = :customerId")
     long countAppointmentsByCustomerId(Long customerId);
 }

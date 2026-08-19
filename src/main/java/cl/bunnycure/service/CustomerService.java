@@ -70,6 +70,29 @@ public class CustomerService {
                 .toList();
     }
 
+    public List<CustomerSummary> findSpecialistSummary(Long specialistId) {
+        if (specialistId == null) {
+            return findAllSummary();
+        }
+        return customerRepository.findSpecialistCustomers(specialistId)
+                .stream()
+                .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]))
+                .toList();
+    }
+
+    public List<CustomerSummary> searchSpecialistSummary(Long specialistId, String query) {
+        if (specialistId == null) {
+            return searchSummary(query);
+        }
+        if (query == null || query.isBlank()) {
+            return findSpecialistSummary(specialistId);
+        }
+        return customerRepository.searchSpecialistCustomers(specialistId, query.trim())
+                .stream()
+                .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]))
+                .toList();
+    }
+
     /**
      * Busca una clienta existente por teléfono para el formulario de reserva.
      * Retorna los datos de la clienta si existe, o una respuesta vacía si no.

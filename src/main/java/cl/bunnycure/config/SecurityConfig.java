@@ -20,6 +20,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
 	private final Environment env;
@@ -80,18 +81,18 @@ public class SecurityConfig {
 			// Notificaciones Web Push (VAPID)
 			auth.requestMatchers("/api/push-subscriptions/**").permitAll();
 			
-			// API REST endpoints (requieren autenticación)
+			// API REST endpoints protegidos por RBAC
 			auth.requestMatchers("/api/auth/**").authenticated();
-			auth.requestMatchers("/api/users/**").hasRole("ADMIN");
-			auth.requestMatchers("/api/settings/**").hasRole("ADMIN");
-			auth.requestMatchers("/api/inventory/**").hasRole("ADMIN");
+			auth.requestMatchers("/api/users/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
+			auth.requestMatchers("/api/settings/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
+			auth.requestMatchers("/api/inventory/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
+			auth.requestMatchers("/api/booking-requests/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN", "RECEPTIONIST");
+			auth.requestMatchers("/api/reminders/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN", "RECEPTIONIST");
+			auth.requestMatchers("/api/loyalty-rewards/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN", "RECEPTIONIST");
+			auth.requestMatchers("/api/stats/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN", "RECEPTIONIST");
 			auth.requestMatchers("/api/appointments/**").authenticated();
 			auth.requestMatchers("/api/customers/**").authenticated();
 			auth.requestMatchers("/api/services/**").authenticated();
-			auth.requestMatchers("/api/booking-requests/**").authenticated();
-			auth.requestMatchers("/api/reminders/**").authenticated();
-			auth.requestMatchers("/api/loyalty-rewards/**").authenticated();
-			auth.requestMatchers("/api/stats/**").authenticated();
 			
 			// Webhook de WhatsApp (solo endpoint oficial público)
 			auth.requestMatchers(HttpMethod.GET, "/api/webhooks/whatsapp").permitAll();

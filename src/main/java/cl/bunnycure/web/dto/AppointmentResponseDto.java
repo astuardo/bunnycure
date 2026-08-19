@@ -58,4 +58,10 @@ public class AppointmentResponseDto {
     
     @Schema(description = "Si se envió confirmación de WhatsApp")
     private boolean whatsAppConfirmationSent;
+
+    @Schema(description = "ID del especialista asignado")
+    private Long specialistId;
+
+    @Schema(description = "Nombre completo del especialista asignado")
+    private String specialistName;
 }

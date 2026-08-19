@@ -31,11 +31,19 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
         
+        cl.bunnycure.domain.enums.Role roleEnum = user.getRoleEnum();
+        List<String> rolesList = switch (roleEnum) {
+            case SUPER_ADMIN -> List.of("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
+            case SALON_ADMIN, ADMIN -> List.of("SALON_ADMIN", "ADMIN");
+            case RECEPTIONIST -> List.of("RECEPTIONIST");
+            case SPECIALIST, STAFF -> List.of("SPECIALIST", "STAFF");
+        };
+
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())
                 .disabled(!user.isEnabled())
-                .roles(user.getRole())
+                .roles(rolesList.toArray(new String[0]))
                 .build();
     }
 
@@ -55,9 +63,18 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public User createUser(String username, String password, String fullName, String email) {
+        return createUser(username, password, fullName, email, "SPECIALIST");
+    }
+
+    @Transactional
+    public User createUser(String username, String password, String fullName, String email, String role) {
         if (userRepository.existsByUsername(username)) {
             throw new RuntimeException("El usuario ya existe");
         }
+
+        String assignedRole = role != null && !role.isBlank() 
+                ? cl.bunnycure.domain.enums.Role.fromString(role).name() 
+                : "SPECIALIST";
 
         User user = User.builder()
                 .username(username)
@@ -65,20 +82,35 @@ public class UserService implements UserDetailsService {
                 .fullName(fullName)
                 .email(email)
                 .enabled(true)
-                .role("ADMIN")
+                .role(assignedRole)
                 .passwordChangeRequired(true) // Por defecto requiere cambio
                 .build();
 
         User saved = userRepository.save(user);
-        log.info("[USER] Usuario creado: {}", username);
+        log.info("[USER] Usuario creado: {} con rol: {}", username, assignedRole);
         return saved;
     }
 
     @Transactional
     public User updateUser(Long id, String fullName, String email) {
+        return updateUser(id, fullName, email, null, null);
+    }
+
+    @Transactional
+    public User updateUser(Long id, String fullName, String email, String role, Boolean enabled) {
         User user = findById(id);
-        user.setFullName(fullName);
-        user.setEmail(email);
+        if (fullName != null) {
+            user.setFullName(fullName);
+        }
+        if (email != null) {
+            user.setEmail(email);
+        }
+        if (role != null && !role.isBlank()) {
+            user.setRole(cl.bunnycure.domain.enums.Role.fromString(role).name());
+        }
+        if (enabled != null) {
+            user.setEnabled(enabled);
+        }
         
         User updated = userRepository.save(user);
         log.info("[USER] Usuario actualizado: {}", user.getUsername());

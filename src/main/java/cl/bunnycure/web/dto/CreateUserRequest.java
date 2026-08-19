@@ -33,4 +33,7 @@ public class CreateUserRequest {
     
     @Email(message = "El email debe ser válido")
     private String email;
+
+    @Builder.Default
+    private String role = "SPECIALIST";
 }

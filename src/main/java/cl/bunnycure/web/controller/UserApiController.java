@@ -133,7 +133,8 @@ public class UserApiController {
                     request.getUsername(),
                     request.getPassword(),
                     request.getFullName(),
-                    request.getEmail()
+                    request.getEmail(),
+                    request.getRole()
             );
             
             UserDto dto = toDto(created);
@@ -150,7 +151,7 @@ public class UserApiController {
 
     @Operation(
             summary = "Actualizar usuario",
-            description = "Actualiza los datos de un usuario existente (nombre completo y email).")
+            description = "Actualiza los datos de un usuario existente (nombre completo, email, rol y estado).")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
@@ -180,7 +181,9 @@ public class UserApiController {
             User updated = userService.updateUser(
                     id,
                     request.getFullName(),
-                    request.getEmail()
+                    request.getEmail(),
+                    request.getRole(),
+                    request.getEnabled()
             );
             
             UserDto dto = toDto(updated);

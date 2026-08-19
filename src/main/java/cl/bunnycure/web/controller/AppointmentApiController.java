@@ -47,12 +47,13 @@ public class AppointmentApiController {
     private final SimpleApiService simpleApiService;
     private final NotificationService notificationService;
     private final cl.bunnycure.service.AppointmentReminderService reminderService;
+    private final cl.bunnycure.service.UserService userService;
 
     @Operation(
             summary = "Listar citas",
             description = """
-                    Obtiene lista de citas filtradas por rango de fechas o estado.
-                    Si no se especifican fechas, retorna las citas del día actual.
+                    Obtiene lista de citas filtradas por rango de fechas, estado o especialista.
+                    Si no se especifican fechas, retorna las citas del rango por defecto.
                     """)
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -73,7 +74,29 @@ public class AppointmentApiController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             
             @Parameter(description = "Filtrar por estado")
-            @RequestParam(required = false) AppointmentStatus status) {
+            @RequestParam(required = false) AppointmentStatus status,
+
+            @Parameter(description = "ID opcional de especialista")
+            @RequestParam(required = false) Long specialistId,
+            
+            org.springframework.security.core.Authentication authentication) {
+        
+        Long effectiveSpecialistId = specialistId;
+        if (authentication != null && authentication.isAuthenticated()) {
+            boolean isOnlySpecialist = authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_SPECIALIST") || a.getAuthority().equals("ROLE_STAFF"))
+                    && authentication.getAuthorities().stream()
+                    .noneMatch(a -> a.getAuthority().equals("ROLE_SALON_ADMIN") || a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPER_ADMIN") || a.getAuthority().equals("ROLE_RECEPTIONIST"));
+
+            if (isOnlySpecialist) {
+                try {
+                    cl.bunnycure.domain.model.User user = userService.findByUsername(authentication.getName());
+                    effectiveSpecialistId = user.getId();
+                } catch (Exception e) {
+                    log.warn("[API] No se pudo resolver ID para especialista {}", authentication.getName());
+                }
+            }
+        }
         
         List<Appointment> appointments;
         
@@ -91,7 +114,9 @@ public class AppointmentApiController {
             appointments = appointmentService.findByDateRange(defaultStart, defaultEnd);
         }
         
+        final Long filterSpecialistId = effectiveSpecialistId;
         List<AppointmentResponseDto> dtos = appointments.stream()
+                .filter(a -> filterSpecialistId == null || (a.getSpecialist() != null && filterSpecialistId.equals(a.getSpecialist().getId())))
                 .map(this::toResponseDto)
                 .collect(Collectors.toList());
         
@@ -119,6 +144,7 @@ public class AppointmentApiController {
             @Parameter(description = "ID de la cita", required = true)
             @PathVariable Long id) {
         
+        log.info("[API] Getting appointment by ID: {}", id);
         Appointment appointment = appointmentService.findById(id);
         AppointmentResponseDto dto = toResponseDto(appointment);
         
@@ -127,10 +153,7 @@ public class AppointmentApiController {
 
     @Operation(
             summary = "Crear nueva cita",
-            description = """
-                    Crea una nueva cita y envía notificaciones al cliente y admin.
-                    La cita se crea en estado PENDING por defecto.
-                    """)
+            description = "Crea una nueva cita con estado PENDING. Notifica al cliente y administradores.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "201",
@@ -165,6 +188,16 @@ public class AppointmentApiController {
 
         Appointment created = appointmentService.createAppointment(dto);
         
+        if (request.getSpecialistId() != null) {
+            try {
+                cl.bunnycure.domain.model.User specialist = userService.findById(request.getSpecialistId());
+                created.setSpecialist(specialist);
+                created = appointmentService.saveAppointment(created);
+            } catch (Exception e) {
+                log.warn("[API] No se pudo asignar especialista {}: {}", request.getSpecialistId(), e.getMessage());
+            }
+        }
+        
         AppointmentResponseDto responseDto = toResponseDto(created);
         
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -198,13 +231,18 @@ public class AppointmentApiController {
         // Obtener la cita actual para combinar datos
         Appointment current = appointmentService.findById(id);
         List<Long> currentServiceIds = current.getServices() != null && !current.getServices().isEmpty()
-                ? current.getServices().stream().map(cl.bunnycure.domain.model.ServiceCatalog::getId).toList()
-                : List.of(current.getService().getId());
-        List<Long> selectedServiceIds = resolveServiceIds(request.getServiceId(), request.getServiceIds(), currentServiceIds);
+                ? current.getServices().stream().map(s -> s.getId()).toList()
+                : (current.getService() != null ? List.of(current.getService().getId()) : List.of());
+
+        List<Long> selectedServiceIds = resolveServiceIds(
+                request.getServiceId(),
+                request.getServiceIds(),
+                currentServiceIds
+        );
         
         // Construir DTO con datos actualizados (merge con datos actuales)
         AppointmentDto dto = AppointmentDto.builder()
-                .customerId(request.getCustomerId() != null ? request.getCustomerId() : current.getCustomer().getId())
+                .customerId(current.getCustomer().getId())
                 .serviceId(selectedServiceIds.get(0))
                 .serviceIds(selectedServiceIds)
                 .appointmentDate(request.getAppointmentDate() != null ? request.getAppointmentDate() : current.getAppointmentDate())
@@ -213,10 +251,19 @@ public class AppointmentApiController {
                 .status(request.getStatus() != null ? request.getStatus() : current.getStatus())
                 .build();
         
-        appointmentService.updateAppointment(id, dto);
+        Appointment updated = appointmentService.updateAppointment(id, dto);
+
+        if (request.getSpecialistId() != null) {
+            try {
+                cl.bunnycure.domain.model.User specialist = userService.findById(request.getSpecialistId());
+                updated.setSpecialist(specialist);
+                updated = appointmentService.saveAppointment(updated);
+            } catch (Exception e) {
+                log.warn("[API] No se pudo asignar especialista {}: {}", request.getSpecialistId(), e.getMessage());
+            }
+        }
         
         // Recuperar la cita actualizada
-        Appointment updated = appointmentService.findById(id);
         AppointmentResponseDto responseDto = toResponseDto(updated);
         
         return ResponseEntity.ok(ApiResponse.success(responseDto));
@@ -470,7 +517,9 @@ public class AppointmentApiController {
                 .totalPrice(totalPrice)
                 .totalDurationMinutes(totalDuration)
                 .reminderSent(appointment.isReminderSent())
-                .whatsAppConfirmationSent(false) // Campo no existe en Appointment, por ahora false
+                .whatsAppConfirmationSent(false)
+                .specialistId(appointment.getSpecialist() != null ? appointment.getSpecialist().getId() : null)
+                .specialistName(appointment.getSpecialist() != null ? appointment.getSpecialist().getFullName() : null)
                 .build();
     }
 

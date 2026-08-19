@@ -54,6 +54,10 @@ public class Appointment {
     @Column(nullable = false)
     private LocalTime appointmentTime;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "specialist_id")
+    private User specialist;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

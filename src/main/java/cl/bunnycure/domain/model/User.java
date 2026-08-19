@@ -53,4 +53,24 @@ public class User {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    public cl.bunnycure.domain.enums.Role getRoleEnum() {
+        return cl.bunnycure.domain.enums.Role.fromString(this.role);
+    }
+
+    public boolean isSalonAdmin() {
+        return getRoleEnum().isSalonAdmin();
+    }
+
+    public boolean isSpecialist() {
+        return getRoleEnum().isSpecialist();
+    }
+
+    public boolean isReceptionist() {
+        return getRoleEnum().isReceptionist();
+    }
+
+    public boolean isSuperAdmin() {
+        return getRoleEnum().isSuperAdmin();
+    }
 }

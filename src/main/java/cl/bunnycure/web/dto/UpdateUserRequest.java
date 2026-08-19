@@ -23,4 +23,8 @@ public class UpdateUserRequest {
     
     @Email(message = "El email debe ser válido")
     private String email;
+
+    private String role;
+
+    private Boolean enabled;
 }

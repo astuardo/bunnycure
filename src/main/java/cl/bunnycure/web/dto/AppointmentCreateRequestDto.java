@@ -43,4 +43,7 @@ public class AppointmentCreateRequestDto {
     
     @Schema(description = "Notas adicionales sobre la cita", example = "Cliente prefiere sala privada")
     private String notes;
+
+    @Schema(description = "ID del especialista/manicurista asignada", example = "2")
+    private Long specialistId;
 }

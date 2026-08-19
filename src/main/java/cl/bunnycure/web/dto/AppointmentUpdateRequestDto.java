@@ -41,6 +41,9 @@ public class AppointmentUpdateRequestDto {
     @Schema(description = "Nuevo estado de la cita")
     private AppointmentStatus status;
     
-    @Schema(description = "Notas actualizadas")
+    @Schema(description = "Notas adicionales sobre la cita")
     private String notes;
+
+    @Schema(description = "ID del especialista/manicurista asignada")
+    private Long specialistId;
 }
