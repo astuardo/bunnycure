@@ -64,9 +64,11 @@ public class CustomerService {
         if (query == null || query.isBlank()) {
             return findAllSummary();
         }
-        return customerRepository.searchWithAppointmentCount(query.trim())
-                .stream()
-                .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]))
+        String normalizedQuery = normalizeForSearch(query);
+        String cleanQuery = normalizedQuery.replaceAll("[^0-9a-zA-Z]", "");
+
+        return findAllSummary().stream()
+                .filter(summary -> matchesSearch(summary, normalizedQuery, cleanQuery))
                 .toList();
     }
 
@@ -87,10 +89,42 @@ public class CustomerService {
         if (query == null || query.isBlank()) {
             return findSpecialistSummary(specialistId);
         }
-        return customerRepository.searchSpecialistCustomers(specialistId, query.trim())
-                .stream()
-                .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]))
+        String normalizedQuery = normalizeForSearch(query);
+        String cleanQuery = normalizedQuery.replaceAll("[^0-9a-zA-Z]", "");
+
+        return findSpecialistSummary(specialistId).stream()
+                .filter(summary -> matchesSearch(summary, normalizedQuery, cleanQuery))
                 .toList();
+    }
+
+    private String normalizeForSearch(String input) {
+        if (input == null) return "";
+        String normalized = java.text.Normalizer.normalize(input.trim().toLowerCase(), java.text.Normalizer.Form.NFD);
+        return normalized.replaceAll("\\p{M}", "");
+    }
+
+    private boolean matchesSearch(CustomerSummary summary, String normalizedQuery, String cleanQuery) {
+        if (normalizedQuery.isBlank()) return true;
+        if (summary == null) return false;
+
+        String name = normalizeForSearch(summary.getFullName());
+        String phone = normalizeForSearch(summary.getPhone());
+        String rut = normalizeForSearch(summary.getRut());
+        String email = normalizeForSearch(summary.getEmail());
+
+        if (name.contains(normalizedQuery) || phone.contains(normalizedQuery) || rut.contains(normalizedQuery) || email.contains(normalizedQuery)) {
+            return true;
+        }
+
+        if (!cleanQuery.isBlank()) {
+            String cleanPhone = phone.replaceAll("[^0-9]", "");
+            String cleanRut = rut.replaceAll("[^0-9kK]", "").toLowerCase();
+            if (cleanPhone.contains(cleanQuery) || cleanRut.contains(cleanQuery)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -289,10 +323,13 @@ public class CustomerService {
         
         customer.setLoyaltyStamps(nextValue);
         
-        // Si el ajuste es positivo, también lo sumamos al total histórico (opcional, según lógica de negocio)
+        // Si el ajuste es positivo o negativo, actualizar visitas completadas correspondientemente
         if (delta > 0) {
             int total = customer.getTotalCompletedVisits() != null ? customer.getTotalCompletedVisits() : 0;
             customer.setTotalCompletedVisits(total + delta);
+        } else if (delta < 0) {
+            int total = customer.getTotalCompletedVisits() != null ? customer.getTotalCompletedVisits() : 0;
+            customer.setTotalCompletedVisits(Math.max(0, total + delta));
         }
         
         Customer saved = customerRepository.save(customer);
@@ -300,6 +337,26 @@ public class CustomerService {
         // Sincronizar con Google Wallet y notificar actualización del pase.
         googleWalletService.updateCustomerStamps(saved, true);
         
+        return saved;
+    }
+
+    /**
+     * Sincroniza y recalcula las visitas completadas a partir de las citas reales en la base de datos.
+     */
+    @Transactional
+    public Customer syncCustomerVisits(Long id) {
+        var customer = findById(id);
+        long completedCount = customerRepository.findByIdWithAppointments(id)
+                .map(c -> c.getAppointments() != null
+                        ? c.getAppointments().stream()
+                                .filter(a -> a.getStatus() == cl.bunnycure.domain.enums.AppointmentStatus.COMPLETED)
+                                .count()
+                        : 0L)
+                .orElse(0L);
+
+        customer.setTotalCompletedVisits((int) completedCount);
+        Customer saved = customerRepository.save(customer);
+        googleWalletService.updateCustomerStamps(saved, true);
         return saved;
     }
 }

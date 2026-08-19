@@ -250,6 +250,16 @@ public class CustomerApiController {
         return ResponseEntity.ok(ApiResponse.success(toDto(updated)));
     }
 
+    @Operation(summary = "Sincronizar visitas del cliente", description = "Recalcula las visitas completadas a partir de las citas completadas reales en la base de datos.")
+    @PostMapping("/{id}/sync-visits")
+    public ResponseEntity<ApiResponse<CustomerDto>> syncVisits(
+            @PathVariable Long id) {
+
+        log.info("[API] Syncing visits for customer {}", id);
+        Customer updated = customerService.syncCustomerVisits(id);
+        return ResponseEntity.ok(ApiResponse.success(toDto(updated)));
+    }
+
     @Operation(summary = "Obtener enlace de Google Wallet", description = "Genera un enlace firmado para guardar la tarjeta de fidelización en Google Wallet.")
     @GetMapping("/{id}/wallet/google-link")
     public ResponseEntity<ApiResponse<java.util.Map<String, String>>> getGoogleWalletLink(
