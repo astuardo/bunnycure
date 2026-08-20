@@ -192,7 +192,7 @@ public class AppointmentApiController {
             try {
                 cl.bunnycure.domain.model.User specialist = userService.findById(request.getSpecialistId());
                 created.setSpecialist(specialist);
-                created = appointmentService.saveAppointment(created);
+                created = appointmentService.save(created);
             } catch (Exception e) {
                 log.warn("[API] No se pudo asignar especialista {}: {}", request.getSpecialistId(), e.getMessage());
             }
@@ -257,7 +257,7 @@ public class AppointmentApiController {
             try {
                 cl.bunnycure.domain.model.User specialist = userService.findById(request.getSpecialistId());
                 updated.setSpecialist(specialist);
-                updated = appointmentService.saveAppointment(updated);
+                updated = appointmentService.save(updated);
             } catch (Exception e) {
                 log.warn("[API] No se pudo asignar especialista {}: {}", request.getSpecialistId(), e.getMessage());
             }

@@ -27,6 +27,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
         JOIN FETCH a.customer
         JOIN FETCH a.service
         LEFT JOIN FETCH a.services
+        LEFT JOIN FETCH a.specialist
         WHERE a.appointmentDate BETWEEN :start AND :end
         ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
     """)
@@ -40,6 +41,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
         JOIN FETCH a.customer
         JOIN FETCH a.service
         LEFT JOIN FETCH a.services
+        LEFT JOIN FETCH a.specialist
         WHERE a.appointmentDate = :date
         ORDER BY a.appointmentTime ASC
     """)
@@ -50,6 +52,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
         JOIN FETCH a.customer
         JOIN FETCH a.service
         LEFT JOIN FETCH a.services
+        LEFT JOIN FETCH a.specialist
         WHERE a.id = :id
     """)
     Optional<Appointment> findByIdWithDetails(@Param("id") Long id);
@@ -59,6 +62,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
         JOIN FETCH a.customer
         JOIN FETCH a.service
         LEFT JOIN FETCH a.services
+        LEFT JOIN FETCH a.specialist
         WHERE a.customer.id = :customerId
         ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
     """)
@@ -158,6 +162,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
         JOIN FETCH a.customer
         JOIN FETCH a.service
         LEFT JOIN FETCH a.services
+        LEFT JOIN FETCH a.specialist
         WHERE a.status = :status
         ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
     """)

@@ -21,7 +21,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -143,14 +142,6 @@ public class AppointmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con ID: " + id));
     }
 
-    // Alias para consistencia
-    public Optional<Appointment> getAppointmentById(Long id) {
-        return appointmentRepository.findByIdWithDetails(id);
-    }
-
-    public Appointment saveAppointment(Appointment appointment) {
-        return appointmentRepository.save(appointment);
-    }
 
     public List<Appointment> findByDateRange(LocalDate start, LocalDate end) {
         return appointmentRepository.findByDateRangeWithCustomer(start, end); // ← nombre actualizado
