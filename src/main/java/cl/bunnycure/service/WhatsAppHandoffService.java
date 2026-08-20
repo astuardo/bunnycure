@@ -63,6 +63,26 @@ public class WhatsAppHandoffService {
         return buildWaMeLinkWithText(customerPhone, message);
     }
 
+    /**
+     * Genera una URL corta de WhatsApp (wa.me) para contactar a un número de teléfono.
+     * 
+     * @param phoneNumber Número de teléfono
+     * @return URL de WhatsApp
+     */
+    public String generateWhatsAppUrl(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            return "";
+        }
+        
+        String cleanPhone = phoneNumber.replaceAll("[^0-9+]", "");
+        if (!cleanPhone.startsWith("+") && !cleanPhone.startsWith("56")) {
+            cleanPhone = "56" + cleanPhone;
+        }
+        cleanPhone = cleanPhone.replace("+", "");
+        
+        return "https://wa.me/" + cleanPhone;
+    }
+
     public String normalizePhone(String rawPhone) {
         if (rawPhone == null || rawPhone.isBlank()) {
             return "";

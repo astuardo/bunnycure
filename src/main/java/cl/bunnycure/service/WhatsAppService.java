@@ -44,6 +44,7 @@ public class WhatsAppService {
     private final CalendarService calendarService;
     private final NotificationLogService notificationLogService;
     private final ObjectMapper objectMapper;
+    private final WhatsAppHandoffService whatsAppHandoffService;
 
     @Value("${bunnycure.whatsapp.admin-alert.enabled:true}")
     private boolean adminAlertEnabledFallback;
@@ -797,7 +798,7 @@ public class WhatsAppService {
         String cliente = appointment.getCustomer().getFullName();
         
         // Generar URLs para los botones/links
-        String whatsappUrl = calendarService.generateWhatsAppUrl(appointment.getCustomer().getPhone());
+        String whatsappUrl = whatsAppHandoffService.generateWhatsAppUrl(appointment.getCustomer().getPhone());
         String calendarUrl = calendarService.generateGoogleCalendarUrl(appointment);
         
         // El nombre de la dueña puede venir de configuración o usar un valor por defecto

@@ -114,31 +114,6 @@ public class CalendarService {
         return ics.toString();
     }
     
-    /**
-     * Genera una URL corta de WhatsApp para contactar al cliente.
-     * 
-     * @param phoneNumber Número de teléfono del cliente
-     * @return URL de WhatsApp
-     */
-    public String generateWhatsAppUrl(String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.isBlank()) {
-            return "";
-        }
-        
-        // Limpiar el número (quitar espacios, guiones, paréntesis)
-        String cleanPhone = phoneNumber.replaceAll("[^0-9+]", "");
-        
-        // Si no tiene código de país, asumir Chile (+56)
-        if (!cleanPhone.startsWith("+") && !cleanPhone.startsWith("56")) {
-            cleanPhone = "56" + cleanPhone;
-        }
-        
-        // Remover el + si existe
-        cleanPhone = cleanPhone.replace("+", "");
-        
-        return "https://wa.me/" + cleanPhone;
-    }
-    
     private String buildEventDetails(Appointment appointment) {
         StringBuilder details = new StringBuilder();
         details.append("Cliente: ").append(appointment.getCustomer().getFullName()).append("\\n");
