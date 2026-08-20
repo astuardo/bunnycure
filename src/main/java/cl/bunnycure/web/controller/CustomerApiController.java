@@ -260,6 +260,15 @@ public class CustomerApiController {
         return ResponseEntity.ok(ApiResponse.success(toDto(updated)));
     }
 
+    @Operation(summary = "Sincronizar visitas de todos los clientes", description = "Recalcula las visitas completadas de todos los clientes registrados basándose en sus citas completadas reales.")
+    @PostMapping("/sync-all-visits")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'SALON_ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> syncAllVisits() {
+        log.info("[API] Sincronizando visitas de todos los clientes...");
+        java.util.Map<String, Object> result = customerService.syncAllCustomerVisits();
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
     @Operation(summary = "Obtener enlace de Google Wallet", description = "Genera un enlace firmado para guardar la tarjeta de fidelización en Google Wallet.")
     @GetMapping("/{id}/wallet/google-link")
     public ResponseEntity<ApiResponse<java.util.Map<String, String>>> getGoogleWalletLink(

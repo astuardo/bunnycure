@@ -175,4 +175,35 @@ class CustomerServiceTest {
         // Assert
         assertEquals(1, synced.getTotalCompletedVisits());
     }
+
+    @Test
+    void syncAllCustomerVisits_RecalculatesVisitsForAllCustomers() {
+        // Arrange
+        Customer alfredo = new Customer();
+        alfredo.setId(1L);
+        alfredo.setTotalCompletedVisits(17); // Stale value: 17 visits but 0 appointments
+        alfredo.setAppointments(Collections.emptyList());
+
+        Customer sofia = new Customer();
+        sofia.setId(2L);
+        sofia.setTotalCompletedVisits(0);
+        Appointment apt1 = Appointment.builder().status(AppointmentStatus.COMPLETED).build();
+        Appointment apt2 = Appointment.builder().status(AppointmentStatus.COMPLETED).build();
+        sofia.setAppointments(Arrays.asList(apt1, apt2));
+
+        when(customerRepository.findAll()).thenReturn(Arrays.asList(alfredo, sofia));
+        when(customerRepository.findByIdWithAppointments(1L)).thenReturn(Optional.of(alfredo));
+        when(customerRepository.findByIdWithAppointments(2L)).thenReturn(Optional.of(sofia));
+
+        // Act
+        java.util.Map<String, Object> result = customerService.syncAllCustomerVisits();
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(2, result.get("totalProcessed"));
+        assertEquals(2, result.get("updatedCount"));
+        assertEquals(0, alfredo.getTotalCompletedVisits());
+        assertEquals(2, sofia.getTotalCompletedVisits());
+        verify(customerRepository, times(2)).save(any(Customer.class));
+    }
 }

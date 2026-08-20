@@ -359,4 +359,37 @@ public class CustomerService {
         googleWalletService.updateCustomerStamps(saved, true);
         return saved;
     }
+
+    /**
+     * Sincroniza y recalcula las visitas completadas de TODOS los clientes en la base de datos
+     * basándose en sus citas en estado COMPLETED.
+     */
+    @Transactional
+    public java.util.Map<String, Object> syncAllCustomerVisits() {
+        List<Customer> allCustomers = customerRepository.findAll();
+        int totalProcessed = allCustomers.size();
+        int updatedCount = 0;
+
+        for (Customer customer : allCustomers) {
+            long completedCount = customerRepository.findByIdWithAppointments(customer.getId())
+                    .map(c -> c.getAppointments() != null
+                            ? c.getAppointments().stream()
+                                    .filter(a -> a.getStatus() == cl.bunnycure.domain.enums.AppointmentStatus.COMPLETED)
+                                    .count()
+                            : 0L)
+                    .orElse(0L);
+
+            int currentVisits = customer.getTotalCompletedVisits() != null ? customer.getTotalCompletedVisits() : 0;
+            if (currentVisits != (int) completedCount) {
+                customer.setTotalCompletedVisits((int) completedCount);
+                customerRepository.save(customer);
+                updatedCount++;
+            }
+        }
+
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("totalProcessed", totalProcessed);
+        result.put("updatedCount", updatedCount);
+        return result;
+    }
 }
