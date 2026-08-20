@@ -45,6 +45,7 @@ public class WhatsAppService {
     private final NotificationLogService notificationLogService;
     private final ObjectMapper objectMapper;
     private final WhatsAppHandoffService whatsAppHandoffService;
+    private final LoyaltyRewardService loyaltyRewardService;
 
     @Value("${bunnycure.whatsapp.admin-alert.enabled:true}")
     private boolean adminAlertEnabledFallback;
@@ -881,8 +882,6 @@ public class WhatsAppService {
                 Arrays.asList(servicio, fecha, bloque)
         );
     }
-
-    private final LoyaltyRewardService loyaltyRewardService;
 
     @Async
     public void sendLoyaltyUpdateMessage(cl.bunnycure.domain.model.Customer customer) {

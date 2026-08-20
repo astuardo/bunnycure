@@ -49,6 +49,9 @@ class WhatsAppServiceTest {
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @Mock
+    private WhatsAppHandoffService whatsAppHandoffService;
+
+    @Mock
     private LoyaltyRewardService loyaltyRewardService;
 
     @Captor
@@ -61,7 +64,7 @@ class WhatsAppServiceTest {
 
     @BeforeEach
     void setUp() {
-        whatsAppService = new WhatsAppService(config, restTemplate, appSettingsService, calendarService, notificationLogService, objectMapper, loyaltyRewardService);
+        whatsAppService = new WhatsAppService(config, restTemplate, appSettingsService, calendarService, notificationLogService, objectMapper, whatsAppHandoffService, loyaltyRewardService);
     }
 
     @Test
