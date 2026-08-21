@@ -1,1 +1,1 @@
-web: java -Dspring.profiles.active=heroku -Dserver.port=$PORT -Xms160m -Xmx280m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=48m -Xss512k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError $JAVA_OPTS -jar target/bunnycure-0.0.1-SNAPSHOT.jar
+web: java -Dspring.profiles.active=heroku -Dserver.port=$PORT $JAVA_OPTS -jar target/bunnycure-0.0.1-SNAPSHOT.jar
