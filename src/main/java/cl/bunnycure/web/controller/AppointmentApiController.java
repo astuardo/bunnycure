@@ -484,13 +484,15 @@ public class AppointmentApiController {
                         .price(service.getPrice())
                         .active(service.isActive())
                         .build()).toList()
-                : List.of(ServiceSummaryDto.builder()
-                        .id(appointment.getService().getId())
-                        .name(appointment.getService().getName())
-                        .durationMinutes(appointment.getService().getDurationMinutes())
-                        .price(appointment.getService().getPrice())
-                        .active(appointment.getService().isActive())
-                        .build());
+                : (appointment.getService() != null
+                    ? List.of(ServiceSummaryDto.builder()
+                            .id(appointment.getService().getId())
+                            .name(appointment.getService().getName())
+                            .durationMinutes(appointment.getService().getDurationMinutes())
+                            .price(appointment.getService().getPrice())
+                            .active(appointment.getService().isActive())
+                            .build())
+                    : List.of());
 
         BigDecimal totalPrice = selectedServices.stream()
                 .map(ServiceSummaryDto::getPrice)
@@ -499,6 +501,16 @@ public class AppointmentApiController {
                 .map(ServiceSummaryDto::getDurationMinutes)
                 .reduce(0, Integer::sum);
 
+        ServiceSummaryDto primaryService = !selectedServices.isEmpty()
+                ? selectedServices.get(0)
+                : (appointment.getService() != null ? ServiceSummaryDto.builder()
+                        .id(appointment.getService().getId())
+                        .name(appointment.getService().getName())
+                        .durationMinutes(appointment.getService().getDurationMinutes())
+                        .price(appointment.getService().getPrice())
+                        .active(appointment.getService().isActive())
+                        .build() : null);
+
         return AppointmentResponseDto.builder()
                 .id(appointment.getId())
                 .appointmentDate(appointment.getAppointmentDate())
@@ -506,13 +518,7 @@ public class AppointmentApiController {
                 .status(appointment.getStatus())
                 .notes(appointment.getObservations())
                 .customer(new CustomerSummary(appointment.getCustomer(), 0))
-                .service(ServiceSummaryDto.builder()
-                        .id(appointment.getService().getId())
-                        .name(appointment.getService().getName())
-                        .durationMinutes(appointment.getService().getDurationMinutes())
-                        .price(appointment.getService().getPrice())
-                        .active(appointment.getService().isActive())
-                        .build())
+                .service(primaryService)
                 .services(selectedServices)
                 .totalPrice(totalPrice)
                 .totalDurationMinutes(totalDuration)
