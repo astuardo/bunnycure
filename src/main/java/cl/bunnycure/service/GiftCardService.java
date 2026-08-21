@@ -534,30 +534,6 @@ public class GiftCardService {
         return customerService.findByPhone(phone.trim()).orElse(null);
     }
 
-    private Customer createBeneficiaryWithOptionalEmailFallback(String fullName, String phone, String email) {
-        String normalizedEmail = normalizeNullable(email, null);
-        try {
-            return customerService.create(CustomerDto.builder()
-                    .fullName(fullName.trim())
-                    .phone(phone.trim())
-                    .email(normalizedEmail)
-                    .notificationPreference(NotificationPreference.BOTH)
-                    .build());
-        } catch (IllegalArgumentException ex) {
-            // Email is optional for beneficiary. If the email already exists in another customer,
-            // create the beneficiary without email instead of failing the giftcard creation.
-            if (normalizedEmail != null && ex.getMessage() != null && ex.getMessage().contains("Ya existe un cliente con el email")) {
-                return customerService.create(CustomerDto.builder()
-                        .fullName(fullName.trim())
-                        .phone(phone.trim())
-                        .email(null)
-                        .notificationPreference(NotificationPreference.BOTH)
-                        .build());
-            }
-            throw ex;
-        }
-    }
-
     private void validateDates(LocalDate expiresOn) {
         LocalDate today = ZonedDateTime.now(CHILE_ZONE_ID).toLocalDate();
         if (expiresOn.isBefore(today)) {

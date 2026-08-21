@@ -1,7 +1,6 @@
 package cl.bunnycure.web.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,7 +23,7 @@ import java.util.List;
 public class AppointmentCreateRequestDto {
     
     @NotNull(message = "El ID del cliente es requerido")
-    @Schema(description = "ID del cliente", example = "1", required = true)
+    @Schema(description = "ID del cliente", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long customerId;
     
     @Schema(description = "ID del servicio principal (compatibilidad con clientes antiguos)", example = "1")
@@ -34,11 +33,11 @@ public class AppointmentCreateRequestDto {
     private List<Long> serviceIds;
     
     @NotNull(message = "La fecha de la cita es requerida")
-    @Schema(description = "Fecha de la cita", example = "2024-04-15", required = true)
+    @Schema(description = "Fecha de la cita", example = "2024-04-15", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate appointmentDate;
     
     @NotNull(message = "La hora de la cita es requerida")
-    @Schema(description = "Hora de la cita", example = "14:30", required = true)
+    @Schema(description = "Hora de la cita", example = "14:30", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalTime appointmentTime;
     
     @Schema(description = "Notas adicionales sobre la cita", example = "Cliente prefiere sala privada")

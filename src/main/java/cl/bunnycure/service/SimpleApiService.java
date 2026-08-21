@@ -39,7 +39,7 @@ public class SimpleApiService {
     private final ObjectMapper objectMapper;
 
     private static final String BOLETA_ENDPOINT = "/api/bhe/emitir";
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
     private static final int MONTHLY_INVOICE_LIMIT = 30;
 
     /**
@@ -170,7 +170,7 @@ public class SimpleApiService {
         requestBody.put("EmailReceptor", customer.getEmail() != null ? customer.getEmail() : "");
         requestBody.put("Monto", amount);
         requestBody.put("Descripcion", "Servicios de estética BunnyCure");
-        requestBody.put("FechaEmision", LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+        requestBody.put("FechaEmision", LocalDate.now().format(DATE_FORMATTER));
         return requestBody;
     }
 

@@ -1,6 +1,5 @@
 package cl.bunnycure.web.controller;
 
-import cl.bunnycure.domain.enums.BookingRequestStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.BookingRequest;
 import cl.bunnycure.service.BookingRequestService;

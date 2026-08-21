@@ -4,7 +4,6 @@ import cl.bunnycure.domain.model.Appointment;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -73,8 +72,6 @@ public class CalendarService {
             appointment.getAppointmentTime()
         );
         
-        // 1 hora antes para la alarma
-        LocalDateTime alarmTime = startDateTime.minusHours(1);
         LocalDateTime endDateTime = startDateTime.plusHours(1);
         
         // Formato UTC para iCalendar
@@ -92,7 +89,7 @@ public class CalendarService {
         ics.append("CALSCALE:GREGORIAN\r\n");
         ics.append("METHOD:PUBLISH\r\n");
         ics.append("BEGIN:VEVENT\r\n");
-        ics.append("UID:").append(appointment.getId()).append("@bunnycure.cl\r\n");
+        ics.append("UID:").append(appointment.getId()).append("-").append(System.currentTimeMillis()).append("@bunnycure.cl\r\n");
         ics.append("DTSTAMP:").append(now).append("\r\n");
         ics.append("DTSTART:").append(startUtc).append("\r\n");
         ics.append("DTEND:").append(endUtc).append("\r\n");
@@ -103,9 +100,9 @@ public class CalendarService {
         
         // Alarma 1 hora antes
         ics.append("BEGIN:VALARM\r\n");
-        ics.append("TRIGGER:-PT1H\r\n");  // 1 hora antes
+        ics.append("TRIGGER:-PT1H\r\n");
         ics.append("ACTION:DISPLAY\r\n");
-        ics.append("DESCRIPTION:Recordatorio: Cita en BunnyCure en 1 hora\r\n");
+        ics.append("DESCRIPTION:Recordatorio de cita en BunnyCure\r\n");
         ics.append("END:VALARM\r\n");
         
         ics.append("END:VEVENT\r\n");
@@ -116,7 +113,7 @@ public class CalendarService {
     
     private String buildEventDetails(Appointment appointment) {
         StringBuilder details = new StringBuilder();
-        details.append("Cliente: ").append(appointment.getCustomer().getFullName()).append("\\n");
+        details.append("Detalles de tu cita en BunnyCure:\\n\\n");
         details.append("Servicio: ").append(appointment.getService().getName()).append("\\n");
         details.append("Fecha: ").append(appointment.getAppointmentDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))).append("\\n");
         details.append("Hora: ").append(appointment.getAppointmentTime().format(DateTimeFormatter.ofPattern("HH:mm"))).append("\\n");
@@ -131,11 +128,8 @@ public class CalendarService {
     }
     
     private String encode(String value) {
-        try {
-            return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
-        } catch (UnsupportedEncodingException e) {
-            return value;
-        }
+        if (value == null) return "";
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
     
     private String escapeIcs(String value) {

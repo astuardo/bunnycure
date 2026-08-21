@@ -346,7 +346,6 @@ public class AuthApiController {
             }
             
             // Validación: newPassword no debe ser igual a currentPassword
-            User user = userService.findByUsername(username);
             if (request.getCurrentPassword().equals(request.getNewPassword())) {
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.error(

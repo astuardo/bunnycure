@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -64,11 +65,11 @@ public class WhatsAppService {
             metadataHeaders.setBearerAuth(config.getToken());
             HttpEntity<Void> metadataRequest = new HttpEntity<>(metadataHeaders);
 
-            ResponseEntity<Map> metadataResponse = restTemplate.exchange(
+            ResponseEntity<Map<String, Object>> metadataResponse = restTemplate.exchange(
                     String.format("%s/%s", WHATSAPP_API_URL, mediaId),
                     HttpMethod.GET,
                     metadataRequest,
-                    Map.class
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
             );
 
             if (!metadataResponse.getStatusCode().is2xxSuccessful() || metadataResponse.getBody() == null) {
