@@ -116,6 +116,104 @@ public class WhatsAppTestController {
     }
 
     /**
+     * Endpoint para consultar la salud, calificación y límite del número
+     * GET /api/test/whatsapp/phone-health
+     */
+    @GetMapping("/phone-health")
+    public ResponseEntity<?> getPhoneHealth(@RequestParam(required = false) String phoneId) {
+        String id = (phoneId != null && !phoneId.isBlank()) ? phoneId : whatsAppConfig.getPhoneId();
+        return whatsAppService.fetchPhoneNumberHealth(id)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(500).body(Map.of(
+                        "status", "error",
+                        "message", "No se pudo obtener el estado de salud del número de WhatsApp."
+                )));
+    }
+
+    /**
+     * Endpoint para consultar el perfil comercial de WhatsApp
+     * GET /api/test/whatsapp/business-profile
+     */
+    @GetMapping("/business-profile")
+    public ResponseEntity<?> getBusinessProfile(@RequestParam(required = false) String phoneId) {
+        String id = (phoneId != null && !phoneId.isBlank()) ? phoneId : whatsAppConfig.getPhoneId();
+        return whatsAppService.fetchBusinessProfile(id)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(500).body(Map.of(
+                        "status", "error",
+                        "message", "No se pudo obtener el perfil de negocio."
+                )));
+    }
+
+    /**
+     * Endpoint para actualizar el perfil comercial de WhatsApp
+     * POST /api/test/whatsapp/business-profile
+     */
+    @PostMapping("/business-profile")
+    public ResponseEntity<?> updateBusinessProfile(@RequestBody Map<String, Object> profileData) {
+        boolean success = whatsAppService.updateBusinessProfile(profileData);
+        if (success) {
+            return ResponseEntity.ok(Map.of("status", "success", "message", "Perfil comercial actualizado en WhatsApp."));
+        }
+        return ResponseEntity.status(500).body(Map.of("status", "error", "message", "No se pudo actualizar el perfil comercial."));
+    }
+
+    /**
+     * Endpoint para consultar analíticas de templates
+     * GET /api/test/whatsapp/template-analytics
+     */
+    @GetMapping("/template-analytics")
+    public ResponseEntity<?> getTemplateAnalytics(
+            @RequestParam(required = false) Long start,
+            @RequestParam(required = false) Long end,
+            @RequestParam(required = false) String granularity,
+            @RequestParam(required = false) String metricTypes) {
+        return whatsAppService.fetchTemplateAnalytics(start, end, granularity, metricTypes)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(500).body(Map.of(
+                        "status", "error",
+                        "message", "No se pudieron obtener las analíticas de plantillas."
+                )));
+    }
+
+    /**
+     * Endpoint para probar envío de documento PDF
+     * POST /api/test/whatsapp/send-document
+     */
+    @PostMapping("/send-document")
+    public ResponseEntity<?> sendDocument(
+            @RequestParam String phone,
+            @RequestParam String url,
+            @RequestParam(required = false) String filename,
+            @RequestParam(required = false) String caption) {
+        boolean success = whatsAppService.sendDocumentMessage(phone, url, filename, caption);
+        return ResponseEntity.ok(Map.of("status", success ? "success" : "error"));
+    }
+
+    /**
+     * Endpoint para probar envío de imagen
+     * POST /api/test/whatsapp/send-image
+     */
+    @PostMapping("/send-image")
+    public ResponseEntity<?> sendImage(
+            @RequestParam String phone,
+            @RequestParam String url,
+            @RequestParam(required = false) String caption) {
+        boolean success = whatsAppService.sendImageMessage(phone, url, caption);
+        return ResponseEntity.ok(Map.of("status", success ? "success" : "error"));
+    }
+
+    /**
+     * Endpoint para probar marcar mensaje como leído
+     * POST /api/test/whatsapp/mark-read
+     */
+    @PostMapping("/mark-read")
+    public ResponseEntity<?> markRead(@RequestParam String messageId) {
+        boolean success = whatsAppService.markMessageAsReadSync(messageId);
+        return ResponseEntity.ok(Map.of("status", success ? "success" : "error", "messageId", messageId));
+    }
+
+    /**
      * Endpoint para enviar mensajes de prueba predefinidos
      * 
      * POST http://localhost:8080/api/test/whatsapp/templates/{type}?phone=56912345678

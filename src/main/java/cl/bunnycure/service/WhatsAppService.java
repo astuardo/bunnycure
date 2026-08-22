@@ -164,6 +164,407 @@ public class WhatsAppService {
     }
 
     /**
+     * Marca un mensaje como leído (Read Receipt - Doble check azul en WhatsApp).
+     * Endpoint: POST https://graph.facebook.com/v22.0/{phoneId}/messages
+     */
+    @Async
+    public void markMessageAsRead(String messageId) {
+        markMessageAsReadSync(messageId);
+    }
+
+    public boolean markMessageAsReadSync(String messageId) {
+        if (messageId == null || messageId.isBlank()) {
+            return false;
+        }
+        if (config.getToken() == null || config.getToken().isBlank() || config.getPhoneId() == null || config.getPhoneId().isBlank()) {
+            return false;
+        }
+
+        try {
+            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("messaging_product", "whatsapp");
+            payload.put("status", "read");
+            payload.put("message_id", messageId);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(config.getToken());
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    request,
+                    String.class
+            );
+
+            boolean success = response.getStatusCode().is2xxSuccessful();
+            if (success) {
+                log.debug("[WHATSAPP] ✅ Mensaje marcado como leído en Meta. WAMID: {}", messageId);
+            }
+            return success;
+        } catch (Exception ex) {
+            log.debug("[WHATSAPP] No se pudo marcar mensaje como leído {}: {}", messageId, ex.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Consulta el estado de salud, calidad y límites del número de WhatsApp.
+     * Endpoint: GET https://graph.facebook.com/v22.0/{phoneId}?fields=id,verified_name,display_phone_number,quality_rating,messaging_limit_tier,code_verification_status
+     */
+    public Optional<JsonNode> fetchPhoneNumberHealth() {
+        return fetchPhoneNumberHealth(config.getPhoneId());
+    }
+
+    public Optional<JsonNode> fetchPhoneNumberHealth(String phoneId) {
+        if (phoneId == null || phoneId.isBlank() || config.getToken() == null || config.getToken().isBlank()) {
+            return Optional.empty();
+        }
+
+        try {
+            String url = String.format("%s/%s?fields=id,verified_name,display_phone_number,quality_rating,messaging_limit_tier,code_verification_status",
+                    WHATSAPP_API_URL, phoneId.trim());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(config.getToken());
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                log.info("[WHATSAPP-HEALTH] ✅ Estado del número obtenido. Calidad: {}, Límite: {}",
+                        root.path("quality_rating").asText(), root.path("messaging_limit_tier").asText());
+                return Optional.of(root);
+            }
+            return Optional.empty();
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-HEALTH] ❌ Error al consultar salud del número: {}", ex.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Consulta el perfil de negocio de WhatsApp (descripción, dirección, websites, foto).
+     * Endpoint: GET https://graph.facebook.com/v22.0/{phoneId}/whatsapp_business_profile?fields=about,address,description,email,profile_picture_url,websites,vertical
+     */
+    public Optional<JsonNode> fetchBusinessProfile() {
+        return fetchBusinessProfile(config.getPhoneId());
+    }
+
+    public Optional<JsonNode> fetchBusinessProfile(String phoneId) {
+        if (phoneId == null || phoneId.isBlank() || config.getToken() == null || config.getToken().isBlank()) {
+            return Optional.empty();
+        }
+
+        try {
+            String url = String.format("%s/%s/whatsapp_business_profile?fields=about,address,description,email,profile_picture_url,websites,vertical",
+                    WHATSAPP_API_URL, phoneId.trim());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(config.getToken());
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return Optional.of(objectMapper.readTree(response.getBody()));
+            }
+            return Optional.empty();
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-PROFILE] ❌ Error al obtener perfil de negocio: {}", ex.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Actualiza el perfil de negocio de WhatsApp.
+     * Endpoint: POST https://graph.facebook.com/v22.0/{phoneId}/whatsapp_business_profile
+     */
+    public boolean updateBusinessProfile(Map<String, Object> profileData) {
+        return updateBusinessProfile(config.getPhoneId(), profileData);
+    }
+
+    public boolean updateBusinessProfile(String phoneId, Map<String, Object> profileData) {
+        if (phoneId == null || phoneId.isBlank() || config.getToken() == null || config.getToken().isBlank()) {
+            return false;
+        }
+
+        try {
+            String url = String.format("%s/%s/whatsapp_business_profile", WHATSAPP_API_URL, phoneId.trim());
+
+            Map<String, Object> payload = new HashMap<>(profileData);
+            payload.put("messaging_product", "whatsapp");
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(config.getToken());
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    request,
+                    String.class
+            );
+
+            boolean success = response.getStatusCode().is2xxSuccessful();
+            log.info("[WHATSAPP-PROFILE] Actualización de perfil result: {}", success);
+            return success;
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-PROFILE] ❌ Error actualizando perfil de negocio: {}", ex.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Consulta analíticas de rendimiento de plantillas (entregas, lecturas, clicks, costos).
+     * Endpoint: GET https://graph.facebook.com/v22.0/{businessAccountId}/template_analytics
+     */
+    public Optional<JsonNode> fetchTemplateAnalytics(Long startTimestamp, Long endTimestamp, String granularity, String metricTypes) {
+        String businessAccountId = config.getBusinessAccountId();
+        if (businessAccountId == null || businessAccountId.isBlank() || config.getToken() == null || config.getToken().isBlank()) {
+            return Optional.empty();
+        }
+
+        try {
+            long start = startTimestamp != null ? startTimestamp : (System.currentTimeMillis() / 1000L) - (30L * 24 * 3600);
+            long end = endTimestamp != null ? endTimestamp : (System.currentTimeMillis() / 1000L);
+            String gran = (granularity != null && !granularity.isBlank()) ? granularity : "DAILY";
+            String metrics = (metricTypes != null && !metricTypes.isBlank()) ? metricTypes : "SENT,DELIVERED,READ,CLICKED";
+
+            String url = String.format("%s/%s/template_analytics?start=%d&end=%d&granularity=%s&metric_types=%s",
+                    WHATSAPP_API_URL, businessAccountId.trim(), start, end, gran, metrics);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(config.getToken());
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return Optional.of(objectMapper.readTree(response.getBody()));
+            }
+            return Optional.empty();
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-ANALYTICS] ❌ Error al obtener analíticas de templates: {}", ex.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Envía un documento (PDF, etc.) vía WhatsApp.
+     */
+    public boolean sendDocumentMessage(String toPhoneNumber, String documentUrl, String filename, String caption) {
+        if (config.getToken() == null || config.getToken().isBlank() || config.getPhoneId() == null || config.getPhoneId().isBlank()) {
+            return false;
+        }
+
+        try {
+            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("messaging_product", "whatsapp");
+            payload.put("to", normalizedPhone);
+            payload.put("type", "document");
+
+            Map<String, String> doc = new HashMap<>();
+            doc.put("link", documentUrl);
+            if (filename != null && !filename.isBlank()) {
+                doc.put("filename", filename);
+            }
+            if (caption != null && !caption.isBlank()) {
+                doc.put("caption", caption);
+            }
+            payload.put("document", doc);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(config.getToken());
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-DOCUMENT] ❌ Error enviando documento a {}: {}", toPhoneNumber, ex.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envía una imagen vía WhatsApp.
+     */
+    public boolean sendImageMessage(String toPhoneNumber, String imageUrl, String caption) {
+        if (config.getToken() == null || config.getToken().isBlank() || config.getPhoneId() == null || config.getPhoneId().isBlank()) {
+            return false;
+        }
+
+        try {
+            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("messaging_product", "whatsapp");
+            payload.put("to", normalizedPhone);
+            payload.put("type", "image");
+
+            Map<String, String> image = new HashMap<>();
+            image.put("link", imageUrl);
+            if (caption != null && !caption.isBlank()) {
+                image.put("caption", caption);
+            }
+            payload.put("image", image);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(config.getToken());
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-IMAGE] ❌ Error enviando imagen a {}: {}", toPhoneNumber, ex.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envía un mensaje interactivo con botones de respuesta rápida (hasta 3 botones).
+     */
+    public boolean sendInteractiveButtonMessage(String toPhoneNumber, String bodyText, List<Map<String, String>> buttons) {
+        if (config.getToken() == null || config.getToken().isBlank() || config.getPhoneId() == null || config.getPhoneId().isBlank()) {
+            return false;
+        }
+
+        try {
+            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("messaging_product", "whatsapp");
+            payload.put("to", normalizedPhone);
+            payload.put("type", "interactive");
+
+            Map<String, Object> interactive = new HashMap<>();
+            interactive.put("type", "button");
+
+            Map<String, String> body = new HashMap<>();
+            body.put("text", bodyText);
+            interactive.put("body", body);
+
+            List<Map<String, Object>> actionButtons = new ArrayList<>();
+            for (Map<String, String> btn : buttons) {
+                Map<String, Object> b = new HashMap<>();
+                b.put("type", "reply");
+                Map<String, String> reply = new HashMap<>();
+                reply.put("id", btn.get("id"));
+                reply.put("title", btn.get("title"));
+                b.put("reply", reply);
+                actionButtons.add(b);
+            }
+
+            Map<String, Object> action = new HashMap<>();
+            action.put("buttons", actionButtons);
+            interactive.put("action", action);
+
+            payload.put("interactive", interactive);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(config.getToken());
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-INTERACTIVE] ❌ Error enviando botones interactivos a {}: {}", toPhoneNumber, ex.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envía un mensaje interactivo con lista desplegable de opciones (hasta 10 filas).
+     */
+    public boolean sendInteractiveListMessage(String toPhoneNumber, String headerText, String bodyText, String footerText, String buttonLabel, List<Map<String, Object>> sections) {
+        if (config.getToken() == null || config.getToken().isBlank() || config.getPhoneId() == null || config.getPhoneId().isBlank()) {
+            return false;
+        }
+
+        try {
+            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("messaging_product", "whatsapp");
+            payload.put("to", normalizedPhone);
+            payload.put("type", "interactive");
+
+            Map<String, Object> interactive = new HashMap<>();
+            interactive.put("type", "list");
+
+            if (headerText != null && !headerText.isBlank()) {
+                Map<String, String> header = new HashMap<>();
+                header.put("type", "text");
+                header.put("text", headerText);
+                interactive.put("header", header);
+            }
+
+            Map<String, String> body = new HashMap<>();
+            body.put("text", bodyText);
+            interactive.put("body", body);
+
+            if (footerText != null && !footerText.isBlank()) {
+                Map<String, String> footer = new HashMap<>();
+                footer.put("text", footerText);
+                interactive.put("footer", footer);
+            }
+
+            Map<String, Object> action = new HashMap<>();
+            action.put("button", (buttonLabel != null && !buttonLabel.isBlank()) ? buttonLabel : "Ver Opciones");
+            action.put("sections", sections);
+            interactive.put("action", action);
+
+            payload.put("interactive", interactive);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(config.getToken());
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-LIST] ❌ Error enviando lista interactiva a {}: {}", toPhoneNumber, ex.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Envía un mensaje de texto simple a un número de WhatsApp
      */
     @Async

@@ -432,6 +432,154 @@ class WhatsAppServiceTest {
         verify(restTemplate, never()).exchange(anyString(), any(), any(), eq(String.class));
     }
 
+    @Test
+    void markMessageAsRead_Success() {
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("phone-123");
+
+        when(restTemplate.exchange(
+                eq("https://graph.facebook.com/v22.0/phone-123/messages"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>("{\"success\":true}", HttpStatus.OK));
+
+        boolean result = whatsAppService.markMessageAsReadSync("wamid.123");
+        assertTrue(result);
+    }
+
+    @Test
+    void fetchPhoneNumberHealth_Success() throws Exception {
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("phone-123");
+
+        String jsonResponse = "{\"id\":\"phone-123\",\"quality_rating\":\"GREEN\",\"messaging_limit_tier\":\"TIER_1K\"}";
+        com.fasterxml.jackson.databind.ObjectMapper realMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        when(objectMapper.readTree(jsonResponse)).thenReturn(realMapper.readTree(jsonResponse));
+
+        when(restTemplate.exchange(
+                contains("phone-123?fields="),
+                eq(HttpMethod.GET),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>(jsonResponse, HttpStatus.OK));
+
+        var health = whatsAppService.fetchPhoneNumberHealth();
+        assertTrue(health.isPresent());
+        assertEquals("GREEN", health.get().path("quality_rating").asText());
+    }
+
+    @Test
+    void fetchBusinessProfile_Success() throws Exception {
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("phone-123");
+
+        String jsonResponse = "{\"data\":[{\"about\":\"BunnyCure\",\"address\":\"Providencia\"}]}";
+        com.fasterxml.jackson.databind.ObjectMapper realMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        when(objectMapper.readTree(jsonResponse)).thenReturn(realMapper.readTree(jsonResponse));
+
+        when(restTemplate.exchange(
+                contains("phone-123/whatsapp_business_profile"),
+                eq(HttpMethod.GET),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>(jsonResponse, HttpStatus.OK));
+
+        var profile = whatsAppService.fetchBusinessProfile();
+        assertTrue(profile.isPresent());
+    }
+
+    @Test
+    void updateBusinessProfile_Success() {
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("phone-123");
+
+        when(restTemplate.exchange(
+                contains("phone-123/whatsapp_business_profile"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>("{\"success\":true}", HttpStatus.OK));
+
+        boolean updated = whatsAppService.updateBusinessProfile(Map.of("about", "Nuevo About"));
+        assertTrue(updated);
+    }
+
+    @Test
+    void sendDocumentMessage_Success() {
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("phone-123");
+
+        when(restTemplate.exchange(
+                eq("https://graph.facebook.com/v22.0/phone-123/messages"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>("{\"messages\":[{\"id\":\"wamid-doc\"}]}", HttpStatus.OK));
+
+        boolean sent = whatsAppService.sendDocumentMessage("+56912345678", "https://bunnycure.cl/boleta.pdf", "boleta.pdf", "Tu boleta");
+        assertTrue(sent);
+    }
+
+    @Test
+    void sendImageMessage_Success() {
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("phone-123");
+
+        when(restTemplate.exchange(
+                eq("https://graph.facebook.com/v22.0/phone-123/messages"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>("{\"messages\":[{\"id\":\"wamid-img\"}]}", HttpStatus.OK));
+
+        boolean sent = whatsAppService.sendImageMessage("+56912345678", "https://bunnycure.cl/nail.jpg", "Diseño");
+        assertTrue(sent);
+    }
+
+    @Test
+    void sendInteractiveButtonMessage_Success() {
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("phone-123");
+
+        when(restTemplate.exchange(
+                eq("https://graph.facebook.com/v22.0/phone-123/messages"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>("{\"messages\":[{\"id\":\"wamid-btn\"}]}", HttpStatus.OK));
+
+        boolean sent = whatsAppService.sendInteractiveButtonMessage(
+                "+56912345678",
+                "Elige una opción",
+                List.of(Map.of("id", "btn_1", "title", "Opción 1"))
+        );
+        assertTrue(sent);
+    }
+
+    @Test
+    void sendInteractiveListMessage_Success() {
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("phone-123");
+
+        when(restTemplate.exchange(
+                eq("https://graph.facebook.com/v22.0/phone-123/messages"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>("{\"messages\":[{\"id\":\"wamid-list\"}]}", HttpStatus.OK));
+
+        boolean sent = whatsAppService.sendInteractiveListMessage(
+                "+56912345678",
+                "Servicios BunnyCure",
+                "Selecciona uno de nuestros servicios:",
+                "BunnyCure 2026",
+                "Ver Servicios",
+                List.of(Map.of("title", "Manicura", "rows", List.of(Map.of("id", "srv_1", "title", "Rusa"))))
+        );
+        assertTrue(sent);
+    }
+
     // Métodos auxiliares para crear objetos de prueba
 
     private Appointment createTestAppointment() {

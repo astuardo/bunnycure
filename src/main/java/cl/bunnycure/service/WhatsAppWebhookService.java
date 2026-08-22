@@ -247,6 +247,11 @@ public class WhatsAppWebhookService {
                 continue;
             }
 
+            // Marcar mensaje como leído en Meta (doble check azul para la clienta)
+            if (message.getId() != null && !message.getId().isBlank()) {
+                whatsAppService.markMessageAsRead(message.getId());
+            }
+
             String contactName = "Unknown";
             if (contacts != null && !contacts.isEmpty()) {
                 WhatsAppWebhookDto.Contact contact = contacts.get(0);
