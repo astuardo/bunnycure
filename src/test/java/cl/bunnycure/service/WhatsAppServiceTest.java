@@ -398,6 +398,40 @@ class WhatsAppServiceTest {
         verify(restTemplate, never()).exchange(anyString(), any(), any(), any(Class.class));
     }
 
+    @Test
+    void fetchMessageTemplates_Success() throws Exception {
+        when(config.getBusinessAccountId()).thenReturn("1449551576874115");
+        when(config.getToken()).thenReturn("test-token");
+
+        String jsonResponse = "{\"data\":[{\"name\":\"recordatorio_cita\",\"status\":\"APPROVED\"}]}";
+        com.fasterxml.jackson.databind.ObjectMapper realMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode rootNode = realMapper.readTree(jsonResponse);
+        when(objectMapper.readTree(jsonResponse)).thenReturn(rootNode);
+
+        when(restTemplate.exchange(
+                eq("https://graph.facebook.com/v22.0/1449551576874115/message_templates"),
+                eq(HttpMethod.GET),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>(jsonResponse, HttpStatus.OK));
+
+        var result = whatsAppService.fetchMessageTemplates();
+
+        assertTrue(result.isPresent());
+        assertEquals("recordatorio_cita", result.get().path("data").get(0).path("name").asText());
+    }
+
+    @Test
+    void fetchMessageTemplates_NoToken_ReturnsEmpty() {
+        when(config.getBusinessAccountId()).thenReturn("1449551576874115");
+        when(config.getToken()).thenReturn(null);
+
+        var result = whatsAppService.fetchMessageTemplates();
+
+        assertTrue(result.isEmpty());
+        verify(restTemplate, never()).exchange(anyString(), any(), any(), eq(String.class));
+    }
+
     // Métodos auxiliares para crear objetos de prueba
 
     private Appointment createTestAppointment() {

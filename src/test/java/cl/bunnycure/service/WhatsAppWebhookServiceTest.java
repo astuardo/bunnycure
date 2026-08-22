@@ -27,7 +27,11 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -57,6 +61,9 @@ class WhatsAppWebhookServiceTest {
     @Mock
     private CustomerServiceRecordService customerServiceRecordService;
 
+    @Mock
+    private WebPushNotificationService webPushNotificationService;
+
     private WhatsAppWebhookService webhookService;
 
     @BeforeEach
@@ -68,7 +75,8 @@ class WhatsAppWebhookServiceTest {
                 whatsAppService,
                 appSettingsService,
                 whatsAppHandoffService,
-                customerServiceRecordService
+                customerServiceRecordService,
+                webPushNotificationService
         );
     }
 
@@ -95,6 +103,22 @@ class WhatsAppWebhookServiceTest {
 
         verify(appointmentRepository).save(appointment);
         verify(whatsAppService).sendTextMessage("56912345678", "Perfecto! Tu cita quedó confirmada. Te esperamos en BunnyCure.");
+    }
+
+    @Test
+    void processWebhookNotification_RescheduleButton_UpdatesAppointmentStatusAndSendsPushAndAdminAlert() {
+        Appointment appointment = createAppointment(1L, AppointmentStatus.PENDING, "+56912345678");
+        when(appointmentRepository.findByIdWithDetails(1L)).thenReturn(Optional.of(appointment));
+        when(appSettingsService.getAdminAlertWhatsappNumber(any())).thenReturn("56964499995");
+        when(whatsAppHandoffService.generateWhatsAppUrl(any())).thenReturn("https://wa.me/56912345678");
+
+        webhookService.processWebhookNotification(webhookWithMessage(buttonMessage("wamid-reschedule", "56912345678", "Necesito reprogramar", "reprogramar:1")));
+
+        assertEquals(AppointmentStatus.RESCHEDULE_REQUESTED, appointment.getStatus());
+        verify(appointmentRepository).save(appointment);
+        verify(webPushNotificationService).sendAdminCustomNotification(contains("reprogramada"), anyString(), eq("/appointments?status=RESCHEDULE_REQUESTED"));
+        verify(whatsAppService).sendTextMessage(eq("56964499995"), contains("SOLICITUD DE REPROGRAMACIÓN"));
+        verify(whatsAppService, never()).sendTextMessage(eq("56912345678"), anyString());
     }
 
     @Test

@@ -52,6 +52,7 @@ public class WhatsAppWebhookService {
     private final AppSettingsService appSettingsService;
     private final WhatsAppHandoffService whatsAppHandoffService;
     private final CustomerServiceRecordService customerServiceRecordService;
+    private final WebPushNotificationService webPushNotificationService;
 
     @Value("${bunnycure.whatsapp.number:}")
     private String adminWhatsAppNumber;
@@ -354,6 +355,11 @@ public class WhatsAppWebhookService {
             return;
         }
 
+        if (isReschedulePayload(text, payload)) {
+            handleRescheduleRequest(message);
+            return;
+        }
+
         log.info("[WEBHOOK] ℹ️ Payload de button no mapeado: {}", payload);
         if (message.getFrom() != null && !message.getFrom().isBlank() && isHandoffEnabled()) {
             sendHandoffMessage(message.getFrom(), "button_unmapped");
@@ -367,6 +373,17 @@ public class WhatsAppWebhookService {
                 || normalizedPayload.contains("confirmacion")
                 || normalizedPayload.contains("confirmar_asistencia")
                 || normalizedText.contains("confirmar");
+    }
+
+    private boolean isReschedulePayload(String text, String payload) {
+        String normalizedPayload = normalizeKey(payload);
+        String normalizedText = normalizeKey(text);
+        return normalizedPayload.contains("reprogramar")
+                || normalizedPayload.contains("reagendar")
+                || normalizedPayload.contains("cambiar_hora")
+                || normalizedPayload.contains("cambiar_cita")
+                || normalizedText.contains("reprogramar")
+                || normalizedText.contains("reagendar");
     }
 
     private void handleConfirmAttendance(WhatsAppWebhookDto.Message message) {
@@ -395,6 +412,64 @@ public class WhatsAppWebhookService {
         whatsAppService.sendTextMessage(from, "Perfecto! Tu cita quedó confirmada. Te esperamos en BunnyCure.");
     }
 
+    private void handleRescheduleRequest(WhatsAppWebhookDto.Message message) {
+        String from = message.getFrom();
+        if (from == null || from.isBlank()) {
+            log.warn("[WEBHOOK] ⚠️ No se puede procesar reprogramación: campo from vacío");
+            return;
+        }
+
+        Optional<Appointment> appointmentOpt = findAppointmentToReschedule(message);
+        if (appointmentOpt.isEmpty()) {
+            log.warn("[WEBHOOK] ⚠️ No se encontró cita pendiente o confirmada para reprogramar. from={}", from);
+            return;
+        }
+
+        Appointment appointment = appointmentOpt.get();
+        appointment.setStatus(AppointmentStatus.RESCHEDULE_REQUESTED);
+        appointmentRepository.save(appointment);
+
+        String customerName = appointment.getCustomer() != null ? appointment.getCustomer().getFullName() : "Cliente";
+        String customerPhone = appointment.getCustomer() != null ? appointment.getCustomer().getPhone() : from;
+        String serviceName = appointment.getService() != null ? appointment.getService().getName() : "Servicio";
+        String fecha = appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().toString() : "";
+        String hora = appointment.getAppointmentTime() != null ? appointment.getAppointmentTime().toString() : "";
+
+        log.info("[WEBHOOK] 🔄 Cita ID={} marcada como RESCHEDULE_REQUESTED para clienta {}", appointment.getId(), customerName);
+
+        // 1. Notificación Web Push a la App (para que salte en el panel admin)
+        try {
+            String pushTitle = "🔄 Cita necesita ser reprogramada";
+            String pushBody = String.format("%s solicitó reprogramar su cita del %s a las %s (%s).",
+                    customerName, fecha, hora, serviceName);
+            webPushNotificationService.sendAdminCustomNotification(pushTitle, pushBody, "/appointments?status=RESCHEDULE_REQUESTED");
+            log.info("[WEBHOOK] 📲 Notificación Web Push de reprogramación enviada exitosamente para cita ID: {}", appointment.getId());
+        } catch (Exception ex) {
+            log.error("[WEBHOOK] ❌ Error enviando WebPush de reprogramación: {}", ex.getMessage(), ex);
+        }
+
+        // 2. Alerta al WhatsApp de la administradora con link para contactar
+        try {
+            String targetAdminPhone = resolveAdminWhatsAppNumber();
+            if (targetAdminPhone != null && !targetAdminPhone.isBlank()) {
+                String contactUrl = whatsAppHandoffService.generateWhatsAppUrl(customerPhone);
+                String adminAlertMessage = String.format(
+                        "🔄 *SOLICITUD DE REPROGRAMACIÓN - BunnyCure*\n\n" +
+                        "La clienta *%s* ha solicitado reprogramar su cita.\n\n" +
+                        "📋 *Servicio:* %s\n" +
+                        "📅 *Fecha actual:* %s\n" +
+                        "⏰ *Hora actual:* %s\n\n" +
+                        "📱 *Contactar a clienta:*\n%s",
+                        customerName, serviceName, fecha, hora, contactUrl
+                );
+                whatsAppService.sendTextMessage(targetAdminPhone, adminAlertMessage);
+                log.info("[WEBHOOK] 📲 Alerta WhatsApp admin enviada a: {}", targetAdminPhone);
+            }
+        } catch (Exception ex) {
+            log.error("[WEBHOOK] ❌ Error enviando alerta WhatsApp admin de reprogramación: {}", ex.getMessage(), ex);
+        }
+    }
+
     private Optional<Appointment> findAppointmentToConfirm(WhatsAppWebhookDto.Message message) {
         Optional<Long> payloadAppointmentId = extractAppointmentId(message);
         if (payloadAppointmentId.isPresent()) {
@@ -406,6 +481,28 @@ public class WhatsAppWebhookService {
         LocalDate today = LocalDate.now();
 
         return appointmentRepository.findByStatus(AppointmentStatus.PENDING).stream()
+                .filter(a -> a.getAppointmentDate() != null && !a.getAppointmentDate().isBefore(today))
+                .filter(a -> a.getCustomer() != null)
+                .filter(a -> normalizePhone(a.getCustomer().getPhone()).equals(normalizedFrom))
+                .findFirst();
+    }
+
+    private Optional<Appointment> findAppointmentToReschedule(WhatsAppWebhookDto.Message message) {
+        Optional<Long> payloadAppointmentId = extractAppointmentId(message);
+        if (payloadAppointmentId.isPresent()) {
+            return appointmentRepository.findByIdWithDetails(payloadAppointmentId.get())
+                    .filter(a -> a.getStatus() == AppointmentStatus.PENDING
+                            || a.getStatus() == AppointmentStatus.CONFIRMED
+                            || a.getStatus() == AppointmentStatus.RESCHEDULE_REQUESTED);
+        }
+
+        String normalizedFrom = normalizePhone(message.getFrom());
+        LocalDate today = LocalDate.now();
+
+        return appointmentRepository.findAll().stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.PENDING
+                        || a.getStatus() == AppointmentStatus.CONFIRMED
+                        || a.getStatus() == AppointmentStatus.RESCHEDULE_REQUESTED)
                 .filter(a -> a.getAppointmentDate() != null && !a.getAppointmentDate().isBefore(today))
                 .filter(a -> a.getCustomer() != null)
                 .filter(a -> normalizePhone(a.getCustomer().getPhone()).equals(normalizedFrom))
@@ -747,7 +844,19 @@ public class WhatsAppWebhookService {
                 phoneId,
                 count
         );
-        whatsAppService.sendTextMessage(adminWhatsAppNumber, message);
+        whatsAppService.sendTextMessage(resolveAdminWhatsAppNumber(), message);
+    }
+
+    private String resolveAdminWhatsAppNumber() {
+        if (appSettingsService == null) {
+            return adminWhatsAppNumber;
+        }
+        try {
+            String configured = appSettingsService.getAdminAlertWhatsappNumber(adminWhatsAppNumber);
+            return (configured != null && !configured.isBlank()) ? configured : adminWhatsAppNumber;
+        } catch (Exception ex) {
+            return adminWhatsAppNumber;
+        }
     }
 
     private void processInteractiveMessage(WhatsAppWebhookDto.Message message) {
@@ -767,6 +876,11 @@ public class WhatsAppWebhookService {
                 handleConfirmAttendance(message);
                 return;
             }
+
+            if (isReschedulePayload(reply.getTitle(), reply.getId())) {
+                handleRescheduleRequest(message);
+                return;
+            }
         }
 
         if (message.getInteractive().getListReply() != null) {
@@ -777,6 +891,11 @@ public class WhatsAppWebhookService {
 
             if (isConfirmPayload(reply.getTitle(), reply.getId())) {
                 handleConfirmAttendance(message);
+                return;
+            }
+
+            if (isReschedulePayload(reply.getTitle(), reply.getId())) {
+                handleRescheduleRequest(message);
                 return;
             }
         }

@@ -4,7 +4,8 @@ public enum AppointmentStatus {
     PENDING("Pendiente"),
     CONFIRMED("Confirmado"),
     COMPLETED("Completado"),
-    CANCELLED("Cancelado");
+    CANCELLED("Cancelado"),
+    RESCHEDULE_REQUESTED("Reprogramar");
 
     private final String displayName;
 

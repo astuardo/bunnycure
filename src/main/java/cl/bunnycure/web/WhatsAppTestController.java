@@ -91,8 +91,28 @@ public class WhatsAppTestController {
         config.put("tokenPreview", tokenConfigured ? token.substring(0, Math.min(10, token.length())) + "..." : "Not configured");
         config.put("apiVersion", "v22.0");
         config.put("status", (tokenConfigured && phoneIdConfigured) ? "Ready" : "Not configured");
+        config.put("businessAccountId", whatsAppConfig.getBusinessAccountId());
         
         return ResponseEntity.ok(config);
+    }
+
+    /**
+     * Endpoint para consultar todos los templates creados en Meta
+     * 
+     * GET http://localhost:8080/api/test/whatsapp/meta-templates
+     */
+    @GetMapping("/meta-templates")
+    public ResponseEntity<?> getMetaTemplates(@RequestParam(required = false) String businessAccountId) {
+        String accountId = (businessAccountId != null && !businessAccountId.isBlank())
+                ? businessAccountId
+                : whatsAppConfig.getBusinessAccountId();
+
+        return whatsAppService.fetchMessageTemplates(accountId)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(500).body(Map.of(
+                        "status", "error",
+                        "message", "No se pudieron obtener los templates de Meta Graph API. Revisa token y businessAccountId."
+                )));
     }
 
     /**

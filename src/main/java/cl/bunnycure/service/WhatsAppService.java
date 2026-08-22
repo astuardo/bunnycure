@@ -106,6 +106,64 @@ public class WhatsAppService {
     }
 
     /**
+     * Obtiene todos los templates creados en la cuenta de WhatsApp Business (WABA).
+     * Endpoint: GET https://graph.facebook.com/v22.0/{businessAccountId}/message_templates
+     *
+     * @return JsonNode con la respuesta de Meta ("data", "paging") o Optional.empty() en caso de error.
+     */
+    public Optional<JsonNode> fetchMessageTemplates() {
+        return fetchMessageTemplates(config.getBusinessAccountId());
+    }
+
+    /**
+     * Obtiene todos los templates creados para una cuenta de WhatsApp Business específica.
+     *
+     * @param businessAccountId ID de la cuenta de WhatsApp Business (WABA ID)
+     * @return JsonNode con la respuesta de Meta o Optional.empty() en caso de error.
+     */
+    public Optional<JsonNode> fetchMessageTemplates(String businessAccountId) {
+        if (businessAccountId == null || businessAccountId.isBlank()) {
+            log.warn("[WHATSAPP-TEMPLATES] Business Account ID no configurado");
+            return Optional.empty();
+        }
+        if (config.getToken() == null || config.getToken().isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Token no configurado para consultar templates");
+            return Optional.empty();
+        }
+
+        try {
+            String url = String.format("%s/%s/message_templates", WHATSAPP_API_URL, businessAccountId.trim());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(config.getToken());
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            log.info("[WHATSAPP-TEMPLATES] Consultando templates en Meta API: {}", url);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                int count = root.path("data").isArray() ? root.path("data").size() : 0;
+                log.info("[WHATSAPP-TEMPLATES] ✅ Se obtuvieron {} templates exitosamente desde Meta", count);
+                return Optional.of(root);
+            } else {
+                log.error("[WHATSAPP-TEMPLATES] ❌ Error al obtener templates. Status: {}, Body: {}",
+                        response.getStatusCode(), response.getBody());
+                return Optional.empty();
+            }
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-TEMPLATES] ❌ Excepción al consultar templates: {}", ex.getMessage(), ex);
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Envía un mensaje de texto simple a un número de WhatsApp
      */
     @Async

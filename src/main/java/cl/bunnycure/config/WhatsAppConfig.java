@@ -27,6 +27,7 @@ public class WhatsAppConfig {
 
     private String token;
     private String phoneId;
+    private String businessAccountId = "1449551576874115";
 
     // Templates
     private String citaConfirmadaTemplateName = "confirmacion_cita";
@@ -148,6 +149,10 @@ public class WhatsAppConfig {
 
     public String getAdminBookingRequestsUrl() {
         return getDynamicSetting("whatsapp.admin.booking-requests.url", adminBookingRequestsUrl);
+    }
+
+    public String getBusinessAccountId() {
+        return getDynamicSetting("whatsapp.api.business-account-id", businessAccountId);
     }
 
     public String getBusinessName() {
