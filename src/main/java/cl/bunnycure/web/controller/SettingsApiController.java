@@ -1,6 +1,8 @@
 package cl.bunnycure.web.controller;
 
+import cl.bunnycure.config.WhatsAppConfig;
 import cl.bunnycure.service.AppSettingsService;
+import cl.bunnycure.service.WhatsAppService;
 import cl.bunnycure.web.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,18 +31,11 @@ import java.util.*;
 public class SettingsApiController {
 
     private final AppSettingsService settingsService;
+    private final WhatsAppService whatsAppService;
+    private final WhatsAppConfig whatsAppConfig;
 
     // Lista de claves válidas de configuración
-    private static final Set<String> VALID_KEYS = Set.copyOf(java.util.Arrays.asList(
-            "inventory.auto_consumption.enabled",
-            // Branding & Identidad
-            "app.name", "app.slogan", "app.email", "app.logo-url",
-            "app.website.url", "app.instagram.url", "app.instagram.handle", "app.phone.display", "app.owner.name",
-            "app.primary-color", "app.secondary-color",
-            "app.timezone", "app.locale", "app.currency", "app.service-tip",
-            // WhatsApp
-            "whatsapp.enabled",
-            "whatsapp.number", "whatsapp.human.number", "whatsapp.admin-alert.number",
+    private static final Set<String> VALID_KEYS = new HashSet<>(java.util.Arrays.asList(
             "inventory.auto_consumption.enabled",
             // Branding & Identidad
             "app.name", "app.slogan", "app.email", "app.logo-url",
@@ -315,7 +310,6 @@ public class SettingsApiController {
     // Métodos privados auxiliares
     // ────────────────────────────────────────────────────────────────────────────
 
-    
     private Map<String, String> createDefaultSettingsMap() {
         Map<String, String> m = new java.util.LinkedHashMap<>();
         // Branding & Identidad
@@ -560,5 +554,39 @@ public class SettingsApiController {
         }
 
         return null; // válido
+    }
+
+    @Operation(summary = "Obtiene el estado completo de Meta WhatsApp (salud, plantillas y perfil)")
+    @GetMapping("/whatsapp/meta-status")
+    public ResponseEntity<Map<String, Object>> getWhatsAppMetaStatus() {
+        Map<String, Object> response = new HashMap<>();
+        String phoneId = whatsAppConfig.getPhoneId();
+        String businessAccountId = whatsAppConfig.getBusinessAccountId();
+        String token = whatsAppConfig.getToken();
+
+        boolean configured = token != null && !token.isBlank() && phoneId != null && !phoneId.isBlank();
+        response.put("configured", configured);
+        response.put("phoneId", phoneId != null ? phoneId : "");
+        response.put("businessAccountId", businessAccountId != null ? businessAccountId : "");
+        response.put("apiVersion", "v22.0");
+
+        if (configured) {
+            whatsAppService.fetchPhoneNumberHealth(phoneId).ifPresent(health -> response.put("health", health));
+            whatsAppService.fetchBusinessProfile(phoneId).ifPresent(profile -> response.put("businessProfile", profile));
+            whatsAppService.fetchMessageTemplates(businessAccountId).ifPresent(templates -> response.put("templates", templates));
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Actualiza el perfil de negocio en Meta WhatsApp")
+    @PutMapping("/whatsapp/business-profile")
+    public ResponseEntity<Map<String, Object>> updateWhatsAppBusinessProfile(@RequestBody Map<String, Object> profileData) {
+        boolean success = whatsAppService.updateBusinessProfile(profileData);
+        if (success) {
+            return ResponseEntity.ok(Map.of("status", "success", "message", "Perfil comercial actualizado en WhatsApp."));
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("status", "error", "message", "No se pudo actualizar el perfil comercial en Meta."));
     }
 }
