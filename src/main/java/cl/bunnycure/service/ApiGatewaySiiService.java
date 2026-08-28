@@ -31,14 +31,24 @@ import java.util.Optional;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class ApiGatewaySiiService {
 
     private final ApiGatewayConfig config;
     private final InvoiceLogRepository invoiceLogRepository;
-    @Qualifier("apiGatewayRestTemplate")
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+
+    public ApiGatewaySiiService(
+            ApiGatewayConfig config,
+            InvoiceLogRepository invoiceLogRepository,
+            @Qualifier("apiGatewayRestTemplate") RestTemplate restTemplate,
+            ObjectMapper objectMapper) {
+        this.config = config;
+        this.invoiceLogRepository = invoiceLogRepository;
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
+    }
+
 
     private static final String EMITIR_BHE_ENDPOINT = "/api/v2/sii/bhe/emitidas/emitir";
     private static final String EMAIL_BHE_ENDPOINT = "/api/v2/sii/bhe/emitidas/email/";
@@ -122,14 +132,25 @@ public class ApiGatewaySiiService {
 
                 return Optional.ofNullable(folio);
             } else {
-                throw new RuntimeException("ApiGateway retornó status HTTP " + response.getStatusCode());
+                String errorMsg = "ApiGateway retornó status HTTP " + response.getStatusCode();
+                log.error("[INVOICE-ERROR] {}", errorMsg);
+                createFailedLog(appointment, customer, amount, errorMsg);
+                return Optional.empty();
             }
+        } catch (org.springframework.web.client.HttpStatusCodeException httpEx) {
+            String responseBody = httpEx.getResponseBodyAsString();
+            String errorMsg = String.format("HTTP %s: %s", httpEx.getStatusCode(), responseBody.isBlank() ? httpEx.getMessage() : responseBody);
+            log.error("[INVOICE-ERROR] Error HTTP al emitir BHE para cita {}: {}", appointment.getId(), errorMsg, httpEx);
+            createFailedLog(appointment, customer, amount, errorMsg);
+            return Optional.empty();
         } catch (Exception e) {
-            log.error("[INVOICE-ERROR] Error al emitir BHE para cita {}: {}", appointment.getId(), e.getMessage(), e);
+            log.error("[INVOICE-ERROR] Error inesperado al emitir BHE para cita {}: {}", appointment.getId(), e.getMessage(), e);
             createFailedLog(appointment, customer, amount, e.getMessage());
             return Optional.empty();
         }
     }
+
+
 
     /**
      * Envía la boleta electrónica por correo oficial directo desde los servidores del SII
@@ -308,10 +329,16 @@ public class ApiGatewaySiiService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         if (config.getToken() != null && !config.getToken().isBlank()) {
-            headers.set("Authorization", "Bearer " + config.getToken().trim());
+            String token = config.getToken().trim();
+            if (token.startsWith("Token ") || token.startsWith("Bearer ")) {
+                headers.set("Authorization", token);
+            } else {
+                headers.set("Authorization", "Token " + token);
+            }
         }
         return headers;
     }
+
 
     private String extractFolio(JsonNode json) {
         if (json.has("folio")) return json.get("folio").asText();
