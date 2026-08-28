@@ -90,6 +90,7 @@ public class SecurityConfig {
 			auth.requestMatchers("/api/reminders/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN", "RECEPTIONIST");
 			auth.requestMatchers("/api/loyalty-rewards/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN", "RECEPTIONIST");
 			auth.requestMatchers("/api/stats/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN", "RECEPTIONIST");
+			auth.requestMatchers("/api/invoices/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN", "RECEPTIONIST");
 			auth.requestMatchers("/api/appointments/**").authenticated();
 			auth.requestMatchers("/api/customers/**").authenticated();
 			auth.requestMatchers("/api/services/**").authenticated();

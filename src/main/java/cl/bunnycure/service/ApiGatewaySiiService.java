@@ -1,10 +1,14 @@
 package cl.bunnycure.service;
 
 import cl.bunnycure.config.ApiGatewayConfig;
+import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.Customer;
 import cl.bunnycure.domain.model.InvoiceLog;
+import cl.bunnycure.domain.repository.AppointmentRepository;
+import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.domain.repository.InvoiceLogRepository;
+import cl.bunnycure.web.dto.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +27,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -35,6 +38,8 @@ public class ApiGatewaySiiService {
 
     private final ApiGatewayConfig config;
     private final InvoiceLogRepository invoiceLogRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final CustomerRepository customerRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -45,6 +50,24 @@ public class ApiGatewaySiiService {
     private static final String ANULAR_BHE_ENDPOINT = "/api/v2/sii/bhe/emitidas/anular/";
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    // Caché en memoria para evitar consumo excesivo de créditos de API
+    private final Map<String, CachedSiiList> siiListCache = new ConcurrentHashMap<>();
+    private static final long CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutos
+
+    private static class CachedSiiList {
+        final JsonNode data;
+        final long timestamp;
+
+        CachedSiiList(JsonNode data) {
+            this.data = data;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        boolean isExpired() {
+            return (System.currentTimeMillis() - timestamp) > CACHE_TTL_MS;
+        }
+    }
 
     /**
      * Emite BHE de forma asíncrona en segundo plano para no bloquear el hilo HTTP
@@ -61,17 +84,18 @@ public class ApiGatewaySiiService {
     }
 
     /**
-     * Genera una boleta de honorarios electrónica (BHE) en el SII para una cita
-     * completada
+     * Genera una boleta de honorarios electrónica (BHE) en el SII para una cita completada
      * y opcionalmente envía el correo oficial del SII al cliente.
+     * Si ya existe un log previo con FAILED/ERROR, permite reintentar y actualiza el registro.
      */
     @Transactional
     public Optional<String> generateInvoice(Appointment appointment, Customer customer, BigDecimal amount) {
 
-        // Verificar si ya existe boleta para esta cita
+        // Verificar si ya existe boleta exitosa para esta cita
         Optional<InvoiceLog> existingLog = invoiceLogRepository.findByAppointmentId(appointment.getId());
-        if (existingLog.isPresent()) {
-            log.warn("[INVOICE] Invoice already generated for appointment {}", appointment.getId());
+        if (existingLog.isPresent() && "SUCCESS".equalsIgnoreCase(existingLog.get().getStatus())
+                && existingLog.get().getInvoiceNumber() != null && !existingLog.get().getInvoiceNumber().isBlank()) {
+            log.warn("[INVOICE] Invoice already generated with SUCCESS for appointment {}", appointment.getId());
             return Optional.ofNullable(existingLog.get().getInvoiceNumber());
         }
 
@@ -164,6 +188,66 @@ public class ApiGatewaySiiService {
     }
 
     /**
+     * Emite o reintenta emitir manualmente una boleta para una cita completada,
+     * permitiendo actualizar opcionalmente el RUT y correo del cliente antes de emitir.
+     */
+    @Transactional
+    public InvoiceIssuedItemDto emitInvoiceForAppointment(Long appointmentId, String overrideRut, String overrideEmail) {
+        Appointment appointment = appointmentRepository.findByIdWithDetails(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Cita no encontrada con ID: " + appointmentId));
+
+        Customer customer = appointment.getCustomer();
+        if (customer == null) {
+            throw new IllegalStateException("La cita no tiene un cliente asociado");
+        }
+
+        boolean customerUpdated = false;
+        if (overrideRut != null && !overrideRut.isBlank()) {
+            String sanitized = sanitizeRut(overrideRut);
+            if (!validateRutFormat(sanitized)) {
+                throw new IllegalArgumentException("El RUT ingresado no es válido: " + overrideRut);
+            }
+            customer.setRut(sanitized);
+            customerUpdated = true;
+        }
+
+        if (overrideEmail != null && !overrideEmail.isBlank()) {
+            customer.setEmail(overrideEmail.trim().toLowerCase());
+            customerUpdated = true;
+        }
+
+        if (customerUpdated) {
+            customerRepository.save(customer);
+        }
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        if (appointment.getServices() != null && !appointment.getServices().isEmpty()) {
+            totalAmount = appointment.getServices().stream()
+                    .map(s -> s.getPrice() != null ? BigDecimal.valueOf(s.getPrice().doubleValue()) : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+        if (totalAmount.compareTo(BigDecimal.ZERO) <= 0 && appointment.getService() != null && appointment.getService().getPrice() != null) {
+            totalAmount = BigDecimal.valueOf(appointment.getService().getPrice().doubleValue());
+        }
+
+        if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("El monto total de los servicios de la cita debe ser mayor a 0");
+        }
+
+        generateInvoice(appointment, customer, totalAmount);
+
+        InvoiceLog logEntry = invoiceLogRepository.findByAppointmentId(appointmentId)
+                .orElseThrow(() -> new IllegalStateException("No se pudo registrar la trazabilidad de la boleta"));
+
+        if (!"SUCCESS".equalsIgnoreCase(logEntry.getStatus())) {
+            String error = logEntry.getErrorMessage() != null ? logEntry.getErrorMessage() : "Error desconocido al emitir boleta";
+            throw new RuntimeException("No se pudo emitir la boleta: " + error);
+        }
+
+        return mapToIssuedItemDto(logEntry);
+    }
+
+    /**
      * Envía la boleta electrónica por correo oficial directo desde los servidores
      * del SII
      */
@@ -203,17 +287,35 @@ public class ApiGatewaySiiService {
     }
 
     /**
-     * Consulta el listado de boletas de honorarios emitidas en un período (YYYYMM o
-     * YYYYMMDD)
+     * Consulta el listado de boletas de honorarios emitidas en un período (YYYYMM o YYYYMMDD)
+     * Utiliza caché en memoria para no consumir créditos innecesarios del ApiGateway SII.
      */
-    public JsonNode listIssuedInvoices(String periodo, int pagina) {
+    public JsonNode listIssuedInvoices(String periodo, int pagina, boolean forceRefresh) {
+        String effectivePeriodo = (periodo != null && !periodo.isBlank())
+                ? periodo
+                : LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
+        int effectivePagina = Math.max(1, pagina);
+        String cacheKey = effectivePeriodo + "_" + effectivePagina;
+
+        if (!forceRefresh) {
+            CachedSiiList cached = siiListCache.get(cacheKey);
+            if (cached != null && !cached.isExpired()) {
+                log.info("[INVOICE-CACHE] Retornando listado BHE para período {} desde caché (ahorro de créditos)", effectivePeriodo);
+                return cached.data;
+            }
+        }
+
         if (!config.isConfigured()) {
-            throw new IllegalStateException("ApiGateway no está configurado");
+            log.info("[INVOICE-DRYRUN] ApiGateway no configurado. Retornando respuesta vacía para período {}", effectivePeriodo);
+            JsonNode dryRunResponse = objectMapper.createObjectNode()
+                    .put("status", "ok")
+                    .put("message", "ApiGateway no configurado (modo dry-run)")
+                    .putArray("documentos");
+            return dryRunResponse;
         }
 
         String emisor = sanitizeRut(config.getSiiRut());
-        String url = getBaseApiUrl() + DOCUMENTOS_BHE_ENDPOINT + emisor + "/" + periodo + "?pagina="
-                + Math.max(1, pagina);
+        String url = getBaseApiUrl() + DOCUMENTOS_BHE_ENDPOINT + emisor + "/" + effectivePeriodo + "?pagina=" + effectivePagina;
 
         Map<String, Object> body = new HashMap<>();
         body.put("auth", buildAuthCredentials());
@@ -224,11 +326,17 @@ public class ApiGatewaySiiService {
             HttpEntity<String> entity = new HttpEntity<>(payloadJson, headers);
 
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-            return objectMapper.readTree(response.getBody());
+            JsonNode result = objectMapper.readTree(response.getBody());
+            siiListCache.put(cacheKey, new CachedSiiList(result));
+            return result;
         } catch (Exception e) {
-            log.error("[INVOICE-LIST-ERROR] Error listando BHEs para período {}: {}", periodo, e.getMessage());
+            log.error("[INVOICE-LIST-ERROR] Error listando BHEs para período {}: {}", effectivePeriodo, e.getMessage());
             throw new RuntimeException("Error consultando listado de BHEs: " + e.getMessage(), e);
         }
+    }
+
+    public JsonNode listIssuedInvoices(String periodo, int pagina) {
+        return listIssuedInvoices(periodo, pagina, false);
     }
 
     /**
@@ -260,10 +368,6 @@ public class ApiGatewaySiiService {
 
     /**
      * Anula una boleta de honorarios emitida previamente en el SII
-     * 
-     * @param folio Folio de la boleta a anular
-     * @param causa Causa de anulación: "1" (no pago), "2" (no prestado), "3" (error
-     *              digitación)
      */
     public JsonNode cancelInvoice(Long folio, String causa) {
         if (!config.isConfigured()) {
@@ -311,6 +415,266 @@ public class ApiGatewaySiiService {
         LocalDateTime end = firstDayNextMonth.atStartOfDay();
         return invoiceLogRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan("SUCCESS", start,
                 end);
+    }
+
+    /**
+     * Resumen de métricas y KPIs del mes actual (100% datos locales, 0 créditos de API)
+     */
+    public InvoiceSummaryDto getSummary() {
+        LocalDate today = LocalDate.now();
+        LocalDate firstDay = today.withDayOfMonth(1);
+        LocalDate firstDayNextMonth = firstDay.plusMonths(1);
+        LocalDateTime start = firstDay.atStartOfDay();
+        LocalDateTime end = firstDayNextMonth.atStartOfDay();
+
+        long generatedThisMonth = invoiceLogRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan("SUCCESS", start, end);
+        long pendingInvoicesCount = appointmentRepository.countCompletedAppointmentsWithoutSuccessfulInvoice(AppointmentStatus.COMPLETED);
+        long failedInvoicesCount = invoiceLogRepository.countByStatus("FAILED");
+        BigDecimal totalAmountMonth = invoiceLogRepository.sumAmountByStatusSuccessAndCreatedAtBetween(start, end);
+
+        return InvoiceSummaryDto.builder()
+                .generatedThisMonth(generatedThisMonth)
+                .pendingInvoicesCount(pendingInvoicesCount)
+                .failedInvoicesCount(failedInvoicesCount)
+                .totalAmountMonth(totalAmountMonth != null ? totalAmountMonth : BigDecimal.ZERO)
+                .apiGatewayConfigured(config.isConfigured())
+                .emisorRut(sanitizeRut(config.getSiiRut()))
+                .sendEmailEnabled(config.isSendEmailOnIssue())
+                .build();
+    }
+
+    /**
+     * Retorna citas completadas sin boleta exitosa para trazabilidad (100% datos locales, 0 créditos de API)
+     */
+    public List<InvoicePendingAppointmentDto> getPendingInvoices(LocalDate start, LocalDate end) {
+        List<Appointment> appointments;
+        if (start != null && end != null) {
+            appointments = appointmentRepository.findCompletedAppointmentsWithoutSuccessfulInvoiceBetween(
+                    AppointmentStatus.COMPLETED, start, end);
+        } else {
+            appointments = appointmentRepository.findCompletedAppointmentsWithoutSuccessfulInvoice(
+                    AppointmentStatus.COMPLETED);
+        }
+
+        return appointments.stream().map(a -> {
+            Customer c = a.getCustomer();
+            Optional<InvoiceLog> logOpt = invoiceLogRepository.findByAppointmentId(a.getId());
+
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            if (a.getServices() != null && !a.getServices().isEmpty()) {
+                totalAmount = a.getServices().stream()
+                        .map(s -> s.getPrice() != null ? BigDecimal.valueOf(s.getPrice().doubleValue()) : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+            }
+            if (totalAmount.compareTo(BigDecimal.ZERO) <= 0 && a.getService() != null && a.getService().getPrice() != null) {
+                totalAmount = BigDecimal.valueOf(a.getService().getPrice().doubleValue());
+            }
+
+            String rut = c != null ? c.getRut() : null;
+            String rutStatus;
+            boolean rutValid = false;
+            if (rut == null || rut.isBlank()) {
+                rutStatus = "MISSING";
+            } else if (validateRutFormat(rut)) {
+                rutStatus = "VALID";
+                rutValid = true;
+            } else {
+                rutStatus = "INVALID";
+            }
+
+            String invoiceStatus = "NOT_ATTEMPTED";
+            String errorMsg = null;
+            LocalDateTime lastAttempt = null;
+            Long logId = null;
+
+            if (logOpt.isPresent()) {
+                InvoiceLog l = logOpt.get();
+                logId = l.getId();
+                invoiceStatus = l.getStatus() != null ? l.getStatus() : "FAILED";
+                errorMsg = l.getErrorMessage();
+                lastAttempt = l.getUpdatedAt() != null ? l.getUpdatedAt() : l.getCreatedAt();
+            }
+
+            String servicesSummary = a.getServices() != null && !a.getServices().isEmpty()
+                    ? a.getServices().stream().map(s -> s.getName()).collect(Collectors.joining(", "))
+                    : (a.getService() != null ? a.getService().getName() : "Servicio");
+
+            boolean canEmit = rutValid && totalAmount.compareTo(BigDecimal.ZERO) > 0;
+
+            return InvoicePendingAppointmentDto.builder()
+                    .appointmentId(a.getId())
+                    .appointmentDate(a.getAppointmentDate())
+                    .appointmentTime(a.getAppointmentTime())
+                    .customerId(c != null ? c.getId() : null)
+                    .customerName(c != null ? c.getFullName() : "Sin Cliente")
+                    .customerRut(rut)
+                    .customerEmail(c != null ? c.getEmail() : null)
+                    .customerPhone(c != null ? c.getPhone() : null)
+                    .servicesSummary(servicesSummary)
+                    .specialistName(a.getSpecialist() != null ? a.getSpecialist().getFullName() : "No asignada")
+                    .totalAmount(totalAmount)
+                    .invoiceLogId(logId)
+                    .invoiceStatus(invoiceStatus)
+                    .errorMessage(errorMsg)
+                    .lastAttemptAt(lastAttempt)
+                    .rutStatus(rutStatus)
+                    .canEmit(canEmit)
+                    .build();
+        }).toList();
+    }
+
+    /**
+     * Retorna boletas emitidas localmente en un período (100% datos locales, 0 créditos de API)
+     */
+    public List<InvoiceIssuedItemDto> getLocalIssuedInvoices(String periodo) {
+        LocalDateTime start;
+        LocalDateTime end;
+
+        if (periodo != null && periodo.length() == 6) { // YYYYMM
+            try {
+                int year = Integer.parseInt(periodo.substring(0, 4));
+                int month = Integer.parseInt(periodo.substring(4, 6));
+                LocalDate firstDay = LocalDate.of(year, month, 1);
+                LocalDate firstDayNextMonth = firstDay.plusMonths(1);
+                start = firstDay.atStartOfDay();
+                end = firstDayNextMonth.atStartOfDay();
+            } catch (Exception e) {
+                LocalDate today = LocalDate.now();
+                LocalDate firstDay = today.withDayOfMonth(1);
+                LocalDate firstDayNextMonth = firstDay.plusMonths(1);
+                start = firstDay.atStartOfDay();
+                end = firstDayNextMonth.atStartOfDay();
+            }
+        } else {
+            LocalDate today = LocalDate.now();
+            LocalDate firstDay = today.withDayOfMonth(1);
+            LocalDate firstDayNextMonth = firstDay.plusMonths(1);
+            start = firstDay.atStartOfDay();
+            end = firstDayNextMonth.atStartOfDay();
+        }
+
+        List<InvoiceLog> logs = invoiceLogRepository.findByStatusAndCreatedAtBetweenWithDetails("SUCCESS", start, end);
+        return logs.stream().map(this::mapToIssuedItemDto).toList();
+    }
+
+    /**
+     * Realiza el contraste entre los documentos del SII y las boletas/citas de BunnyCure.
+     * Utiliza caché por defecto para ahorrar créditos de API a menos que se fuerce la recarga.
+     */
+    public InvoiceContrastResultDto contrastWithSii(String periodo, boolean forceRefresh) {
+        String effectivePeriodo = (periodo != null && !periodo.isBlank())
+                ? periodo
+                : LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
+
+        List<InvoiceIssuedItemDto> localInvoices = getLocalIssuedInvoices(effectivePeriodo);
+
+        // Obtenemos fechas para el período
+        int year;
+        int month;
+        try {
+            year = Integer.parseInt(effectivePeriodo.substring(0, 4));
+            month = Integer.parseInt(effectivePeriodo.substring(4, 6));
+        } catch (Exception e) {
+            LocalDate now = LocalDate.now();
+            year = now.getYear();
+            month = now.getMonthValue();
+        }
+        LocalDate start = LocalDate.of(year, month, 1);
+        LocalDate end = start.plusMonths(1).minusDays(1);
+
+        List<InvoicePendingAppointmentDto> pendingAppointments = getPendingInvoices(start, end);
+
+        String cacheKey = effectivePeriodo + "_1";
+        CachedSiiList cached = siiListCache.get(cacheKey);
+        boolean fromCache = (!forceRefresh && cached != null && !cached.isExpired());
+
+        JsonNode siiResponse = listIssuedInvoices(effectivePeriodo, 1, forceRefresh);
+
+        // Extraer folios de SII para comparar
+        Set<String> siiFolios = new HashSet<>();
+        BigDecimal siiTotalAmount = BigDecimal.ZERO;
+        int siiTotalCount = 0;
+
+        JsonNode docsArray = null;
+        if (siiResponse != null) {
+            if (siiResponse.isArray()) {
+                docsArray = siiResponse;
+            } else if (siiResponse.has("documentos") && siiResponse.get("documentos").isArray()) {
+                docsArray = siiResponse.get("documentos");
+            } else if (siiResponse.has("data") && siiResponse.get("data").isArray()) {
+                docsArray = siiResponse.get("data");
+            }
+        }
+
+        if (docsArray != null) {
+            for (JsonNode doc : docsArray) {
+                siiTotalCount++;
+                String folio = extractFolio(doc);
+                if (folio != null && !folio.equals("N/A")) {
+                    siiFolios.add(folio.trim());
+                }
+                if (doc.has("MntTotal")) {
+                    siiTotalAmount = siiTotalAmount.add(BigDecimal.valueOf(doc.get("MntTotal").asDouble()));
+                } else if (doc.has("monto")) {
+                    siiTotalAmount = siiTotalAmount.add(BigDecimal.valueOf(doc.get("monto").asDouble()));
+                } else if (doc.has("total")) {
+                    siiTotalAmount = siiTotalAmount.add(BigDecimal.valueOf(doc.get("total").asDouble()));
+                }
+            }
+        }
+
+        BigDecimal localTotalAmount = localInvoices.stream()
+                .map(i -> i.getAmountInClp() != null ? i.getAmountInClp() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        int matchedCount = 0;
+        for (InvoiceIssuedItemDto local : localInvoices) {
+            if (local.getInvoiceNumber() != null && siiFolios.contains(local.getInvoiceNumber().trim())) {
+                matchedCount++;
+            }
+        }
+
+        int siiOnlyCount = Math.max(0, siiTotalCount - matchedCount);
+
+        return InvoiceContrastResultDto.builder()
+                .periodo(effectivePeriodo)
+                .queriedAt(LocalDateTime.now())
+                .fromCache(fromCache)
+                .siiTotalCount(siiTotalCount)
+                .siiTotalAmount(siiTotalAmount)
+                .localTotalCount(localInvoices.size())
+                .localTotalAmount(localTotalAmount)
+                .matchedCount(matchedCount)
+                .pendingEmitCount(pendingAppointments.size())
+                .siiOnlyCount(siiOnlyCount)
+                .rawSiiResponse(siiResponse)
+                .localInvoices(localInvoices)
+                .pendingAppointments(pendingAppointments)
+                .build();
+    }
+
+    private InvoiceIssuedItemDto mapToIssuedItemDto(InvoiceLog logEntry) {
+        Appointment a = logEntry.getAppointment();
+        Customer c = logEntry.getCustomer();
+        return InvoiceIssuedItemDto.builder()
+                .id(logEntry.getId())
+                .appointmentId(a != null ? a.getId() : null)
+                .appointmentDate(a != null ? a.getAppointmentDate() : null)
+                .customerId(c != null ? c.getId() : null)
+                .customerName(c != null ? c.getFullName() : "Cliente")
+                .customerRut(c != null ? c.getRut() : null)
+                .customerEmail(c != null ? c.getEmail() : null)
+                .invoiceNumber(logEntry.getInvoiceNumber())
+                .siiCode(logEntry.getSiiCode())
+                .siiBarcode(logEntry.getSiiBarcode())
+                .amountInClp(logEntry.getAmountInClp())
+                .status(logEntry.getStatus())
+                .emailSent(logEntry.getEmailSent())
+                .emailRecipient(logEntry.getEmailRecipient())
+                .emailSentAt(logEntry.getEmailSentAt())
+                .createdAt(logEntry.getCreatedAt())
+                .description(logEntry.getDescription())
+                .build();
     }
 
     // =========================================================================
@@ -517,31 +881,38 @@ public class ApiGatewaySiiService {
     // =========================================================================
 
     @Transactional
-    protected InvoiceLog createSuccessLog(Appointment appointment, Customer customer, BigDecimal amount,
+    public InvoiceLog createSuccessLog(Appointment appointment, Customer customer, BigDecimal amount,
             String invoiceNumber, String siiCode, String siiBarcode) {
-        InvoiceLog logEntry = InvoiceLog.builder()
-                .appointment(appointment)
-                .customer(customer)
-                .amountInClp(amount)
-                .invoiceNumber(invoiceNumber)
-                .siiCode(siiCode)
-                .siiBarcode(siiBarcode)
-                .description("Boleta de honorarios SII - Servicios de estética BunnyCure")
-                .status("SUCCESS")
-                .build();
+        InvoiceLog logEntry = invoiceLogRepository.findByAppointmentId(appointment.getId())
+                .orElseGet(() -> InvoiceLog.builder()
+                        .appointment(appointment)
+                        .customer(customer)
+                        .build());
+
+        logEntry.setCustomer(customer);
+        logEntry.setAmountInClp(amount);
+        logEntry.setInvoiceNumber(invoiceNumber);
+        logEntry.setSiiCode(siiCode);
+        logEntry.setSiiBarcode(siiBarcode);
+        logEntry.setDescription("Boleta de honorarios SII - Servicios de estética BunnyCure");
+        logEntry.setStatus("SUCCESS");
+        logEntry.setErrorMessage(null);
         return invoiceLogRepository.save(logEntry);
     }
 
     @Transactional
-    protected void createFailedLog(Appointment appointment, Customer customer, BigDecimal amount, String errorMessage) {
-        InvoiceLog logEntry = InvoiceLog.builder()
-                .appointment(appointment)
-                .customer(customer)
-                .amountInClp(amount)
-                .description("Boleta de honorarios SII - Servicios de estética BunnyCure")
-                .status("FAILED")
-                .errorMessage(errorMessage)
-                .build();
+    public void createFailedLog(Appointment appointment, Customer customer, BigDecimal amount, String errorMessage) {
+        InvoiceLog logEntry = invoiceLogRepository.findByAppointmentId(appointment.getId())
+                .orElseGet(() -> InvoiceLog.builder()
+                        .appointment(appointment)
+                        .customer(customer)
+                        .build());
+
+        logEntry.setCustomer(customer);
+        logEntry.setAmountInClp(amount);
+        logEntry.setDescription("Boleta de honorarios SII - Servicios de estética BunnyCure");
+        logEntry.setStatus("FAILED");
+        logEntry.setErrorMessage(errorMessage);
         invoiceLogRepository.save(logEntry);
     }
 }

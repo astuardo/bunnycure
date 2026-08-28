@@ -1,10 +1,19 @@
 package cl.bunnycure.service;
 
 import cl.bunnycure.config.ApiGatewayConfig;
+import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.Customer;
 import cl.bunnycure.domain.model.InvoiceLog;
+import cl.bunnycure.domain.model.ServiceCatalog;
+import cl.bunnycure.domain.repository.AppointmentRepository;
+import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.domain.repository.InvoiceLogRepository;
+import cl.bunnycure.web.dto.InvoiceContrastResultDto;
+import cl.bunnycure.web.dto.InvoiceIssuedItemDto;
+import cl.bunnycure.web.dto.InvoicePendingAppointmentDto;
+import cl.bunnycure.web.dto.InvoiceSummaryDto;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +27,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,6 +47,12 @@ class ApiGatewaySiiServiceTest {
     private InvoiceLogRepository invoiceLogRepository;
 
     @Mock
+    private AppointmentRepository appointmentRepository;
+
+    @Mock
+    private CustomerRepository customerRepository;
+
+    @Mock
     private RestTemplate restTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -42,7 +61,14 @@ class ApiGatewaySiiServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ApiGatewaySiiService(config, invoiceLogRepository, restTemplate, objectMapper);
+        service = new ApiGatewaySiiService(
+                config,
+                invoiceLogRepository,
+                appointmentRepository,
+                customerRepository,
+                restTemplate,
+                objectMapper
+        );
     }
 
     @Test
@@ -141,6 +167,50 @@ class ApiGatewaySiiServiceTest {
     }
 
     @Test
+    void generateInvoice_RetryWhenPreviousFailed_EmitsSuccessfully() {
+        when(config.isConfigured()).thenReturn(true);
+        when(config.getEndpoint()).thenReturn("https://app.apigateway.cl");
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getSiiRut()).thenReturn("76123456-7");
+        when(config.getSiiPassword()).thenReturn("secret123");
+        when(config.isSendEmailOnIssue()).thenReturn(false);
+
+        Customer customer = new Customer();
+        customer.setId(1L);
+        customer.setFullName("Valentina Soto");
+        customer.setRut("18.664.589-8");
+
+        Appointment appointment = Appointment.builder().id(100L).customer(customer).build();
+        InvoiceLog failedLog = InvoiceLog.builder()
+                .id(1L)
+                .appointment(appointment)
+                .customer(customer)
+                .status("FAILED")
+                .errorMessage("RUT inválido previo")
+                .build();
+
+        // El log anterior falló, ahora debe permitir el reintento
+        when(invoiceLogRepository.findByAppointmentId(100L)).thenReturn(Optional.of(failedLog));
+
+        String emitirResponseJson = """
+                {
+                    "folio": "12346",
+                    "codigo": "BHE-ABC-790"
+                }
+                """;
+
+        when(restTemplate.postForEntity(eq("https://app.apigateway.cl/api/v2/sii/bhe/emitidas/emitir"), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(new ResponseEntity<>(emitirResponseJson, HttpStatus.OK));
+
+        when(invoiceLogRepository.save(any(InvoiceLog.class))).thenReturn(failedLog);
+
+        Optional<String> result = service.generateInvoice(appointment, customer, BigDecimal.valueOf(20000));
+
+        assertTrue(result.isPresent());
+        assertEquals("12346", result.get());
+    }
+
+    @Test
     void generateInvoice_InvalidRut_ReturnsEmpty() {
         when(config.isConfigured()).thenReturn(true);
 
@@ -174,5 +244,108 @@ class ApiGatewaySiiServiceTest {
 
         assertNotNull(pdf);
         assertArrayEquals(fakePdf, pdf);
+    }
+
+    @Test
+    void emitInvoiceForAppointment_Success() {
+        Customer customer = new Customer();
+        customer.setId(1L);
+        customer.setFullName("Francisca Mena");
+        customer.setRut("18.664.589-8");
+        customer.setEmail("francisca@example.com");
+
+        ServiceCatalog serviceItem = ServiceCatalog.builder().id(10L).name("Esmaltado Permanente").price(BigDecimal.valueOf(18000)).build();
+        Appointment appointment = Appointment.builder()
+                .id(200L)
+                .customer(customer)
+                .service(serviceItem)
+                .services(List.of(serviceItem))
+                .status(AppointmentStatus.COMPLETED)
+                .build();
+
+        when(appointmentRepository.findByIdWithDetails(200L)).thenReturn(Optional.of(appointment));
+
+        when(config.isConfigured()).thenReturn(true);
+        when(config.getEndpoint()).thenReturn("https://app.apigateway.cl");
+        when(config.getToken()).thenReturn("token");
+        when(config.getSiiRut()).thenReturn("76123456-7");
+        when(config.getSiiPassword()).thenReturn("pass");
+
+        String emitirResponseJson = """
+                {
+                    "folio": "9999",
+                    "codigo": "BHE-9999"
+                }
+                """;
+        when(restTemplate.postForEntity(eq("https://app.apigateway.cl/api/v2/sii/bhe/emitidas/emitir"), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(new ResponseEntity<>(emitirResponseJson, HttpStatus.OK));
+
+        InvoiceLog successLog = InvoiceLog.builder()
+                .id(50L)
+                .appointment(appointment)
+                .customer(customer)
+                .invoiceNumber("9999")
+                .siiCode("BHE-9999")
+                .amountInClp(BigDecimal.valueOf(18000))
+                .status("SUCCESS")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        when(invoiceLogRepository.save(any(InvoiceLog.class))).thenReturn(successLog);
+        when(invoiceLogRepository.findByAppointmentId(200L)).thenReturn(Optional.empty()).thenReturn(Optional.of(successLog));
+
+        InvoiceIssuedItemDto result = service.emitInvoiceForAppointment(200L, "18.664.589-8", "nueva@example.com");
+
+        assertNotNull(result);
+        assertEquals("9999", result.getInvoiceNumber());
+        assertEquals("BHE-9999", result.getSiiCode());
+    }
+
+    @Test
+    void getSummary_ReturnsMetrics() {
+        when(invoiceLogRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq("SUCCESS"), any(), any()))
+                .thenReturn(15L);
+        when(appointmentRepository.countCompletedAppointmentsWithoutSuccessfulInvoice(AppointmentStatus.COMPLETED))
+                .thenReturn(3L);
+        when(invoiceLogRepository.countByStatus("FAILED"))
+                .thenReturn(2L);
+        when(invoiceLogRepository.sumAmountByStatusSuccessAndCreatedAtBetween(any(), any()))
+                .thenReturn(BigDecimal.valueOf(350000));
+        when(config.isConfigured()).thenReturn(true);
+        when(config.getSiiRut()).thenReturn("76123456-7");
+
+        InvoiceSummaryDto summary = service.getSummary();
+
+        assertNotNull(summary);
+        assertEquals(15L, summary.getGeneratedThisMonth());
+        assertEquals(3L, summary.getPendingInvoicesCount());
+        assertEquals(2L, summary.getFailedInvoicesCount());
+        assertEquals(BigDecimal.valueOf(350000), summary.getTotalAmountMonth());
+        assertTrue(summary.isApiGatewayConfigured());
+        assertEquals("76123456-7", summary.getEmisorRut());
+    }
+
+    @Test
+    void listIssuedInvoices_UsesCacheToSaveCredits() {
+        when(config.isConfigured()).thenReturn(true);
+        when(config.getEndpoint()).thenReturn("https://app.apigateway.cl");
+        when(config.getToken()).thenReturn("token");
+        when(config.getSiiRut()).thenReturn("76123456-7");
+        when(config.getSiiPassword()).thenReturn("pass");
+
+        String responseJson = "{\"documentos\":[{\"folio\":\"1001\",\"monto\":25000}]}";
+        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(new ResponseEntity<>(responseJson, HttpStatus.OK));
+
+        // Primera llamada: consulta a la API
+        JsonNode firstCall = service.listIssuedInvoices("202608", 1, false);
+        assertNotNull(firstCall);
+
+        // Segunda llamada con forceRefresh = false: DEBE salir de caché sin hacer llamada HTTP
+        JsonNode secondCall = service.listIssuedInvoices("202608", 1, false);
+        assertNotNull(secondCall);
+
+        // Verifica que la API externa solo se llamó 1 vez
+        verify(restTemplate, times(1)).postForEntity(anyString(), any(HttpEntity.class), eq(String.class));
     }
 }

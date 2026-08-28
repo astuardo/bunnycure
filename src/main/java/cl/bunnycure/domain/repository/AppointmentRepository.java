@@ -158,4 +158,49 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                 ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
             """)
     List<Appointment> findByStatus(@Param("status") AppointmentStatus status);
+
+    @Query("""
+                SELECT DISTINCT a FROM Appointment a
+                JOIN FETCH a.customer c
+                JOIN FETCH a.service s
+                LEFT JOIN FETCH a.services svc
+                LEFT JOIN FETCH a.specialist sp
+                WHERE a.status = :status
+                AND (
+                    NOT EXISTS (SELECT 1 FROM InvoiceLog il WHERE il.appointment.id = a.id)
+                    OR EXISTS (SELECT 1 FROM InvoiceLog il WHERE il.appointment.id = a.id AND il.status <> 'SUCCESS')
+                )
+                ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
+            """)
+    List<Appointment> findCompletedAppointmentsWithoutSuccessfulInvoice(
+            @Param("status") AppointmentStatus status);
+
+    @Query("""
+                SELECT DISTINCT a FROM Appointment a
+                JOIN FETCH a.customer c
+                JOIN FETCH a.service s
+                LEFT JOIN FETCH a.services svc
+                LEFT JOIN FETCH a.specialist sp
+                WHERE a.status = :status
+                AND a.appointmentDate BETWEEN :start AND :end
+                AND (
+                    NOT EXISTS (SELECT 1 FROM InvoiceLog il WHERE il.appointment.id = a.id)
+                    OR EXISTS (SELECT 1 FROM InvoiceLog il WHERE il.appointment.id = a.id AND il.status <> 'SUCCESS')
+                )
+                ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
+            """)
+    List<Appointment> findCompletedAppointmentsWithoutSuccessfulInvoiceBetween(
+            @Param("status") AppointmentStatus status,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end);
+
+    @Query("""
+                SELECT COUNT(a) FROM Appointment a
+                WHERE a.status = :status
+                AND (
+                    NOT EXISTS (SELECT 1 FROM InvoiceLog il WHERE il.appointment.id = a.id)
+                    OR EXISTS (SELECT 1 FROM InvoiceLog il WHERE il.appointment.id = a.id AND il.status <> 'SUCCESS')
+                )
+            """)
+    long countCompletedAppointmentsWithoutSuccessfulInvoice(@Param("status") AppointmentStatus status);
 }
