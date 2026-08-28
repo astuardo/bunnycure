@@ -31,6 +31,7 @@ import java.util.Optional;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class ApiGatewaySiiService {
 
     private final ApiGatewayConfig config;
@@ -38,16 +39,6 @@ public class ApiGatewaySiiService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public ApiGatewaySiiService(
-            ApiGatewayConfig config,
-            InvoiceLogRepository invoiceLogRepository,
-            @Qualifier("apiGatewayRestTemplate") RestTemplate restTemplate,
-            ObjectMapper objectMapper) {
-        this.config = config;
-        this.invoiceLogRepository = invoiceLogRepository;
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
-    }
 
 
     private static final String EMITIR_BHE_ENDPOINT = "/api/v2/sii/bhe/emitidas/emitir";
@@ -94,13 +85,15 @@ public class ApiGatewaySiiService {
 
         try {
             Map<String, Object> requestBody = buildEmitirPayload(customer, amount);
+            String payloadJson = objectMapper.writeValueAsString(requestBody);
             HttpHeaders headers = buildAuthHeaders();
 
-            String url = config.getEndpoint() + EMITIR_BHE_ENDPOINT;
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            String url = getBaseApiUrl() + EMITIR_BHE_ENDPOINT;
+            HttpEntity<String> entity = new HttpEntity<>(payloadJson, headers);
 
-            log.info("[INVOICE] Emitiendo BHE vía ApiGateway para cliente {} (RUT: {}) monto: {}", 
-                    customer.getId(), customer.getRut(), amount);
+            log.info("[INVOICE] Emitiendo BHE vía ApiGateway para cliente {} (RUT: {}) monto: {} -> URL: {}", 
+                    customer.getId(), customer.getRut(), amount, url);
+            log.info("[INVOICE-PAYLOAD] {}", payloadJson);
 
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
 
@@ -150,8 +143,6 @@ public class ApiGatewaySiiService {
         }
     }
 
-
-
     /**
      * Envía la boleta electrónica por correo oficial directo desde los servidores del SII
      */
@@ -161,7 +152,7 @@ public class ApiGatewaySiiService {
             return false;
         }
 
-        String url = config.getEndpoint() + EMAIL_BHE_ENDPOINT + codigo;
+        String url = getBaseApiUrl() + EMAIL_BHE_ENDPOINT + codigo;
 
         Map<String, Object> auth = buildAuthCredentials();
         Map<String, Object> body = new HashMap<>();
@@ -173,13 +164,18 @@ public class ApiGatewaySiiService {
             body.put("destinatario", destinatario);
         }
 
-        HttpHeaders headers = buildAuthHeaders();
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
         try {
+            String payloadJson = objectMapper.writeValueAsString(body);
+            HttpHeaders headers = buildAuthHeaders();
+            HttpEntity<String> entity = new HttpEntity<>(payloadJson, headers);
+
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             return response.getStatusCode().is2xxSuccessful();
-        } catch (RestClientException e) {
+        } catch (org.springframework.web.client.HttpStatusCodeException httpEx) {
+            log.error("[INVOICE-EMAIL-ERROR] Error HTTP enviando email BHE {} (HTTP {}): {}", 
+                    codigo, httpEx.getStatusCode(), httpEx.getResponseBodyAsString());
+            throw new RuntimeException("Error enviando email BHE vía SII: " + httpEx.getResponseBodyAsString(), httpEx);
+        } catch (Exception e) {
             log.error("[INVOICE-EMAIL-ERROR] Error enviando email de BHE {}: {}", codigo, e.getMessage());
             throw new RuntimeException("Error enviando email BHE vía SII: " + e.getMessage(), e);
         }
@@ -194,15 +190,16 @@ public class ApiGatewaySiiService {
         }
 
         String emisor = sanitizeRut(config.getSiiRut());
-        String url = config.getEndpoint() + DOCUMENTOS_BHE_ENDPOINT + emisor + "/" + periodo + "?pagina=" + Math.max(1, pagina);
+        String url = getBaseApiUrl() + DOCUMENTOS_BHE_ENDPOINT + emisor + "/" + periodo + "?pagina=" + Math.max(1, pagina);
 
         Map<String, Object> body = new HashMap<>();
         body.put("auth", buildAuthCredentials());
 
-        HttpHeaders headers = buildAuthHeaders();
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
         try {
+            String payloadJson = objectMapper.writeValueAsString(body);
+            HttpHeaders headers = buildAuthHeaders();
+            HttpEntity<String> entity = new HttpEntity<>(payloadJson, headers);
+
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             return objectMapper.readTree(response.getBody());
         } catch (Exception e) {
@@ -219,17 +216,17 @@ public class ApiGatewaySiiService {
             throw new IllegalStateException("ApiGateway no está configurado");
         }
 
-        String url = config.getEndpoint() + PDF_BHE_ENDPOINT + codigo;
+        String url = getBaseApiUrl() + PDF_BHE_ENDPOINT + codigo;
 
         Map<String, Object> body = new HashMap<>();
         body.put("auth", buildAuthCredentials());
 
-        HttpHeaders headers = buildAuthHeaders();
-        headers.setAccept(List.of(MediaType.APPLICATION_PDF, MediaType.APPLICATION_OCTET_STREAM, MediaType.ALL));
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
         try {
+            String payloadJson = objectMapper.writeValueAsString(body);
+            HttpHeaders headers = buildAuthHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_PDF, MediaType.APPLICATION_OCTET_STREAM, MediaType.ALL));
+
+            HttpEntity<String> entity = new HttpEntity<>(payloadJson, headers);
             ResponseEntity<byte[]> response = restTemplate.exchange(url, HttpMethod.POST, entity, byte[].class);
             return response.getBody();
         } catch (Exception e) {
@@ -250,15 +247,16 @@ public class ApiGatewaySiiService {
 
         String emisor = sanitizeRut(config.getSiiRut());
         String causeCode = (causa != null && !causa.isBlank()) ? causa : "3";
-        String url = config.getEndpoint() + ANULAR_BHE_ENDPOINT + emisor + "/" + folio + "?causa=" + causeCode;
+        String url = getBaseApiUrl() + ANULAR_BHE_ENDPOINT + emisor + "/" + folio + "?causa=" + causeCode;
 
         Map<String, Object> body = new HashMap<>();
         body.put("auth", buildAuthCredentials());
 
-        HttpHeaders headers = buildAuthHeaders();
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
         try {
+            String payloadJson = objectMapper.writeValueAsString(body);
+            HttpHeaders headers = buildAuthHeaders();
+            HttpEntity<String> entity = new HttpEntity<>(payloadJson, headers);
+
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             return objectMapper.readTree(response.getBody());
         } catch (Exception e) {
@@ -266,6 +264,20 @@ public class ApiGatewaySiiService {
             throw new RuntimeException("Error al anular BHE: " + e.getMessage(), e);
         }
     }
+
+    public String getBaseApiUrl() {
+        String base = config.getEndpoint() != null && !config.getEndpoint().isBlank()
+                ? config.getEndpoint().trim()
+                : "https://app.apigateway.cl";
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        if (base.endsWith("/api/v2")) {
+            base = base.substring(0, base.length() - 7);
+        }
+        return base;
+    }
+
 
     public long getGeneratedInvoicesThisMonth() {
         LocalDate today = LocalDate.now();
