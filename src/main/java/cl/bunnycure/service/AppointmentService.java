@@ -391,10 +391,10 @@ public class AppointmentService {
                 return;
             }
 
-            // Generate invoice (don't block appointment completion if fails)
-            apiGatewaySiiService.generateInvoice(appointment, customer, totalAmount);
+            // Generate invoice asynchronously (don't block appointment completion or web thread)
+            apiGatewaySiiService.generateInvoiceAsync(appointment, customer, totalAmount);
         } catch (Exception e) {
-            log.error("[INVOICE-ERROR] Unexpected error generating invoice for appointment {}: {}", 
+            log.error("[INVOICE-ERROR] Unexpected error scheduling invoice for appointment {}: {}", 
                     appointment.getId(), e.getMessage(), e);
             // Don't rethrow - this should not fail the appointment completion
         }
