@@ -47,14 +47,15 @@ public class ApiGatewaySiiService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     /**
-     * Emite BHE de forma asíncrona en segundo plano para no bloquear el hilo HTTP de la solicitud web ni causar timeout H12 en Heroku.
+     * Emite BHE de forma asíncrona en segundo plano para no bloquear el hilo HTTP
+     * de la solicitud web ni causar timeout H12 en Heroku.
      */
     @Async
     public void generateInvoiceAsync(Appointment appointment, Customer customer, BigDecimal amount) {
         try {
             generateInvoice(appointment, customer, amount);
         } catch (Exception e) {
-            log.error("[INVOICE-ASYNC-ERROR] Error en emisión asíncrona de BHE para cita {}: {}", 
+            log.error("[INVOICE-ASYNC-ERROR] Error en emisión asíncrona de BHE para cita {}: {}",
                     appointment != null ? appointment.getId() : "null", e.getMessage(), e);
         }
     }
@@ -336,7 +337,7 @@ public class ApiGatewaySiiService {
         receptor.put("RUTRecep", sanitizeRut(customer.getRut()));
         receptor.put("RznSocRecep", customer.getFullName() != null ? customer.getFullName() : "Cliente BunnyCure");
         receptor.put("DirRecep", "San Felipe");
-        receptor.put("CmnaRecep", "Valparaíso");
+        receptor.put("CmnaRecep", "Valparaiso");
         encabezado.put("Receptor", receptor);
 
         boleta.put("Encabezado", encabezado);
