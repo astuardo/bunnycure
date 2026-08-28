@@ -112,6 +112,7 @@ public class ApiGatewaySiiService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                log.info("[INVOICE-RESPONSE] Respuesta de ApiGateway: {}", response.getBody());
                 JsonNode json = objectMapper.readTree(response.getBody());
 
                 String folio = extractFolio(json);
@@ -375,6 +376,8 @@ public class ApiGatewaySiiService {
     }
 
     private String extractFolio(JsonNode json) {
+        if (json == null)
+            return "N/A";
         if (json.has("folio"))
             return json.get("folio").asText();
         if (json.has("invoiceNumber"))
@@ -385,30 +388,74 @@ public class ApiGatewaySiiService {
                 && json.get("Encabezado").get("IdDoc").has("Folio")) {
             return json.get("Encabezado").get("IdDoc").get("Folio").asText();
         }
-        if (json.has("data") && json.get("data").has("folio"))
-            return json.get("data").get("folio").asText();
+        if (json.has("data")) {
+            JsonNode data = json.get("data");
+            if (data.has("folio"))
+                return data.get("folio").asText();
+            if (data.has("Encabezado") && data.get("Encabezado").has("IdDoc")
+                    && data.get("Encabezado").get("IdDoc").has("Folio")) {
+                return data.get("Encabezado").get("IdDoc").get("Folio").asText();
+            }
+            if (data.has("boleta") && data.get("boleta").has("folio")) {
+                return data.get("boleta").get("folio").asText();
+            }
+        }
         return "N/A";
     }
 
     private String extractCodigo(JsonNode json) {
+        if (json == null)
+            return null;
         if (json.has("codigo"))
             return json.get("codigo").asText();
+        if (json.has("codigo_inferior"))
+            return json.get("codigo_inferior").asText();
         if (json.has("boleta") && json.get("boleta").has("codigo"))
             return json.get("boleta").get("codigo").asText();
-        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")
-                && json.get("Encabezado").get("IdDoc").has("Codigo")) {
-            return json.get("Encabezado").get("IdDoc").get("Codigo").asText();
+        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")) {
+            JsonNode idDoc = json.get("Encabezado").get("IdDoc");
+            if (idDoc.has("CodigoInferior"))
+                return idDoc.get("CodigoInferior").asText();
+            if (idDoc.has("Codigo"))
+                return idDoc.get("Codigo").asText();
         }
-        if (json.has("data") && json.get("data").has("codigo"))
-            return json.get("data").get("codigo").asText();
+        if (json.has("data")) {
+            JsonNode data = json.get("data");
+            if (data.has("codigo"))
+                return data.get("codigo").asText();
+            if (data.has("codigo_inferior"))
+                return data.get("codigo_inferior").asText();
+            if (data.has("Encabezado") && data.get("Encabezado").has("IdDoc")) {
+                JsonNode idDoc = data.get("Encabezado").get("IdDoc");
+                if (idDoc.has("CodigoInferior"))
+                    return idDoc.get("CodigoInferior").asText();
+                if (idDoc.has("Codigo"))
+                    return idDoc.get("Codigo").asText();
+            }
+        }
         return null;
     }
 
     private String extractBarcode(JsonNode json) {
+        if (json == null)
+            return null;
         if (json.has("codigo_barras"))
             return json.get("codigo_barras").asText();
         if (json.has("boleta") && json.get("boleta").has("codigo_barras"))
             return json.get("boleta").get("codigo_barras").asText();
+        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")
+                && json.get("Encabezado").get("IdDoc").has("CodigoBarras")) {
+            return json.get("Encabezado").get("IdDoc").get("CodigoBarras").asText();
+        }
+        if (json.has("data")) {
+            JsonNode data = json.get("data");
+            if (data.has("codigo_barras"))
+                return data.get("codigo_barras").asText();
+            if (data.has("Encabezado") && data.get("Encabezado").has("IdDoc")
+                    && data.get("Encabezado").get("IdDoc").has("CodigoBarras")) {
+                return data.get("Encabezado").get("IdDoc").get("CodigoBarras").asText();
+            }
+        }
         return null;
     }
 
