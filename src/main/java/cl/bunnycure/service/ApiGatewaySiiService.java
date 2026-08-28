@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -17,7 +16,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -39,8 +37,6 @@ public class ApiGatewaySiiService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-
-
     private static final String EMITIR_BHE_ENDPOINT = "/api/v2/sii/bhe/emitidas/emitir";
     private static final String EMAIL_BHE_ENDPOINT = "/api/v2/sii/bhe/emitidas/email/";
     private static final String DOCUMENTOS_BHE_ENDPOINT = "/api/v2/sii/bhe/emitidas/documentos/";
@@ -50,7 +46,8 @@ public class ApiGatewaySiiService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     /**
-     * Genera una boleta de honorarios electrónica (BHE) en el SII para una cita completada
+     * Genera una boleta de honorarios electrónica (BHE) en el SII para una cita
+     * completada
      * y opcionalmente envía el correo oficial del SII al cliente.
      */
     @Transactional
@@ -67,11 +64,13 @@ public class ApiGatewaySiiService {
             try {
                 Map<String, Object> requestBody = buildEmitirPayload(customer, amount);
                 String payloadJson = objectMapper.writeValueAsString(requestBody);
-                log.info("[INVOICE-DRYRUN] APIGATEWAY_ENABLED=false o credenciales faltantes. Payload simulado: {}", payloadJson);
+                log.info("[INVOICE-DRYRUN] APIGATEWAY_ENABLED=false o credenciales faltantes. Payload simulado: {}",
+                        payloadJson);
             } catch (Exception jex) {
                 log.warn("[INVOICE-DRYRUN] Error construyendo payload para dry-run: {}", jex.getMessage());
             }
-            createFailedLog(appointment, customer, amount, "Dry-run: ApiGateway no configurado/deshabilitado - payload registrado en logs");
+            createFailedLog(appointment, customer, amount,
+                    "Dry-run: ApiGateway no configurado/deshabilitado - payload registrado en logs");
             return Optional.empty();
         }
 
@@ -91,7 +90,7 @@ public class ApiGatewaySiiService {
             String url = getBaseApiUrl() + EMITIR_BHE_ENDPOINT;
             HttpEntity<String> entity = new HttpEntity<>(payloadJson, headers);
 
-            log.info("[INVOICE] Emitiendo BHE vía ApiGateway para cliente {} (RUT: {}) monto: {} -> URL: {}", 
+            log.info("[INVOICE] Emitiendo BHE vía ApiGateway para cliente {} (RUT: {}) monto: {} -> URL: {}",
                     customer.getId(), customer.getRut(), amount, url);
             log.info("[INVOICE-PAYLOAD] {}", payloadJson);
 
@@ -119,7 +118,8 @@ public class ApiGatewaySiiService {
                         invoiceLogRepository.save(savedLog);
                         log.info("[INVOICE-EMAIL] Correo oficial de BHE despachado vía SII a {}", customer.getEmail());
                     } catch (Exception mailEx) {
-                        log.warn("[INVOICE-EMAIL-WARN] Boleta emitida pero falló envío de correo oficial: {}", mailEx.getMessage());
+                        log.warn("[INVOICE-EMAIL-WARN] Boleta emitida pero falló envío de correo oficial: {}",
+                                mailEx.getMessage());
                     }
                 }
 
@@ -132,19 +132,23 @@ public class ApiGatewaySiiService {
             }
         } catch (org.springframework.web.client.HttpStatusCodeException httpEx) {
             String responseBody = httpEx.getResponseBodyAsString();
-            String errorMsg = String.format("HTTP %s: %s", httpEx.getStatusCode(), responseBody.isBlank() ? httpEx.getMessage() : responseBody);
-            log.error("[INVOICE-ERROR] Error HTTP al emitir BHE para cita {}: {}", appointment.getId(), errorMsg, httpEx);
+            String errorMsg = String.format("HTTP %s: %s", httpEx.getStatusCode(),
+                    responseBody.isBlank() ? httpEx.getMessage() : responseBody);
+            log.error("[INVOICE-ERROR] Error HTTP al emitir BHE para cita {}: {}", appointment.getId(), errorMsg,
+                    httpEx);
             createFailedLog(appointment, customer, amount, errorMsg);
             return Optional.empty();
         } catch (Exception e) {
-            log.error("[INVOICE-ERROR] Error inesperado al emitir BHE para cita {}: {}", appointment.getId(), e.getMessage(), e);
+            log.error("[INVOICE-ERROR] Error inesperado al emitir BHE para cita {}: {}", appointment.getId(),
+                    e.getMessage(), e);
             createFailedLog(appointment, customer, amount, e.getMessage());
             return Optional.empty();
         }
     }
 
     /**
-     * Envía la boleta electrónica por correo oficial directo desde los servidores del SII
+     * Envía la boleta electrónica por correo oficial directo desde los servidores
+     * del SII
      */
     public boolean sendInvoiceEmail(String codigo, String recipientEmail) {
         if (!config.isConfigured()) {
@@ -172,7 +176,7 @@ public class ApiGatewaySiiService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             return response.getStatusCode().is2xxSuccessful();
         } catch (org.springframework.web.client.HttpStatusCodeException httpEx) {
-            log.error("[INVOICE-EMAIL-ERROR] Error HTTP enviando email BHE {} (HTTP {}): {}", 
+            log.error("[INVOICE-EMAIL-ERROR] Error HTTP enviando email BHE {} (HTTP {}): {}",
                     codigo, httpEx.getStatusCode(), httpEx.getResponseBodyAsString());
             throw new RuntimeException("Error enviando email BHE vía SII: " + httpEx.getResponseBodyAsString(), httpEx);
         } catch (Exception e) {
@@ -182,7 +186,8 @@ public class ApiGatewaySiiService {
     }
 
     /**
-     * Consulta el listado de boletas de honorarios emitidas en un período (YYYYMM o YYYYMMDD)
+     * Consulta el listado de boletas de honorarios emitidas en un período (YYYYMM o
+     * YYYYMMDD)
      */
     public JsonNode listIssuedInvoices(String periodo, int pagina) {
         if (!config.isConfigured()) {
@@ -190,7 +195,8 @@ public class ApiGatewaySiiService {
         }
 
         String emisor = sanitizeRut(config.getSiiRut());
-        String url = getBaseApiUrl() + DOCUMENTOS_BHE_ENDPOINT + emisor + "/" + periodo + "?pagina=" + Math.max(1, pagina);
+        String url = getBaseApiUrl() + DOCUMENTOS_BHE_ENDPOINT + emisor + "/" + periodo + "?pagina="
+                + Math.max(1, pagina);
 
         Map<String, Object> body = new HashMap<>();
         body.put("auth", buildAuthCredentials());
@@ -237,8 +243,10 @@ public class ApiGatewaySiiService {
 
     /**
      * Anula una boleta de honorarios emitida previamente en el SII
+     * 
      * @param folio Folio de la boleta a anular
-     * @param causa Causa de anulación: "1" (no pago), "2" (no prestado), "3" (error digitación)
+     * @param causa Causa de anulación: "1" (no pago), "2" (no prestado), "3" (error
+     *              digitación)
      */
     public JsonNode cancelInvoice(Long folio, String causa) {
         if (!config.isConfigured()) {
@@ -278,14 +286,14 @@ public class ApiGatewaySiiService {
         return base;
     }
 
-
     public long getGeneratedInvoicesThisMonth() {
         LocalDate today = LocalDate.now();
         LocalDate firstDay = today.withDayOfMonth(1);
         LocalDate firstDayNextMonth = firstDay.plusMonths(1);
         LocalDateTime start = firstDay.atStartOfDay();
         LocalDateTime end = firstDayNextMonth.atStartOfDay();
-        return invoiceLogRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan("SUCCESS", start, end);
+        return invoiceLogRepository.countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan("SUCCESS", start,
+                end);
     }
 
     // =========================================================================
@@ -311,14 +319,14 @@ public class ApiGatewaySiiService {
         Map<String, Object> receptor = new HashMap<>();
         receptor.put("RUTRecep", sanitizeRut(customer.getRut()));
         receptor.put("RznSocRecep", customer.getFullName() != null ? customer.getFullName() : "Cliente BunnyCure");
-        receptor.put("DirRecep", "Santiago");
-        receptor.put("CmnaRecep", "Santiago");
+        receptor.put("DirRecep", "San Felipe");
+        receptor.put("CmnaRecep", "Valparaíso");
         encabezado.put("Receptor", receptor);
 
         boleta.put("Encabezado", encabezado);
 
         Map<String, Object> detalleItem = new HashMap<>();
-        detalleItem.put("NmbItem", "Servicios de estética BunnyCure");
+        detalleItem.put("NmbItem", "Servicios de Manicura");
         detalleItem.put("MontoItem", amount != null ? amount.longValue() : 0L);
 
         boleta.put("Detalle", List.of(detalleItem));
@@ -351,31 +359,41 @@ public class ApiGatewaySiiService {
         return headers;
     }
 
-
     private String extractFolio(JsonNode json) {
-        if (json.has("folio")) return json.get("folio").asText();
-        if (json.has("invoiceNumber")) return json.get("invoiceNumber").asText();
-        if (json.has("boleta") && json.get("boleta").has("folio")) return json.get("boleta").get("folio").asText();
-        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc") && json.get("Encabezado").get("IdDoc").has("Folio")) {
+        if (json.has("folio"))
+            return json.get("folio").asText();
+        if (json.has("invoiceNumber"))
+            return json.get("invoiceNumber").asText();
+        if (json.has("boleta") && json.get("boleta").has("folio"))
+            return json.get("boleta").get("folio").asText();
+        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")
+                && json.get("Encabezado").get("IdDoc").has("Folio")) {
             return json.get("Encabezado").get("IdDoc").get("Folio").asText();
         }
-        if (json.has("data") && json.get("data").has("folio")) return json.get("data").get("folio").asText();
+        if (json.has("data") && json.get("data").has("folio"))
+            return json.get("data").get("folio").asText();
         return "N/A";
     }
 
     private String extractCodigo(JsonNode json) {
-        if (json.has("codigo")) return json.get("codigo").asText();
-        if (json.has("boleta") && json.get("boleta").has("codigo")) return json.get("boleta").get("codigo").asText();
-        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc") && json.get("Encabezado").get("IdDoc").has("Codigo")) {
+        if (json.has("codigo"))
+            return json.get("codigo").asText();
+        if (json.has("boleta") && json.get("boleta").has("codigo"))
+            return json.get("boleta").get("codigo").asText();
+        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")
+                && json.get("Encabezado").get("IdDoc").has("Codigo")) {
             return json.get("Encabezado").get("IdDoc").get("Codigo").asText();
         }
-        if (json.has("data") && json.get("data").has("codigo")) return json.get("data").get("codigo").asText();
+        if (json.has("data") && json.get("data").has("codigo"))
+            return json.get("data").get("codigo").asText();
         return null;
     }
 
     private String extractBarcode(JsonNode json) {
-        if (json.has("codigo_barras")) return json.get("codigo_barras").asText();
-        if (json.has("boleta") && json.get("boleta").has("codigo_barras")) return json.get("boleta").get("codigo_barras").asText();
+        if (json.has("codigo_barras"))
+            return json.get("codigo_barras").asText();
+        if (json.has("boleta") && json.get("boleta").has("codigo_barras"))
+            return json.get("boleta").get("codigo_barras").asText();
         return null;
     }
 
@@ -384,7 +402,8 @@ public class ApiGatewaySiiService {
     // =========================================================================
 
     public String sanitizeRut(String rut) {
-        if (rut == null) return "";
+        if (rut == null)
+            return "";
         String cleaned = rut.replaceAll("[.\\s]", "").toUpperCase();
         if (!cleaned.contains("-") && cleaned.length() > 1) {
             String number = cleaned.substring(0, cleaned.length() - 1);
@@ -403,7 +422,8 @@ public class ApiGatewaySiiService {
             return false;
         }
         String[] parts = sanitized.split("-");
-        if (parts.length != 2) return false;
+        if (parts.length != 2)
+            return false;
         String number = parts[0];
         String expectedDv = parts[1];
         return calculateRutCheckDigit(number).equalsIgnoreCase(expectedDv);
@@ -422,8 +442,10 @@ public class ApiGatewaySiiService {
         }
         int remainder = sum % 11;
         int checkDigit = 11 - remainder;
-        if (checkDigit == 11) return "0";
-        if (checkDigit == 10) return "K";
+        if (checkDigit == 11)
+            return "0";
+        if (checkDigit == 10)
+            return "K";
         return String.valueOf(checkDigit);
     }
 
@@ -433,7 +455,7 @@ public class ApiGatewaySiiService {
 
     @Transactional
     protected InvoiceLog createSuccessLog(Appointment appointment, Customer customer, BigDecimal amount,
-                                          String invoiceNumber, String siiCode, String siiBarcode) {
+            String invoiceNumber, String siiCode, String siiBarcode) {
         InvoiceLog logEntry = InvoiceLog.builder()
                 .appointment(appointment)
                 .customer(customer)
