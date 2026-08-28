@@ -348,4 +348,67 @@ class ApiGatewaySiiServiceTest {
         // Verifica que la API externa solo se llamó 1 vez
         verify(restTemplate, times(1)).postForEntity(anyString(), any(HttpEntity.class), eq(String.class));
     }
+
+    @Test
+    void markInvoiceAsManual_Success_DoesNotCallSiiApi() {
+        Customer customer = new Customer();
+        customer.setId(1L);
+        customer.setFullName("Francisca Mena");
+        customer.setRut("18.664.589-8");
+
+        ServiceCatalog serviceItem = ServiceCatalog.builder().id(10L).name("Esmaltado").price(BigDecimal.valueOf(15000)).build();
+        Appointment appointment = Appointment.builder()
+                .id(300L)
+                .customer(customer)
+                .service(serviceItem)
+                .services(List.of(serviceItem))
+                .status(AppointmentStatus.COMPLETED)
+                .build();
+
+        when(appointmentRepository.findByIdWithDetails(300L)).thenReturn(Optional.of(appointment));
+        when(invoiceLogRepository.findByAppointmentId(300L)).thenReturn(Optional.empty());
+
+        InvoiceLog savedLog = InvoiceLog.builder()
+                .id(99L)
+                .appointment(appointment)
+                .customer(customer)
+                .invoiceNumber("1050")
+                .siiCode("MANUAL")
+                .amountInClp(BigDecimal.valueOf(15000))
+                .status("SUCCESS")
+                .build();
+        when(invoiceLogRepository.save(any(InvoiceLog.class))).thenReturn(savedLog);
+
+        InvoiceIssuedItemDto result = service.markInvoiceAsManual(300L, "1050", "Emitida en sii.cl");
+
+        assertNotNull(result);
+        assertEquals("1050", result.getInvoiceNumber());
+        assertEquals("MANUAL", result.getSiiCode());
+        verifyNoInteractions(restTemplate); // NO llama al SII ni consume créditos
+    }
+
+    @Test
+    void batchMarkAsManual_AssignsSequentialFolios() {
+        Customer customer = new Customer();
+        customer.setId(1L);
+        customer.setFullName("Francisca Mena");
+
+        ServiceCatalog serviceItem = ServiceCatalog.builder().id(10L).name("Esmaltado").price(BigDecimal.valueOf(15000)).build();
+        Appointment apt1 = Appointment.builder().id(301L).customer(customer).service(serviceItem).services(List.of(serviceItem)).build();
+        Appointment apt2 = Appointment.builder().id(302L).customer(customer).service(serviceItem).services(List.of(serviceItem)).build();
+
+        when(appointmentRepository.findByIdWithDetails(301L)).thenReturn(Optional.of(apt1));
+        when(appointmentRepository.findByIdWithDetails(302L)).thenReturn(Optional.of(apt2));
+
+        when(invoiceLogRepository.findByAppointmentId(anyLong())).thenReturn(Optional.empty());
+        when(invoiceLogRepository.save(any(InvoiceLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        List<InvoiceIssuedItemDto> results = service.batchMarkAsManual(List.of(301L, 302L), "2000", "Lote manual");
+
+        assertEquals(2, results.size());
+        assertEquals("2000", results.get(0).getInvoiceNumber());
+        assertEquals("2001", results.get(1).getInvoiceNumber());
+        verifyNoInteractions(restTemplate);
+    }
 }
+

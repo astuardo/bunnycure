@@ -94,6 +94,45 @@ public class InvoiceApiController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    @Operation(summary = "Emisión masiva de boletas para citas seleccionadas", description = "Emite en lote las boletas en el SII para una lista de citas seleccionadas.")
+    @PreAuthorize("hasAnyRole('SALON_ADMIN','ADMIN','SUPER_ADMIN','RECEPTIONIST')")
+    @PostMapping("/appointments/batch-emit")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> batchEmit(
+            @RequestBody BatchEmitRequestDto requestDto) {
+
+        List<Long> ids = requestDto != null ? requestDto.getAppointmentIds() : List.of();
+        Map<String, Object> result = apiGatewaySiiService.batchEmitInvoices(ids);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @Operation(summary = "Marcar cita como boleta emitida manualmente", description = "Registra la cita como emitida a mano (0 créditos SII), registrando folio manual opcional.")
+    @PreAuthorize("hasAnyRole('SALON_ADMIN','ADMIN','SUPER_ADMIN','RECEPTIONIST')")
+    @PostMapping("/appointments/{id}/mark-manual")
+    public ResponseEntity<ApiResponse<InvoiceIssuedItemDto>> markManual(
+            @PathVariable Long id,
+            @RequestBody(required = false) MarkManualRequestDto requestDto) {
+
+        String folio = requestDto != null ? requestDto.getInvoiceNumber() : null;
+        String notes = requestDto != null ? requestDto.getNotes() : null;
+
+        InvoiceIssuedItemDto result = apiGatewaySiiService.markInvoiceAsManual(id, folio, notes);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @Operation(summary = "Marcar lote de citas como boletas emitidas manualmente", description = "Marca múltiples citas como emitidas a mano (sin llamada al SII, 0 créditos).")
+    @PreAuthorize("hasAnyRole('SALON_ADMIN','ADMIN','SUPER_ADMIN','RECEPTIONIST')")
+    @PostMapping("/appointments/batch-mark-manual")
+    public ResponseEntity<ApiResponse<List<InvoiceIssuedItemDto>>> batchMarkManual(
+            @RequestBody BatchMarkManualRequestDto requestDto) {
+
+        List<Long> ids = requestDto != null ? requestDto.getAppointmentIds() : List.of();
+        String initialFolio = requestDto != null ? requestDto.getInitialFolio() : null;
+        String notes = requestDto != null ? requestDto.getNotes() : null;
+
+        List<InvoiceIssuedItemDto> results = apiGatewaySiiService.batchMarkAsManual(ids, initialFolio, notes);
+        return ResponseEntity.ok(ApiResponse.success(results));
+    }
+
     @Operation(summary = "Contraste y conciliación bajo demanda con el SII", description = "Compara las boletas emitidas locales y citas contra los documentos reportados por el SII (con caché).")
     @PreAuthorize("hasAnyRole('SALON_ADMIN','ADMIN','SUPER_ADMIN')")
     @GetMapping("/contrast")

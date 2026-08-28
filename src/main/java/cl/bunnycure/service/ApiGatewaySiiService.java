@@ -248,6 +248,120 @@ public class ApiGatewaySiiService {
     }
 
     /**
+     * Marca una cita como con boleta emitida manualmente (sin enviar al SII, 0 créditos).
+     */
+    @Transactional
+    public InvoiceIssuedItemDto markInvoiceAsManual(Long appointmentId, String invoiceNumber, String notes) {
+        Appointment appointment = appointmentRepository.findByIdWithDetails(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Cita no encontrada con ID: " + appointmentId));
+
+        Customer customer = appointment.getCustomer();
+        if (customer == null) {
+            throw new IllegalStateException("La cita no tiene un cliente asociado");
+        }
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        if (appointment.getServices() != null && !appointment.getServices().isEmpty()) {
+            totalAmount = appointment.getServices().stream()
+                    .map(s -> s.getPrice() != null ? BigDecimal.valueOf(s.getPrice().doubleValue()) : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+        if (totalAmount.compareTo(BigDecimal.ZERO) <= 0 && appointment.getService() != null && appointment.getService().getPrice() != null) {
+            totalAmount = BigDecimal.valueOf(appointment.getService().getPrice().doubleValue());
+        }
+
+        String folio = (invoiceNumber != null && !invoiceNumber.isBlank())
+                ? invoiceNumber.trim()
+                : "MANUAL-" + appointmentId;
+
+        String description = (notes != null && !notes.isBlank())
+                ? notes.trim()
+                : "Boleta emitida manualmente en plataforma SII";
+
+        InvoiceLog logEntry = invoiceLogRepository.findByAppointmentId(appointmentId)
+                .orElseGet(() -> InvoiceLog.builder()
+                        .appointment(appointment)
+                        .customer(customer)
+                        .build());
+
+        logEntry.setCustomer(customer);
+        logEntry.setAmountInClp(totalAmount);
+        logEntry.setInvoiceNumber(folio);
+        logEntry.setSiiCode("MANUAL");
+        logEntry.setDescription(description);
+        logEntry.setStatus("SUCCESS");
+        logEntry.setErrorMessage(null);
+        logEntry.setEmailSent(false);
+
+        InvoiceLog saved = invoiceLogRepository.save(logEntry);
+        log.info("[INVOICE-MANUAL] Cita {} marcada manualmente como emitida con folio {}", appointmentId, folio);
+        return mapToIssuedItemDto(saved);
+    }
+
+    /**
+     * Marca un conjunto de citas como emitidas manualmente en lote.
+     */
+    @Transactional
+    public List<InvoiceIssuedItemDto> batchMarkAsManual(List<Long> appointmentIds, String initialFolio, String notes) {
+        if (appointmentIds == null || appointmentIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<InvoiceIssuedItemDto> results = new ArrayList<>();
+        Long currentFolioNum = null;
+        if (initialFolio != null && !initialFolio.isBlank()) {
+            try {
+                currentFolioNum = Long.parseLong(initialFolio.trim());
+            } catch (NumberFormatException ignored) {}
+        }
+
+        for (Long id : appointmentIds) {
+            String folio = null;
+            if (currentFolioNum != null) {
+                folio = String.valueOf(currentFolioNum++);
+            } else if (initialFolio != null && !initialFolio.isBlank()) {
+                folio = initialFolio.trim();
+            }
+            results.add(markInvoiceAsManual(id, folio, notes));
+        }
+
+        return results;
+    }
+
+    /**
+     * Emite un conjunto de citas al SII en lote de forma secuencial.
+     */
+    public Map<String, Object> batchEmitInvoices(List<Long> appointmentIds) {
+        if (appointmentIds == null || appointmentIds.isEmpty()) {
+            return Map.of("total", 0, "successCount", 0, "failedCount", 0, "results", List.of(), "errors", List.of());
+        }
+
+        List<InvoiceIssuedItemDto> results = new ArrayList<>();
+        List<Map<String, Object>> errors = new ArrayList<>();
+
+        for (Long id : appointmentIds) {
+            try {
+                InvoiceIssuedItemDto item = emitInvoiceForAppointment(id, null, null);
+                results.add(item);
+            } catch (Exception e) {
+                log.error("[INVOICE-BATCH-ERROR] Error emitiendo boleta para cita {}: {}", id, e.getMessage());
+                errors.add(Map.of(
+                        "appointmentId", id,
+                        "error", e.getMessage() != null ? e.getMessage() : "Error desconocido"
+                ));
+            }
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("total", appointmentIds.size());
+        response.put("successCount", results.size());
+        response.put("failedCount", errors.size());
+        response.put("results", results);
+        response.put("errors", errors);
+        return response;
+    }
+
+    /**
      * Envía la boleta electrónica por correo oficial directo desde los servidores
      * del SII
      */
