@@ -27,10 +27,10 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class ProductPageScrapingService {
 
-    @Qualifier("simpleApiRestTemplate")
     private final RestTemplate restTemplate;
 
     public ProductScrapeResult scrape(String rawUrl) {
+
         String normalizedUrl = normalizeUrl(rawUrl);
         String html = fetchHtml(normalizedUrl);
 

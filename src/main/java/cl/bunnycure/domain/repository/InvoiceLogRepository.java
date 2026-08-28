@@ -11,5 +11,7 @@ import java.util.Optional;
 public interface InvoiceLogRepository extends JpaRepository<InvoiceLog, Long> {
     Optional<InvoiceLog> findByAppointmentId(Long appointmentId);
     Optional<InvoiceLog> findByInvoiceNumber(String invoiceNumber);
+    Optional<InvoiceLog> findBySiiCode(String siiCode);
     long countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(String status, LocalDateTime startInclusive, LocalDateTime endExclusive);
 }
+

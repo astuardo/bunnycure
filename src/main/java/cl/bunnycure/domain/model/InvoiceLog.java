@@ -35,6 +35,22 @@ public class InvoiceLog {
     @Column(name = "simple_api_transaction_id", length = 100)
     private String simpleApiTransactionId;
 
+    @Column(name = "sii_code", length = 100)
+    private String siiCode;
+
+    @Column(name = "sii_barcode", length = 255)
+    private String siiBarcode;
+
+    @Column(name = "email_sent")
+    @Builder.Default
+    private Boolean emailSent = false;
+
+    @Column(name = "email_sent_at")
+    private LocalDateTime emailSentAt;
+
+    @Column(name = "email_recipient")
+    private String emailRecipient;
+
     @Column(name = "invoice_number", length = 50)
     private String invoiceNumber;
 
@@ -59,3 +75,4 @@ public class InvoiceLog {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }
+

@@ -38,7 +38,7 @@ public class AppointmentService {
     private final AppSettingsService appSettingsService;
     private final LoyaltyRewardService loyaltyRewardService;
     private final cl.bunnycure.domain.repository.LoyaltyRewardHistoryRepository loyaltyRewardHistoryRepository;
-    private final SimpleApiService simpleApiService;
+    private final ApiGatewaySiiService apiGatewaySiiService;
     private final CustomerRepository customerRepository;
 
     @Transactional
@@ -391,8 +391,8 @@ public class AppointmentService {
                 return;
             }
 
-            // Generate invoice asynchronously (don't block appointment completion)
-            simpleApiService.generateInvoice(appointment, customer, totalAmount);
+            // Generate invoice (don't block appointment completion if fails)
+            apiGatewaySiiService.generateInvoice(appointment, customer, totalAmount);
         } catch (Exception e) {
             log.error("[INVOICE-ERROR] Unexpected error generating invoice for appointment {}: {}", 
                     appointment.getId(), e.getMessage(), e);

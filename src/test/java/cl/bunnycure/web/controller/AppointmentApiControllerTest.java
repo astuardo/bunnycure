@@ -8,7 +8,7 @@ import cl.bunnycure.exception.GlobalExceptionHandler;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.service.AppointmentService;
 import cl.bunnycure.service.NotificationService;
-import cl.bunnycure.service.SimpleApiService;
+import cl.bunnycure.service.ApiGatewaySiiService;
 import cl.bunnycure.service.WhatsAppHandoffService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,8 @@ class AppointmentApiControllerTest {
     private WhatsAppHandoffService whatsAppHandoffService;
 
     @Mock
-    private SimpleApiService simpleApiService;
+    private ApiGatewaySiiService apiGatewaySiiService;
+
 
     @Mock
     private NotificationService notificationService;

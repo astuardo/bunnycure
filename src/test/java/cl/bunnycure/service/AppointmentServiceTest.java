@@ -53,7 +53,7 @@ class AppointmentServiceTest {
     private cl.bunnycure.domain.repository.LoyaltyRewardHistoryRepository loyaltyRewardHistoryRepository;
 
     @Mock
-    private cl.bunnycure.service.SimpleApiService simpleApiService;
+    private cl.bunnycure.service.ApiGatewaySiiService apiGatewaySiiService;
 
     @Mock
     private cl.bunnycure.domain.repository.CustomerRepository customerRepository;
@@ -72,10 +72,11 @@ class AppointmentServiceTest {
                 appSettingsService,
                 loyaltyRewardService,
                 loyaltyRewardHistoryRepository,
-                simpleApiService,
+                apiGatewaySiiService,
                 customerRepository
         );
     }
+
 
     @Test
     void deleteAppointment_shouldClearBookingLinksBeforeDelete() {
