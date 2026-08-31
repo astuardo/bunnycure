@@ -410,5 +410,85 @@ class ApiGatewaySiiServiceTest {
         assertEquals("2001", results.get(1).getInvoiceNumber());
         verifyNoInteractions(restTemplate);
     }
+
+    @Test
+    void extractCodigo_PrioritizesCodigoOverBarcode() throws Exception {
+        String jsonStr = """
+                {
+                    "Encabezado": {
+                        "IdDoc": {
+                            "Folio": 49,
+                            "Codigo": "VERIF-ABC-123",
+                            "CodigoInferior": "11202608302034",
+                            "CodigoBarras": "999888777"
+                        }
+                    }
+                }
+                """;
+        JsonNode json = objectMapper.readTree(jsonStr);
+
+        String codigo = service.extractCodigo(json);
+        String barcode = service.extractBarcode(json);
+
+        assertEquals("VERIF-ABC-123", codigo);
+        assertEquals("999888777", barcode);
+    }
+
+    @Test
+    void getInvoicePdf_ThrowsException_WhenHtmlErrorReceived() {
+        when(config.isConfigured()).thenReturn(true);
+        when(config.getEndpoint()).thenReturn("https://app.apigateway.cl");
+        when(config.getSiiRut()).thenReturn("76123456-7");
+        when(config.getSiiPassword()).thenReturn("secret123");
+
+        byte[] htmlError = "<!DOCTYPE html><html><body>No existe la boleta de honorarios electrónica</body></html>"
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        when(restTemplate.exchange(eq("https://app.apigateway.cl/api/v2/sii/bhe/emitidas/pdf/INVALID-CODE"), eq(HttpMethod.POST), any(HttpEntity.class), eq(byte[].class)))
+                .thenReturn(new ResponseEntity<>(htmlError, HttpStatus.OK));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> service.getInvoicePdf("INVALID-CODE"));
+        assertTrue(ex.getMessage().contains("No existe la boleta") || ex.getMessage().contains("no encontró la boleta"));
+    }
+
+    @Test
+    void generateInvoice_UsesAppointmentDate() {
+        when(config.isConfigured()).thenReturn(true);
+        when(config.getEndpoint()).thenReturn("https://app.apigateway.cl");
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getSiiRut()).thenReturn("76123456-7");
+        when(config.getSiiPassword()).thenReturn("secret123");
+        when(config.isSendEmailOnIssue()).thenReturn(false);
+
+        Customer customer = new Customer();
+        customer.setId(1L);
+        customer.setFullName("Valentina Soto");
+        customer.setRut("18.664.589-8");
+
+        LocalDate serviceDate = LocalDate.of(2026, 8, 20);
+        Appointment appointment = Appointment.builder()
+                .id(100L)
+                .customer(customer)
+                .appointmentDate(serviceDate)
+                .build();
+
+        when(invoiceLogRepository.findByAppointmentId(100L)).thenReturn(Optional.empty());
+
+        org.mockito.ArgumentCaptor<HttpEntity<String>> entityCaptor = org.mockito.ArgumentCaptor.forClass(HttpEntity.class);
+        when(restTemplate.postForEntity(eq("https://app.apigateway.cl/api/v2/sii/bhe/emitidas/emitir"), entityCaptor.capture(), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"folio\":\"50\",\"codigo\":\"BHE-50\"}", HttpStatus.OK));
+
+        when(invoiceLogRepository.save(any(InvoiceLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Optional<String> folio = service.generateInvoice(appointment, customer, BigDecimal.valueOf(30000));
+
+        assertTrue(folio.isPresent());
+        assertEquals("50", folio.get());
+
+        // Verificar que el payload contiene la fecha del servicio 2026-08-20
+        HttpEntity<String> capturedEntity = entityCaptor.getValue();
+        assertNotNull(capturedEntity);
+        assertTrue(capturedEntity.getBody().contains("\"FchEmis\":\"2026-08-20\""));
+    }
 }
 

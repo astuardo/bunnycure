@@ -102,7 +102,7 @@ public class ApiGatewaySiiService {
         // Si no está habilitado o configurado, modo dry-run (no bloquea flujo de cita)
         if (!config.isConfigured()) {
             try {
-                Map<String, Object> requestBody = buildEmitirPayload(customer, amount);
+                Map<String, Object> requestBody = buildEmitirPayload(appointment, customer, amount);
                 String payloadJson = objectMapper.writeValueAsString(requestBody);
                 log.info("[INVOICE-DRYRUN] APIGATEWAY_ENABLED=false o credenciales faltantes. Payload simulado: {}",
                         payloadJson);
@@ -123,7 +123,7 @@ public class ApiGatewaySiiService {
         }
 
         try {
-            Map<String, Object> requestBody = buildEmitirPayload(customer, amount);
+            Map<String, Object> requestBody = buildEmitirPayload(appointment, customer, amount);
             String payloadJson = objectMapper.writeValueAsString(requestBody);
             HttpHeaders headers = buildAuthHeaders();
 
@@ -454,15 +454,43 @@ public class ApiGatewaySiiService {
     }
 
     /**
-     * Descarga el archivo binario PDF oficial de la boleta desde el SII
+     * Descarga el archivo binario PDF oficial de la boleta desde el SII.
+     * Valida que el archivo recibido sea realmente un PDF binario (%PDF).
+     * Si no es válido o contiene un error HTML del SII, intenta resolver automáticamente
+     * el código real consultando el registro de boletas del período en el SII.
      */
     public byte[] getInvoicePdf(String codigo) {
         if (!config.isConfigured()) {
             throw new IllegalStateException("ApiGateway no está configurado");
         }
+        if (codigo == null || codigo.isBlank()) {
+            throw new IllegalArgumentException("El código de boleta no puede estar vacío");
+        }
 
+        byte[] pdfBytes = fetchPdfBytesFromSii(codigo);
+        if (isValidPdfBytes(pdfBytes)) {
+            return pdfBytes;
+        }
+
+        // Si falló con el código provisto, intentar auto-recuperación buscando en la BD y listado del SII
+        log.warn("[INVOICE-PDF] El código '{}' no devolvió un PDF binario válido. Intentando auto-recuperación...", codigo);
+        byte[] recoveredBytes = tryAutoRecoverPdf(codigo);
+        if (isValidPdfBytes(recoveredBytes)) {
+            return recoveredBytes;
+        }
+
+        // Si vino HTML o texto con error desde el SII
+        String responseText = pdfBytes != null ? new String(pdfBytes, java.nio.charset.StandardCharsets.UTF_8) : "Respuesta vacía";
+        log.error("[INVOICE-PDF-ERROR] No se pudo obtener PDF para código {}. Contenido respuesta: {}", codigo, responseText);
+
+        if (responseText.contains("No existe la boleta")) {
+            throw new IllegalStateException("El SII no encontró la boleta de honorarios electrónica con el código " + codigo);
+        }
+        throw new IllegalStateException("El servidor del SII no retornó un archivo PDF válido");
+    }
+
+    private byte[] fetchPdfBytesFromSii(String codigo) {
         String url = getBaseApiUrl() + PDF_BHE_ENDPOINT + codigo;
-
         Map<String, Object> body = new HashMap<>();
         body.put("auth", buildAuthCredentials());
 
@@ -475,9 +503,75 @@ public class ApiGatewaySiiService {
             ResponseEntity<byte[]> response = restTemplate.exchange(url, HttpMethod.POST, entity, byte[].class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("[INVOICE-PDF-ERROR] Error descargando PDF BHE código {}: {}", codigo, e.getMessage());
-            throw new RuntimeException("Error descargando PDF de BHE: " + e.getMessage(), e);
+            log.warn("[INVOICE-PDF-FETCH] Error llamando a endpoint PDF para código {}: {}", codigo, e.getMessage());
+            return null;
         }
+    }
+
+    private boolean isValidPdfBytes(byte[] bytes) {
+        return bytes != null && bytes.length >= 4 && bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46; // %PDF
+    }
+
+    private byte[] tryAutoRecoverPdf(String rawCodigo) {
+        try {
+            // 1. Buscar en logs por siiCode o por invoiceNumber (folio)
+            Optional<InvoiceLog> logOpt = invoiceLogRepository.findBySiiCode(rawCodigo);
+            if (logOpt.isEmpty()) {
+                logOpt = invoiceLogRepository.findByInvoiceNumber(rawCodigo);
+            }
+
+            if (logOpt.isEmpty()) {
+                return null;
+            }
+
+            InvoiceLog logEntry = logOpt.get();
+            String folio = logEntry.getInvoiceNumber();
+            if (folio == null || folio.isBlank() || folio.startsWith("MANUAL")) {
+                return null;
+            }
+
+            // Determinar período de la boleta (YYYYMM)
+            LocalDate date = logEntry.getAppointment() != null && logEntry.getAppointment().getAppointmentDate() != null
+                    ? logEntry.getAppointment().getAppointmentDate()
+                    : (logEntry.getCreatedAt() != null ? logEntry.getCreatedAt().toLocalDate() : LocalDate.now());
+            String periodo = date.format(DateTimeFormatter.ofPattern("yyyyMM"));
+
+            // Consultar documentos del SII para ese período
+            JsonNode siiDocs = listIssuedInvoices(periodo, 1, true);
+            JsonNode docsArray = null;
+            if (siiDocs != null) {
+                if (siiDocs.isArray()) {
+                    docsArray = siiDocs;
+                } else if (siiDocs.has("documentos") && siiDocs.get("documentos").isArray()) {
+                    docsArray = siiDocs.get("documentos");
+                } else if (siiDocs.has("data") && siiDocs.get("data").isArray()) {
+                    docsArray = siiDocs.get("data");
+                }
+            }
+
+            if (docsArray != null) {
+                for (JsonNode doc : docsArray) {
+                    String docFolio = extractFolio(doc);
+                    if (folio.trim().equals(docFolio != null ? docFolio.trim() : "")) {
+                        String realCode = extractCodigo(doc);
+                        if (realCode != null && !realCode.isBlank() && !realCode.equalsIgnoreCase(rawCodigo)) {
+                            log.info("[INVOICE-PDF-RECOVER] Código real encontrado para folio {}: {} (anterior: {}). Actualizando DB y reintentando...",
+                                    folio, realCode, rawCodigo);
+                            logEntry.setSiiCode(realCode);
+                            invoiceLogRepository.save(logEntry);
+
+                            byte[] recoveredBytes = fetchPdfBytesFromSii(realCode);
+                            if (isValidPdfBytes(recoveredBytes)) {
+                                return recoveredBytes;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("[INVOICE-PDF-RECOVER-WARN] Error en auto-recuperación de PDF para código {}: {}", rawCodigo, ex.getMessage());
+        }
+        return null;
     }
 
     /**
@@ -795,7 +889,7 @@ public class ApiGatewaySiiService {
     // PAYLOAD BUILDERS Y HELPERS
     // =========================================================================
 
-    private Map<String, Object> buildEmitirPayload(Customer customer, BigDecimal amount) {
+    private Map<String, Object> buildEmitirPayload(Appointment appointment, Customer customer, BigDecimal amount) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("auth", buildAuthCredentials());
 
@@ -803,7 +897,11 @@ public class ApiGatewaySiiService {
 
         Map<String, Object> encabezado = new HashMap<>();
         Map<String, Object> idDoc = new HashMap<>();
-        idDoc.put("FchEmis", LocalDate.now().format(DATE_FORMATTER));
+        
+        LocalDate serviceDate = (appointment != null && appointment.getAppointmentDate() != null)
+                ? appointment.getAppointmentDate()
+                : LocalDate.now();
+        idDoc.put("FchEmis", serviceDate.format(DATE_FORMATTER));
         idDoc.put("TipoRetencion", 2); // 2: Retención la hace el emisor (contribuyente de 2da categoría)
         encabezado.put("IdDoc", idDoc);
 
@@ -882,57 +980,69 @@ public class ApiGatewaySiiService {
         return "N/A";
     }
 
-    private String extractCodigo(JsonNode json) {
+    public String extractCodigo(JsonNode json) {
         if (json == null)
             return null;
-        if (json.has("codigo"))
-            return json.get("codigo").asText();
-        if (json.has("codigo_inferior"))
-            return json.get("codigo_inferior").asText();
-        if (json.has("boleta") && json.get("boleta").has("codigo"))
-            return json.get("boleta").get("codigo").asText();
+        if (json.has("codigo") && !json.get("codigo").isNull() && !json.get("codigo").asText().isBlank())
+            return json.get("codigo").asText().trim();
+        if (json.has("data") && json.get("data").has("codigo") && !json.get("data").get("codigo").isNull() && !json.get("data").get("codigo").asText().isBlank())
+            return json.get("data").get("codigo").asText().trim();
+        if (json.has("boleta") && json.get("boleta").has("codigo") && !json.get("boleta").get("codigo").isNull() && !json.get("boleta").get("codigo").asText().isBlank())
+            return json.get("boleta").get("codigo").asText().trim();
         if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")) {
             JsonNode idDoc = json.get("Encabezado").get("IdDoc");
-            if (idDoc.has("CodigoInferior"))
-                return idDoc.get("CodigoInferior").asText();
-            if (idDoc.has("Codigo"))
-                return idDoc.get("Codigo").asText();
+            if (idDoc.has("Codigo") && !idDoc.get("Codigo").isNull() && !idDoc.get("Codigo").asText().isBlank())
+                return idDoc.get("Codigo").asText().trim();
+            if (idDoc.has("codigo") && !idDoc.get("codigo").isNull() && !idDoc.get("codigo").asText().isBlank())
+                return idDoc.get("codigo").asText().trim();
         }
-        if (json.has("data")) {
-            JsonNode data = json.get("data");
-            if (data.has("codigo"))
-                return data.get("codigo").asText();
-            if (data.has("codigo_inferior"))
-                return data.get("codigo_inferior").asText();
-            if (data.has("Encabezado") && data.get("Encabezado").has("IdDoc")) {
-                JsonNode idDoc = data.get("Encabezado").get("IdDoc");
-                if (idDoc.has("CodigoInferior"))
-                    return idDoc.get("CodigoInferior").asText();
-                if (idDoc.has("Codigo"))
-                    return idDoc.get("Codigo").asText();
-            }
+        if (json.has("data") && json.get("data").has("Encabezado") && json.get("data").get("Encabezado").has("IdDoc")) {
+            JsonNode idDoc = json.get("data").get("Encabezado").get("IdDoc");
+            if (idDoc.has("Codigo") && !idDoc.get("Codigo").isNull() && !idDoc.get("Codigo").asText().isBlank())
+                return idDoc.get("Codigo").asText().trim();
+            if (idDoc.has("codigo") && !idDoc.get("codigo").isNull() && !idDoc.get("codigo").asText().isBlank())
+                return idDoc.get("codigo").asText().trim();
         }
+        if (json.has("codigo_verificacion") && !json.get("codigo_verificacion").isNull() && !json.get("codigo_verificacion").asText().isBlank())
+            return json.get("codigo_verificacion").asText().trim();
+        if (json.has("codigoVerificacion") && !json.get("codigoVerificacion").isNull() && !json.get("codigoVerificacion").asText().isBlank())
+            return json.get("codigoVerificacion").asText().trim();
+        // Solo como último recurso si no vino código principal y no es un timestamp de barras puro
+        if (json.has("codigo_inferior") && !json.get("codigo_inferior").isNull() && !json.get("codigo_inferior").asText().isBlank())
+            return json.get("codigo_inferior").asText().trim();
+        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc") && json.get("Encabezado").get("IdDoc").has("CodigoInferior"))
+            return json.get("Encabezado").get("IdDoc").get("CodigoInferior").asText().trim();
         return null;
     }
 
-    private String extractBarcode(JsonNode json) {
+    public String extractBarcode(JsonNode json) {
         if (json == null)
             return null;
-        if (json.has("codigo_barras"))
-            return json.get("codigo_barras").asText();
-        if (json.has("boleta") && json.get("boleta").has("codigo_barras"))
-            return json.get("boleta").get("codigo_barras").asText();
-        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")
-                && json.get("Encabezado").get("IdDoc").has("CodigoBarras")) {
-            return json.get("Encabezado").get("IdDoc").get("CodigoBarras").asText();
+        if (json.has("codigo_barras") && !json.get("codigo_barras").isNull() && !json.get("codigo_barras").asText().isBlank())
+            return json.get("codigo_barras").asText().trim();
+        if (json.has("codigo_inferior") && !json.get("codigo_inferior").isNull() && !json.get("codigo_inferior").asText().isBlank())
+            return json.get("codigo_inferior").asText().trim();
+        if (json.has("boleta") && json.get("boleta").has("codigo_barras") && !json.get("boleta").get("codigo_barras").isNull())
+            return json.get("boleta").get("codigo_barras").asText().trim();
+        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")) {
+            JsonNode idDoc = json.get("Encabezado").get("IdDoc");
+            if (idDoc.has("CodigoBarras") && !idDoc.get("CodigoBarras").isNull() && !idDoc.get("CodigoBarras").asText().isBlank())
+                return idDoc.get("CodigoBarras").asText().trim();
+            if (idDoc.has("CodigoInferior") && !idDoc.get("CodigoInferior").isNull() && !idDoc.get("CodigoInferior").asText().isBlank())
+                return idDoc.get("CodigoInferior").asText().trim();
         }
         if (json.has("data")) {
             JsonNode data = json.get("data");
-            if (data.has("codigo_barras"))
-                return data.get("codigo_barras").asText();
-            if (data.has("Encabezado") && data.get("Encabezado").has("IdDoc")
-                    && data.get("Encabezado").get("IdDoc").has("CodigoBarras")) {
-                return data.get("Encabezado").get("IdDoc").get("CodigoBarras").asText();
+            if (data.has("codigo_barras") && !data.get("codigo_barras").isNull() && !data.get("codigo_barras").asText().isBlank())
+                return data.get("codigo_barras").asText().trim();
+            if (data.has("codigo_inferior") && !data.get("codigo_inferior").isNull() && !data.get("codigo_inferior").asText().isBlank())
+                return data.get("codigo_inferior").asText().trim();
+            if (data.has("Encabezado") && data.get("Encabezado").has("IdDoc")) {
+                JsonNode idDoc = data.get("Encabezado").get("IdDoc");
+                if (idDoc.has("CodigoBarras") && !idDoc.get("CodigoBarras").isNull() && !idDoc.get("CodigoBarras").asText().isBlank())
+                    return idDoc.get("CodigoBarras").asText().trim();
+                if (idDoc.has("CodigoInferior") && !idDoc.get("CodigoInferior").isNull() && !idDoc.get("CodigoInferior").asText().isBlank())
+                    return idDoc.get("CodigoInferior").asText().trim();
             }
         }
         return null;
