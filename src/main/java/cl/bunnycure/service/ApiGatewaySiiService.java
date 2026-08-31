@@ -1039,8 +1039,12 @@ public class ApiGatewaySiiService {
             return json.get("data").get("codigo").asText().trim();
         if (json.has("boleta") && json.get("boleta").has("codigo") && !json.get("boleta").get("codigo").isNull() && !json.get("boleta").get("codigo").asText().isBlank())
             return json.get("boleta").get("codigo").asText().trim();
+
+        // 1. Extraer CodigoBarras desde IdDoc (es el identificador oficial del SII para el PDF: e.g. 1866971000066525C5FC)
         if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")) {
             JsonNode idDoc = json.get("Encabezado").get("IdDoc");
+            if (idDoc.has("CodigoBarras") && !idDoc.get("CodigoBarras").isNull() && !idDoc.get("CodigoBarras").asText().isBlank())
+                return idDoc.get("CodigoBarras").asText().trim();
             if (idDoc.has("Codigo") && !idDoc.get("Codigo").isNull() && !idDoc.get("Codigo").asText().isBlank())
                 return idDoc.get("Codigo").asText().trim();
             if (idDoc.has("codigo") && !idDoc.get("codigo").isNull() && !idDoc.get("codigo").asText().isBlank())
@@ -1048,20 +1052,22 @@ public class ApiGatewaySiiService {
         }
         if (json.has("data") && json.get("data").has("Encabezado") && json.get("data").get("Encabezado").has("IdDoc")) {
             JsonNode idDoc = json.get("data").get("Encabezado").get("IdDoc");
+            if (idDoc.has("CodigoBarras") && !idDoc.get("CodigoBarras").isNull() && !idDoc.get("CodigoBarras").asText().isBlank())
+                return idDoc.get("CodigoBarras").asText().trim();
             if (idDoc.has("Codigo") && !idDoc.get("Codigo").isNull() && !idDoc.get("Codigo").asText().isBlank())
                 return idDoc.get("Codigo").asText().trim();
             if (idDoc.has("codigo") && !idDoc.get("codigo").isNull() && !idDoc.get("codigo").asText().isBlank())
                 return idDoc.get("codigo").asText().trim();
         }
+        if (json.has("codigo_barras") && !json.get("codigo_barras").isNull() && !json.get("codigo_barras").asText().isBlank())
+            return json.get("codigo_barras").asText().trim();
+        if (json.has("data") && json.get("data").has("codigo_barras") && !json.get("data").get("codigo_barras").isNull() && !json.get("data").get("codigo_barras").asText().isBlank())
+            return json.get("data").get("codigo_barras").asText().trim();
         if (json.has("codigo_verificacion") && !json.get("codigo_verificacion").isNull() && !json.get("codigo_verificacion").asText().isBlank())
             return json.get("codigo_verificacion").asText().trim();
         if (json.has("codigoVerificacion") && !json.get("codigoVerificacion").isNull() && !json.get("codigoVerificacion").asText().isBlank())
             return json.get("codigoVerificacion").asText().trim();
-        // Solo como último recurso si no vino código principal y no es un timestamp de barras puro
-        if (json.has("codigo_inferior") && !json.get("codigo_inferior").isNull() && !json.get("codigo_inferior").asText().isBlank())
-            return json.get("codigo_inferior").asText().trim();
-        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc") && json.get("Encabezado").get("IdDoc").has("CodigoInferior"))
-            return json.get("Encabezado").get("IdDoc").get("CodigoInferior").asText().trim();
+
         return null;
     }
 

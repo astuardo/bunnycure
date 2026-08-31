@@ -412,15 +412,16 @@ class ApiGatewaySiiServiceTest {
     }
 
     @Test
-    void extractCodigo_PrioritizesCodigoOverBarcode() throws Exception {
+    void extractCodigo_ExtractsCodigoBarrasAsSiiIdentifier() throws Exception {
         String jsonStr = """
                 {
-                    "Encabezado": {
-                        "IdDoc": {
-                            "Folio": 49,
-                            "Codigo": "VERIF-ABC-123",
-                            "CodigoInferior": "11202608302034",
-                            "CodigoBarras": "999888777"
+                    "data": {
+                        "Encabezado": {
+                            "IdDoc": {
+                                "Folio": 66,
+                                "CodigoBarras": "1866971000066525C5FC",
+                                "CodigoInferior": "11202608302257"
+                            }
                         }
                     }
                 }
@@ -430,8 +431,8 @@ class ApiGatewaySiiServiceTest {
         String codigo = service.extractCodigo(json);
         String barcode = service.extractBarcode(json);
 
-        assertEquals("VERIF-ABC-123", codigo);
-        assertEquals("999888777", barcode);
+        assertEquals("1866971000066525C5FC", codigo);
+        assertEquals("1866971000066525C5FC", barcode);
     }
 
     @Test
