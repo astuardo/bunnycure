@@ -459,6 +459,7 @@ public class ApiGatewaySiiService {
      * Si no es válido o contiene un error HTML del SII, intenta resolver automáticamente
      * el código real consultando el registro de boletas del período en el SII.
      */
+    @Transactional
     public byte[] getInvoicePdf(String codigo) {
         if (!config.isConfigured()) {
             throw new IllegalStateException("ApiGateway no está configurado");
@@ -519,6 +520,12 @@ public class ApiGatewaySiiService {
             if (logOpt.isEmpty()) {
                 logOpt = invoiceLogRepository.findByInvoiceNumber(rawCodigo);
             }
+            if (logOpt.isEmpty()) {
+                List<InvoiceLog> allLogs = invoiceLogRepository.findAll();
+                logOpt = allLogs.stream()
+                        .filter(l -> rawCodigo.equalsIgnoreCase(l.getSiiCode()) || rawCodigo.equalsIgnoreCase(l.getSiiBarcode()))
+                        .findFirst();
+            }
 
             if (logOpt.isEmpty()) {
                 return null;
@@ -530,31 +537,62 @@ public class ApiGatewaySiiService {
                 return null;
             }
 
-            // Determinar período de la boleta (YYYYMM)
-            LocalDate date = logEntry.getAppointment() != null && logEntry.getAppointment().getAppointmentDate() != null
-                    ? logEntry.getAppointment().getAppointmentDate()
-                    : (logEntry.getCreatedAt() != null ? logEntry.getCreatedAt().toLocalDate() : LocalDate.now());
+            // Determinar período de la boleta (YYYYMM) de forma segura sin lazy proxy exception
+            LocalDate date = null;
+            try {
+                if (logEntry.getAppointment() != null) {
+                    date = logEntry.getAppointment().getAppointmentDate();
+                }
+            } catch (Exception ignored) {}
+            if (date == null) {
+                date = logEntry.getCreatedAt() != null ? logEntry.getCreatedAt().toLocalDate() : LocalDate.now();
+            }
             String periodo = date.format(DateTimeFormatter.ofPattern("yyyyMM"));
 
             // Consultar documentos del SII para ese período
             JsonNode siiDocs = listIssuedInvoices(periodo, 1, true);
-            JsonNode docsArray = null;
-            if (siiDocs != null) {
-                if (siiDocs.isArray()) {
-                    docsArray = siiDocs;
-                } else if (siiDocs.has("documentos") && siiDocs.get("documentos").isArray()) {
-                    docsArray = siiDocs.get("documentos");
-                } else if (siiDocs.has("data") && siiDocs.get("data").isArray()) {
-                    docsArray = siiDocs.get("data");
+            JsonNode docsArray = extractDocsArray(siiDocs);
+
+            if (docsArray == null || docsArray.isEmpty()) {
+                // Fallback a período actual si difiere
+                String currentPeriodo = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
+                if (!currentPeriodo.equals(periodo)) {
+                    siiDocs = listIssuedInvoices(currentPeriodo, 1, true);
+                    docsArray = extractDocsArray(siiDocs);
                 }
             }
 
             if (docsArray != null) {
                 for (JsonNode doc : docsArray) {
                     String docFolio = extractFolio(doc);
-                    if (folio.trim().equals(docFolio != null ? docFolio.trim() : "")) {
+                    boolean matchesFolio = false;
+                    if (docFolio != null && !docFolio.equals("N/A")) {
+                        if (folio.trim().equalsIgnoreCase(docFolio.trim())) {
+                            matchesFolio = true;
+                        } else {
+                            try {
+                                if (Long.parseLong(folio.trim()) == Long.parseLong(docFolio.trim())) {
+                                    matchesFolio = true;
+                                }
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+
+                    if (matchesFolio) {
                         String realCode = extractCodigo(doc);
-                        if (realCode != null && !realCode.isBlank() && !realCode.equalsIgnoreCase(rawCodigo)) {
+                        if (realCode == null || realCode.isBlank() || realCode.equalsIgnoreCase(rawCodigo)) {
+                            if (doc.has("codigo") && !doc.get("codigo").isNull() && !doc.get("codigo").asText().isBlank()) {
+                                realCode = doc.get("codigo").asText().trim();
+                            } else if (doc.has("Codigo") && !doc.get("Codigo").isNull() && !doc.get("Codigo").asText().isBlank()) {
+                                realCode = doc.get("Codigo").asText().trim();
+                            } else if (doc.has("id") && !doc.get("id").isNull() && !doc.get("id").asText().isBlank()) {
+                                realCode = doc.get("id").asText().trim();
+                            } else if (doc.has("codigo_verificacion") && !doc.get("codigo_verificacion").isNull()) {
+                                realCode = doc.get("codigo_verificacion").asText().trim();
+                            }
+                        }
+
+                        if (realCode != null && !realCode.isBlank()) {
                             log.info("[INVOICE-PDF-RECOVER] Código real encontrado para folio {}: {} (anterior: {}). Actualizando DB y reintentando...",
                                     folio, realCode, rawCodigo);
                             logEntry.setSiiCode(realCode);
@@ -570,6 +608,18 @@ public class ApiGatewaySiiService {
             }
         } catch (Exception ex) {
             log.warn("[INVOICE-PDF-RECOVER-WARN] Error en auto-recuperación de PDF para código {}: {}", rawCodigo, ex.getMessage());
+        }
+        return null;
+    }
+
+    private JsonNode extractDocsArray(JsonNode siiResponse) {
+        if (siiResponse == null) return null;
+        if (siiResponse.isArray()) return siiResponse;
+        if (siiResponse.has("documentos") && siiResponse.get("documentos").isArray()) {
+            return siiResponse.get("documentos");
+        }
+        if (siiResponse.has("data") && siiResponse.get("data").isArray()) {
+            return siiResponse.get("data");
         }
         return null;
     }

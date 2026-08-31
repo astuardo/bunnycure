@@ -108,6 +108,17 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(error));
     }
 
+    @ExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})
+    public ResponseEntity<ApiResponse<Void>> handleBadRequestException(
+            RuntimeException ex, WebRequest request) {
+        logger.warn("Bad request / Business validation error: {}", ex.getMessage());
+
+        ErrorResponse error = new ErrorResponse(ex.getMessage(), "BAD_REQUEST");
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(error));
+    }
+
     @ExceptionHandler(ServiceException.class)
     public ResponseEntity<ApiResponse<Void>> handleServiceException(
             ServiceException ex, WebRequest request) {
