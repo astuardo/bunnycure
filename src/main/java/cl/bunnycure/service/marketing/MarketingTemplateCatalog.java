@@ -194,6 +194,20 @@ public class MarketingTemplateCatalog {
                     "Escribir a BunnyCure",
                     "https://www.instagram.com/bunny.cure",
                     List.of("Camila", "Esmaltado Permanente")
+            ),
+            new TemplateDefinition(
+                    "saludo_cumpleanos_bunnycure",
+                    "Especial Cumpleaños 🎂",
+                    "Cumpleaños (Todo el año)",
+                    "🎂",
+                    "MARKETING",
+                    "es_CL",
+                    "Feliz Cumpleanos te desea BunnyCure",
+                    "¡Hola {{1}}! 🎂✨ En BunnyCure te deseamos un muy feliz cumpleaños. Queremos regalonearte en tu día especial con {{2}}. 💅💖 ¿Te gustaría reservar tu cita para celebrarlo con nosotras?",
+                    "BunnyCure Studio",
+                    "Reservar mi cita",
+                    "https://reservar.bunnycure.cl",
+                    List.of("Camila", "un 15% de descuento exclusivo en tu próxima cita")
             )
     );
 

@@ -217,6 +217,53 @@ public class WhatsAppService {
     }
 
     /**
+     * Actualiza una plantilla existente en Meta WhatsApp Business API.
+     * Endpoint: POST https://graph.facebook.com/v22.0/{templateId}
+     */
+    public Optional<JsonNode> updateMessageTemplate(String templateId, Map<String, Object> updatePayload) {
+        if (templateId == null || templateId.isBlank()) {
+            log.warn("[WHATSAPP-TEMPLATES] Template ID no configurado para actualizar");
+            return Optional.empty();
+        }
+        if (config.getToken() == null || config.getToken().isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Token no configurado para actualizar template");
+            return Optional.empty();
+        }
+
+        try {
+            String url = String.format("%s/%s", WHATSAPP_API_URL, templateId.trim());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(config.getToken());
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(updatePayload, headers);
+
+            log.info("[WHATSAPP-TEMPLATES] Actualizando template en Meta API: {}", url);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                log.info("[WHATSAPP-TEMPLATES] ✅ Template ID '{}' actualizado exitosamente en Meta", templateId);
+                return Optional.of(root);
+            } else {
+                log.error("[WHATSAPP-TEMPLATES] ❌ Error al actualizar template ID '{}'. Status: {}, Body: {}",
+                        templateId, response.getStatusCode(), response.getBody());
+                return Optional.empty();
+            }
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-TEMPLATES] ❌ Excepción al actualizar template ID '{}': {}",
+                    templateId, ex.getMessage(), ex);
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Marca un mensaje como leído (Read Receipt - Doble check azul en WhatsApp).
      * Endpoint: POST https://graph.facebook.com/v22.0/{phoneId}/messages
      */

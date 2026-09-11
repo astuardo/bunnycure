@@ -145,6 +145,63 @@ class MarketingCampaignServiceTest {
     }
 
     @Test
+    void previewAudience_Birthdays() {
+        LocalDate today = LocalDate.now();
+        Customer c1 = createCustomer(1L, "Cumpleañera Hoy", "+56911111111", 2);
+        c1.setBirthDate(LocalDate.of(1995, today.getMonthValue(), today.getDayOfMonth()));
+
+        Customer c2 = createCustomer(2L, "Cumpleañera Este Mes", "+56922222222", 1);
+        int otherDay = today.getDayOfMonth() == 1 ? 28 : 1;
+        c2.setBirthDate(LocalDate.of(1992, today.getMonthValue(), otherDay));
+
+        Customer c3 = createCustomer(3L, "Cumpleañera Otro Mes", "+56933333333", 4);
+        int otherMonth = today.getMonthValue() == 12 ? 1 : today.getMonthValue() + 1;
+        c3.setBirthDate(LocalDate.of(1990, otherMonth, 15));
+
+        when(customerRepository.findAll()).thenReturn(List.of(c1, c2, c3));
+        when(appointmentRepository.findLastCompletedAppointmentDatePerCustomer()).thenReturn(List.of());
+
+        AudiencePreviewDto todayPreview = campaignService.previewAudience(AudienceType.BIRTHDAYS_TODAY);
+        assertEquals(1, todayPreview.getTotalCount());
+        assertEquals("Cumpleañera Hoy", todayPreview.getSampleRecipients().get(0).getFullName());
+
+        AudiencePreviewDto monthPreview = campaignService.previewAudience(AudienceType.BIRTHDAYS_THIS_MONTH);
+        assertEquals(2, monthPreview.getTotalCount()); // c1 + c2
+    }
+
+    @Test
+    void dispatchCampaign_WithCustomBenefit() {
+        when(whatsAppService.sendTemplateSync(
+                anyString(),
+                eq("saludo_cumpleanos_bunnycure"),
+                eq("es_CL"),
+                isNull(),
+                anyList(),
+                isNull()
+        )).thenReturn(true);
+
+        CampaignDispatchRequestDto request = CampaignDispatchRequestDto.builder()
+                .templateName("saludo_cumpleanos_bunnycure")
+                .audienceType(AudienceType.ALL)
+                .testPhoneNumber("+56983692046")
+                .customBenefit("un 20% de descuento especial y un exfoliante")
+                .build();
+
+        CampaignDispatchResultDto result = campaignService.dispatchCampaign(request);
+        assertTrue(result.isTestRun());
+        assertEquals(1, result.getSentCount());
+
+        verify(whatsAppService).sendTemplateSync(
+                eq("+56983692046"),
+                eq("saludo_cumpleanos_bunnycure"),
+                eq("es_CL"),
+                isNull(),
+                eq(List.of("Prueba Admin", "un 20% de descuento especial y un exfoliante")),
+                isNull()
+        );
+    }
+
+    @Test
     void dispatchCampaign_TestRun() {
         when(whatsAppService.sendTemplateSync(
                 anyString(),

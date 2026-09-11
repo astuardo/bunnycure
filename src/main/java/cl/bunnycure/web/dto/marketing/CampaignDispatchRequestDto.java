@@ -23,4 +23,14 @@ public class CampaignDispatchRequestDto {
      * Opcional: teléfono de prueba. Si se especifica, solo se enviará a este número en vez de a la audiencia completa.
      */
     private String testPhoneNumber;
+
+    /**
+     * Opcional: beneficio o frase personalizada para variables dinámicas (ej. {{2}} en cumpleaños o reactivación).
+     */
+    private String customBenefit;
+
+    /**
+     * Opcional: lista de parámetros personalizados para inyectar en el body del mensaje.
+     */
+    private java.util.List<String> customParameters;
 }

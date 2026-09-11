@@ -10,6 +10,7 @@ import cl.bunnycure.web.dto.marketing.AudienceType;
 import cl.bunnycure.web.dto.marketing.CampaignDispatchRequestDto;
 import cl.bunnycure.web.dto.marketing.CampaignDispatchResultDto;
 import cl.bunnycure.web.dto.marketing.MarketingTemplateDto;
+import cl.bunnycure.web.dto.marketing.TemplateUpdateRequestDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -115,7 +116,7 @@ public class MarketingCampaignService {
 
         // Modo prueba si se especifica un número específico
         if (request.getTestPhoneNumber() != null && !request.getTestPhoneNumber().isBlank()) {
-            return dispatchTestMessage(template, request.getTestPhoneNumber().trim());
+            return dispatchTestMessage(template, request.getTestPhoneNumber().trim(), request.getCustomBenefit(), request.getCustomParameters());
         }
 
         List<CustomerWithLastVisit> targets = getEligibleCustomersWithVisit(request.getAudienceType());
@@ -130,7 +131,7 @@ public class MarketingCampaignService {
             Customer customer = targets.get(i).customer();
             try {
                 String firstName = customer.getFullName().trim().split("\\s+")[0];
-                List<String> bodyParams = buildBodyParams(template, firstName);
+                List<String> bodyParams = buildBodyParams(template, firstName, request.getCustomBenefit(), request.getCustomParameters());
 
                 boolean ok = whatsAppService.sendTemplateSync(
                         customer.getPhone(),
@@ -188,10 +189,10 @@ public class MarketingCampaignService {
                 .build();
     }
 
-    private CampaignDispatchResultDto dispatchTestMessage(MarketingTemplateCatalog.TemplateDefinition template, String phone) {
+    private CampaignDispatchResultDto dispatchTestMessage(MarketingTemplateCatalog.TemplateDefinition template, String phone, String customBenefit, List<String> customParams) {
         log.info("[MARKETING-TEST] Enviando mensaje de prueba de '{}' a {}", template.name(), phone);
 
-        List<String> bodyParams = buildBodyParams(template, "Prueba Admin");
+        List<String> bodyParams = buildBodyParams(template, "Prueba Admin", customBenefit, customParams);
         boolean ok = whatsAppService.sendTemplateSync(
                 phone,
                 template.name(),
@@ -219,19 +220,87 @@ public class MarketingCampaignService {
                 .build();
     }
 
-    private List<String> buildBodyParams(MarketingTemplateCatalog.TemplateDefinition template, String firstName) {
+    private List<String> buildBodyParams(MarketingTemplateCatalog.TemplateDefinition template, String firstName, String customBenefit, List<String> customParams) {
+        if (customParams != null && !customParams.isEmpty()) {
+            return customParams;
+        }
+        if ("saludo_cumpleanos_bunnycure".equalsIgnoreCase(template.name())) {
+            String benefit = (customBenefit != null && !customBenefit.isBlank())
+                    ? customBenefit.trim()
+                    : "un 15% de descuento exclusivo en tu próxima cita";
+            return List.of(firstName, benefit);
+        }
         if ("bunnycure_reactivacion_clienta".equalsIgnoreCase(template.name())) {
-            return List.of(firstName, "Manicura Rusa / Permanente");
+            String serviceName = (customBenefit != null && !customBenefit.isBlank())
+                    ? customBenefit.trim()
+                    : "Manicura Rusa / Permanente";
+            return List.of(firstName, serviceName);
         }
         return List.of(firstName);
+    }
+
+    public Optional<MarketingTemplateDto> updateTemplate(String templateName, TemplateUpdateRequestDto request) {
+        Optional<MarketingTemplateCatalog.TemplateDefinition> optDef = templateCatalog.findByName(templateName);
+        if (optDef.isEmpty()) {
+            throw new IllegalArgumentException("Plantilla no encontrada en catálogo: " + templateName);
+        }
+        Map<String, MetaTemplateInfo> metaIndex = fetchMetaTemplatesIndex();
+        MetaTemplateInfo metaInfo = metaIndex.get(templateName.toLowerCase());
+        if (metaInfo == null || metaInfo.id() == null || metaInfo.id().isBlank()) {
+            throw new IllegalStateException("La plantilla '" + templateName + "' no está registrada en Meta todavía");
+        }
+
+        List<Map<String, Object>> components = new ArrayList<>();
+        if (request.getHeaderText() != null && !request.getHeaderText().isBlank()) {
+            components.add(Map.of(
+                    "type", "HEADER",
+                    "format", "TEXT",
+                    "text", request.getHeaderText().trim()
+            ));
+        }
+
+        Map<String, Object> bodyComp = new HashMap<>();
+        bodyComp.put("type", "BODY");
+        bodyComp.put("text", request.getBodyText().trim());
+        if (optDef.get().sampleVariables() != null && !optDef.get().sampleVariables().isEmpty()) {
+            bodyComp.put("example", Map.of("body_text", List.of(optDef.get().sampleVariables())));
+        }
+        components.add(bodyComp);
+
+        if (request.getFooterText() != null && !request.getFooterText().isBlank()) {
+            components.add(Map.of(
+                    "type", "FOOTER",
+                    "text", request.getFooterText().trim()
+            ));
+        }
+
+        if (request.getButtonText() != null && !request.getButtonText().isBlank() && request.getButtonUrl() != null && !request.getButtonUrl().isBlank()) {
+            components.add(Map.of(
+                    "type", "BUTTONS",
+                    "buttons", List.of(Map.of(
+                            "type", "URL",
+                            "text", request.getButtonText().trim(),
+                            "url", request.getButtonUrl().trim()
+                    ))
+            ));
+        }
+
+        Optional<JsonNode> res = whatsAppService.updateMessageTemplate(metaInfo.id(), Map.of("components", components));
+        if (res.isPresent()) {
+            log.info("[MARKETING] ✅ Plantilla '{}' (ID: {}) enviada a actualización en Meta", templateName, metaInfo.id());
+            return Optional.of(optDef.get().toDto("PENDING", metaInfo.id()));
+        }
+        return Optional.empty();
     }
 
     private List<CustomerWithLastVisit> getEligibleCustomersWithVisit(AudienceType audienceType) {
         List<Customer> allCustomers = customerRepository.findAll();
         Map<Long, LocalDate> lastVisitMap = fetchLastVisitsMap();
 
-        LocalDate sixtyDaysAgo = LocalDate.now().minusDays(60);
-        LocalDate fortyFiveDaysAgo = LocalDate.now().minusDays(45);
+        LocalDate today = LocalDate.now();
+        LocalDate thirtyDaysAgo = today.minusDays(30);
+        LocalDate sixtyDaysAgo = today.minusDays(60);
+        LocalDate fortyFiveDaysAgo = today.minusDays(45);
 
         return allCustomers.stream()
                 // Validar teléfono y consentimiento WhatsApp
@@ -240,9 +309,15 @@ public class MarketingCampaignService {
                 .map(c -> new CustomerWithLastVisit(c, lastVisitMap.get(c.getId())))
                 .filter(c -> switch (audienceType) {
                     case ALL -> true;
+                    case INACTIVE_30_DAYS -> c.lastVisit == null || c.lastVisit.isBefore(thirtyDaysAgo);
                     case INACTIVE_60_DAYS -> c.lastVisit == null || c.lastVisit.isBefore(sixtyDaysAgo);
                     case ACTIVE_RECENT -> c.lastVisit != null && !c.lastVisit.isBefore(fortyFiveDaysAgo);
                     case FREQUENT_VIP -> c.customer.getTotalCompletedVisits() != null && c.customer.getTotalCompletedVisits() >= 3;
+                    case BIRTHDAYS_TODAY -> c.customer.getBirthDate() != null
+                            && c.customer.getBirthDate().getMonthValue() == today.getMonthValue()
+                            && c.customer.getBirthDate().getDayOfMonth() == today.getDayOfMonth();
+                    case BIRTHDAYS_THIS_MONTH -> c.customer.getBirthDate() != null
+                            && c.customer.getBirthDate().getMonthValue() == today.getMonthValue();
                 })
                 .collect(Collectors.toList());
     }

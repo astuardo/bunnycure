@@ -60,4 +60,15 @@ public class MarketingApiController {
         CampaignDispatchResultDto result = campaignService.dispatchCampaign(request);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
+
+    @Operation(summary = "Actualizar el contenido de una plantilla en Meta Graph API")
+    @PutMapping("/templates/{name}")
+    public ResponseEntity<ApiResponse<MarketingTemplateDto>> updateTemplate(
+            @PathVariable String name,
+            @Valid @RequestBody cl.bunnycure.web.dto.marketing.TemplateUpdateRequestDto request) {
+        log.info("[API-MARKETING] Solicitud de actualización para plantilla '{}'", name);
+        return campaignService.updateTemplate(name, request)
+                .map(t -> ResponseEntity.ok(ApiResponse.success(t)))
+                .orElseGet(() -> ResponseEntity.badRequest().body(ApiResponse.error("No se pudo actualizar la plantilla en Meta", "UPDATE_FAILED")));
+    }
 }
