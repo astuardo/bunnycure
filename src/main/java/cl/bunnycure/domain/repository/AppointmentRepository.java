@@ -203,4 +203,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                 )
             """)
     long countCompletedAppointmentsWithoutSuccessfulInvoice(@Param("status") AppointmentStatus status);
+
+    @Query("""
+                SELECT a.customer.id, MAX(a.appointmentDate)
+                FROM Appointment a
+                WHERE a.status = cl.bunnycure.domain.enums.AppointmentStatus.COMPLETED
+                GROUP BY a.customer.id
+            """)
+    List<Object[]> findLastCompletedAppointmentDatePerCustomer();
 }

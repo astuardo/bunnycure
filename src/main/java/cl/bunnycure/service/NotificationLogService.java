@@ -29,6 +29,12 @@ public class NotificationLogService {
         saveLog(appointment, appointment != null ? appointment.getCustomer() : null, "WHATSAPP", recipient, templateName, content, wamid);
     }
 
+    @Async
+    @Transactional
+    public void logMarketingWhatsApp(Customer customer, String recipient, String templateName, String content, String wamid) {
+        saveLog(null, customer, "WHATSAPP", recipient, "[MARKETING] " + templateName, content, wamid);
+    }
+
     private void saveLog(Appointment appointment, Customer customer, String channel, String recipient, String subject, String content, String wamid) {
         try {
             NotificationLog logEntry = NotificationLog.builder()

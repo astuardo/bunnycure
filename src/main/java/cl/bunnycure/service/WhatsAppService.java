@@ -164,6 +164,59 @@ public class WhatsAppService {
     }
 
     /**
+     * Crea un nuevo template en la cuenta de WhatsApp Business (WABA).
+     * Endpoint: POST https://graph.facebook.com/v22.0/{businessAccountId}/message_templates
+     */
+    public Optional<JsonNode> createMessageTemplate(Map<String, Object> templatePayload) {
+        return createMessageTemplate(config.getBusinessAccountId(), templatePayload);
+    }
+
+    public Optional<JsonNode> createMessageTemplate(String businessAccountId, Map<String, Object> templatePayload) {
+        if (businessAccountId == null || businessAccountId.isBlank()) {
+            log.warn("[WHATSAPP-TEMPLATES] Business Account ID no configurado");
+            return Optional.empty();
+        }
+        if (config.getToken() == null || config.getToken().isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Token no configurado para crear template");
+            return Optional.empty();
+        }
+
+        try {
+            String url = String.format("%s/%s/message_templates", WHATSAPP_API_URL, businessAccountId.trim());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(config.getToken());
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(templatePayload, headers);
+
+            log.info("[WHATSAPP-TEMPLATES] Creando template en Meta API: {} con nombre: {}",
+                    url, templatePayload.get("name"));
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                log.info("[WHATSAPP-TEMPLATES] ✅ Template '{}' creado exitosamente en Meta. ID: {}",
+                        templatePayload.get("name"), root.path("id").asText());
+                return Optional.of(root);
+            } else {
+                log.error("[WHATSAPP-TEMPLATES] ❌ Error al crear template '{}'. Status: {}, Body: {}",
+                        templatePayload.get("name"), response.getStatusCode(), response.getBody());
+                return Optional.empty();
+            }
+        } catch (Exception ex) {
+            log.error("[WHATSAPP-TEMPLATES] ❌ Excepción al crear template '{}': {}",
+                    templatePayload.get("name"), ex.getMessage(), ex);
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Marca un mensaje como leído (Read Receipt - Doble check azul en WhatsApp).
      * Endpoint: POST https://graph.facebook.com/v22.0/{phoneId}/messages
      */
