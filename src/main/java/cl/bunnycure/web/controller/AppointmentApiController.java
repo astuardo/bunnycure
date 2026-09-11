@@ -292,11 +292,14 @@ public class AppointmentApiController {
             @RequestParam AppointmentStatus status,
 
             @Parameter(description = "Generar boleta al completar (default: true)")
-            @RequestParam(defaultValue = "true") boolean generateInvoice) {
+            @RequestParam(defaultValue = "true") boolean generateInvoice,
+
+            @Parameter(description = "Notas u observaciones adicionales (ej: motivo de cancelación)")
+            @RequestParam(required = false) String notes) {
         
         log.info("[API] Updating appointment {} status to {}", id, status);
         
-        Appointment updated = appointmentService.updateStatus(id, status, generateInvoice);
+        Appointment updated = appointmentService.updateStatus(id, status, generateInvoice, notes);
         AppointmentResponseDto dto = toResponseDto(updated);
         
         return ResponseEntity.ok(ApiResponse.success(dto));

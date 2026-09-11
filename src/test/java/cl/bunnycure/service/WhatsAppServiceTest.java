@@ -580,6 +580,104 @@ class WhatsAppServiceTest {
         assertTrue(sent);
     }
 
+    @Test
+    void resolveCancellationReason_ManicuristCancellation() {
+        Appointment appointment = createTestAppointment();
+        appointment.setObservations("Notas previas\n\n--- CANCELACIÓN ---\nCancelado por: Manicurista\nMotivo: Emergencia personal");
+
+        String reason = whatsAppService.resolveCancellationReason(appointment);
+        assertEquals("Manicurista: Emergencia personal", reason);
+    }
+
+    @Test
+    void resolveCancellationReason_ClientCancellation() {
+        Appointment appointment = createTestAppointment();
+        appointment.setObservations("--- CANCELACIÓN ---\nCancelado por: Cliente\nMotivo: Problemas de transporte");
+
+        String reason = whatsAppService.resolveCancellationReason(appointment);
+        assertEquals("Cliente: Problemas de transporte", reason);
+    }
+
+    @Test
+    void resolveCancellationReason_NullOrBlankObservations() {
+        Appointment appointment = createTestAppointment();
+        appointment.setObservations(null);
+        assertEquals("No especificado", whatsAppService.resolveCancellationReason(appointment));
+
+        appointment.setObservations("   ");
+        assertEquals("No especificado", whatsAppService.resolveCancellationReason(appointment));
+
+        assertEquals("No especificado", whatsAppService.resolveCancellationReason(null));
+    }
+
+    @Test
+    void resolveCancellationReason_FallbackFreeText() {
+        Appointment appointment = createTestAppointment();
+        appointment.setObservations("Cliente tuvo un inconveniente médico");
+
+        String reason = whatsAppService.resolveCancellationReason(appointment);
+        assertEquals("Cliente tuvo un inconveniente médico", reason);
+    }
+
+    @Test
+    void sendCancelacionCitaTemplate_Success() {
+        Appointment appointment = createTestAppointment();
+        appointment.setObservations("--- CANCELACIÓN ---\nCancelado por: Manicurista\nMotivo: Problemas de salud");
+
+        when(config.isUseTemplateForCancellation()).thenReturn(true);
+        when(config.getCancelacionCitaTemplateName()).thenReturn("cancelacion_cita");
+        when(config.getCitaConfirmadaLanguageCode()).thenReturn("es");
+        when(config.getToken()).thenReturn("test-token");
+        when(config.getPhoneId()).thenReturn("123456789");
+
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class)
+        )).thenReturn(new ResponseEntity<>("{\"messages\":[{\"id\":\"wamid.123\"}]}", HttpStatus.OK));
+
+        whatsAppService.sendCancelacionCitaTemplate(appointment);
+
+        verify(restTemplate, timeout(1000)).exchange(
+                urlCaptor.capture(),
+                eq(HttpMethod.POST),
+                requestCaptor.capture(),
+                eq(String.class)
+        );
+
+        HttpEntity<Map<String, Object>> request = requestCaptor.getValue();
+        Map<String, Object> body = request.getBody();
+        assertNotNull(body);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> template = (Map<String, Object>) body.get("template");
+        assertEquals("cancelacion_cita", template.get("name"));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> components = (List<Map<String, Object>>) template.get("components");
+        assertNotNull(components);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> header = components.stream()
+                .filter(c -> "header".equalsIgnoreCase((String) c.get("type")))
+                .findFirst().orElseThrow();
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> headerParams = (List<Map<String, String>>) header.get("parameters");
+        assertEquals(1, headerParams.size());
+        assertEquals("María González", headerParams.get(0).get("text"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> bodyComponent = components.stream()
+                .filter(c -> "body".equalsIgnoreCase((String) c.get("type")))
+                .findFirst().orElseThrow();
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> bodyParams = (List<Map<String, String>>) bodyComponent.get("parameters");
+        assertEquals(4, bodyParams.size());
+        assertEquals("Manicure Clásica", bodyParams.get(0).get("text"));
+        assertEquals("Manicurista: Problemas de salud", bodyParams.get(3).get("text"));
+    }
+
     // Métodos auxiliares para crear objetos de prueba
 
     private Appointment createTestAppointment() {

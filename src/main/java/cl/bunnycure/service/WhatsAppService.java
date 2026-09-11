@@ -1153,7 +1153,7 @@ public class WhatsAppService {
 
     /**
      * Envía el template cancelacion_cita con placeholders:
-     * HEADER {{1}}=cliente, BODY {{1}}=servicio, {{2}}=fecha, {{3}}=hora
+     * HEADER {{1}}=cliente, BODY {{1}}=servicio, {{2}}=fecha, {{3}}=hora, {{4}}=motivo
      */
     @Async
     public void sendCancelacionCitaTemplate(Appointment appointment) {
@@ -1173,17 +1173,70 @@ public class WhatsAppService {
                 .format(shortDateFormatter());
         String hora = appointment.getAppointmentTime()
                 .format(DateTimeFormatter.ofPattern("HH:mm"));
-        String servicio = appointment.getService().getName();
+        String servicio = appointment.getService() != null ? appointment.getService().getName() : "Servicio";
         String cliente = appointment.getCustomer().getFullName();
+        String motivo = resolveCancellationReason(appointment);
+
+        log.info("[WHATSAPP] Enviando plantilla cancelacion_cita para cita {} con motivo: '{}'",
+                appointment.getId(), motivo);
 
         sendTemplateSync(
                 phone,
                 config.getCancelacionCitaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
                 cliente,
-                Arrays.asList(servicio, fecha, hora),
+                Arrays.asList(servicio, fecha, hora, motivo),
                 appointment
         );
+    }
+
+    /**
+     * Resuelve el motivo y origen de la cancelación a partir de las observaciones de la cita.
+     * Soporta formato estructurado 'Cancelado por: ...' y 'Motivo: ...'.
+     */
+    public String resolveCancellationReason(Appointment appointment) {
+        if (appointment == null) {
+            return "No especificado";
+        }
+        String obs = appointment.getObservations();
+        if (obs == null || obs.isBlank()) {
+            return "No especificado";
+        }
+
+        java.util.regex.Matcher motivoMatcher = java.util.regex.Pattern
+                .compile("Motivo:\\s*(.+?)(\\n|$)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(obs);
+        String reason = null;
+        if (motivoMatcher.find()) {
+            reason = motivoMatcher.group(1).trim();
+        }
+
+        java.util.regex.Matcher origenMatcher = java.util.regex.Pattern
+                .compile("Cancelado por:\\s*(.+?)(\\n|$)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(obs);
+        String origen = null;
+        if (origenMatcher.find()) {
+            origen = origenMatcher.group(1).trim();
+        }
+
+        String result;
+        if (reason != null && !reason.isBlank()) {
+            if (origen != null && !origen.isBlank()) {
+                result = String.format("%s: %s", origen, reason);
+            } else {
+                result = reason;
+            }
+        } else if (origen != null && !origen.isBlank()) {
+            result = String.format("Cancelado por %s", origen);
+        } else {
+            String firstLine = obs.split("\\n")[0].trim();
+            result = firstLine.isBlank() ? "No especificado" : firstLine;
+        }
+
+        if (result.length() > 80) {
+            return result.substring(0, 77) + "...";
+        }
+        return result;
     }
 
     /**
@@ -1497,10 +1550,11 @@ public class WhatsAppService {
 
     private Locale resolveAppLocale() {
         try {
-            return appSettingsService.getAppJavaLocale();
+            Locale loc = appSettingsService != null ? appSettingsService.getAppJavaLocale() : null;
+            return loc != null ? loc : Locale.forLanguageTag("es-CL");
         } catch (Exception ex) {
             log.warn("[WHATSAPP] No se pudo resolver app.locale, usando fallback es_CL", ex);
-            return new Locale("es", "CL");
+            return Locale.forLanguageTag("es-CL");
         }
     }
 

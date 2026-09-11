@@ -108,12 +108,20 @@ public class AppointmentService {
 
     @Transactional
     public Appointment updateStatus(Long id, AppointmentStatus newStatus) {
-        return updateStatus(id, newStatus, true);
+        return updateStatus(id, newStatus, true, null);
     }
 
     @Transactional
     public Appointment updateStatus(Long id, AppointmentStatus newStatus, boolean generateInvoice) {
+        return updateStatus(id, newStatus, generateInvoice, null);
+    }
+
+    @Transactional
+    public Appointment updateStatus(Long id, AppointmentStatus newStatus, boolean generateInvoice, String notes) {
         var appointment = findById(id);
+        if (notes != null && !notes.isBlank()) {
+            appointment.setObservations(notes);
+        }
         AppointmentStatus oldStatus = appointment.getStatus();
         
         if (oldStatus != newStatus) {
