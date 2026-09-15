@@ -33,4 +33,9 @@ public class CampaignDispatchRequestDto {
      * Opcional: lista de parámetros personalizados para inyectar en el body del mensaje.
      */
     private java.util.List<String> customParameters;
+
+    /**
+     * Opcional: IDs específicos de clientes cuando audienceType es SPECIFIC_CUSTOMERS.
+     */
+    private java.util.List<Long> customerIds;
 }

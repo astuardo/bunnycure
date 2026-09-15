@@ -45,8 +45,9 @@ public class MarketingApiController {
     @Operation(summary = "Previsualizar tamaño y muestra de audiencia")
     @GetMapping("/audience-preview")
     public ResponseEntity<ApiResponse<AudiencePreviewDto>> previewAudience(
-            @RequestParam(defaultValue = "ALL") AudienceType audienceType) {
-        AudiencePreviewDto preview = campaignService.previewAudience(audienceType);
+            @RequestParam(defaultValue = "ALL") AudienceType audienceType,
+            @RequestParam(required = false) List<Long> customerIds) {
+        AudiencePreviewDto preview = campaignService.previewAudience(audienceType, customerIds);
         return ResponseEntity.ok(ApiResponse.success(preview));
     }
 

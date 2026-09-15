@@ -196,6 +196,20 @@ public class MarketingTemplateCatalog {
                     List.of("Camila", "Esmaltado Permanente")
             ),
             new TemplateDefinition(
+                    "promo_halloween_bunnycure",
+                    "Especial Halloween 🎃👻",
+                    "Halloween (31 de Octubre)",
+                    "🎃",
+                    "MARKETING",
+                    "es_CL",
+                    "¡Halloween de Terror y Belleza en BunnyCure! 🎃",
+                    "¡Hola {{1}}! 🎃👻✨\n\n¿Lista para impactar en esta noche de brujas? En BunnyCure ya tenemos disponibles nuestros diseños temáticos más pedidos 💅🕷️\n\nUñas con nail art de fantasmitas, calabazas, efectos velvet oscuros, glow in the dark y sangre glam para lucir una manicura de ensueño.\n\n⚠️ ¡La agenda para la semana de Halloween ya está abierta y los cupos vuelan!\n\n¿Aseguramos tu cita antes de que se agoten?",
+                    "BunnyCure Studio",
+                    "Reservar mi cita",
+                    "https://reservar.bunnycure.cl",
+                    List.of("Camila")
+            ),
+            new TemplateDefinition(
                     "saludo_cumpleanos_bunnycure",
                     "Especial Cumpleaños 🎂",
                     "Cumpleaños (Todo el año)",

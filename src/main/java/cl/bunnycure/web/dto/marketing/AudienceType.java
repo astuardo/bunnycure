@@ -7,7 +7,8 @@ public enum AudienceType {
     ACTIVE_RECENT("Clientas activas recientes (visita en los últimos 45 días)"),
     FREQUENT_VIP("Clientas VIP / Frecuentes (3 o más visitas completadas)"),
     BIRTHDAYS_TODAY("Clientas que cumplen años hoy"),
-    BIRTHDAYS_THIS_MONTH("Clientas que cumplen años este mes");
+    BIRTHDAYS_THIS_MONTH("Clientas que cumplen años este mes"),
+    SPECIFIC_CUSTOMERS("Clientas específicas seleccionadas");
 
     private final String description;
 

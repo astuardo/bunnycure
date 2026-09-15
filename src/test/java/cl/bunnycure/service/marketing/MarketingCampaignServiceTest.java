@@ -65,6 +65,7 @@ class MarketingCampaignServiceTest {
         assertNotNull(templateCatalog.findByName("promo_fiestas_patrias").orElse(null));
         assertNotNull(templateCatalog.findByName("promo_bienvenida_primavera").orElse(null));
         assertNotNull(templateCatalog.findByName("promo_dia_de_la_madre").orElse(null));
+        assertNotNull(templateCatalog.findByName("promo_halloween_bunnycure").orElse(null));
         assertNotNull(templateCatalog.findByName("promo_navidad_bunnycure").orElse(null));
         assertNotNull(templateCatalog.findByName("promo_ano_nuevo_bunnycure").orElse(null));
         assertNotNull(templateCatalog.findByName("promo_san_valentin").orElse(null));
@@ -232,6 +233,63 @@ class MarketingCampaignServiceTest {
                 isNull()
         );
         verify(notificationLogService).logMarketingWhatsApp(isNull(), eq("+56983692046"), eq("promo_fiestas_patrias"), anyString(), isNull());
+    }
+
+    @Test
+    void previewAudience_SpecificCustomers() {
+        Customer c1 = createCustomer(1L, "Camila Silva", "+56911111111", 5);
+        Customer c2 = createCustomer(2L, "Javiera Pérez", "+56922222222", 1);
+        Customer c3 = createCustomer(3L, "Francisca Tapia", null, 0); // No phone
+
+        when(customerRepository.findAllById(List.of(1L, 2L, 3L))).thenReturn(List.of(c1, c2, c3));
+        when(appointmentRepository.findLastCompletedAppointmentDatePerCustomer()).thenReturn(List.of());
+
+        // Clientes específicos: de los 3 IDs, solo c1 y c2 son elegibles (c3 no tiene teléfono)
+        AudiencePreviewDto preview = campaignService.previewAudience(AudienceType.SPECIFIC_CUSTOMERS, List.of(1L, 2L, 3L));
+        assertEquals(2, preview.getTotalCount());
+        assertEquals(2, preview.getSampleRecipients().size());
+
+        // Si la lista está vacía
+        AudiencePreviewDto emptyPreview = campaignService.previewAudience(AudienceType.SPECIFIC_CUSTOMERS, List.of());
+        assertEquals(0, emptyPreview.getTotalCount());
+    }
+
+    @Test
+    void dispatchCampaign_SpecificCustomers() {
+        Customer c1 = createCustomer(10L, "Valentina Gomez", "+56944444444", 2);
+        when(customerRepository.findAllById(List.of(10L))).thenReturn(List.of(c1));
+        when(appointmentRepository.findLastCompletedAppointmentDatePerCustomer()).thenReturn(List.of());
+
+        when(whatsAppService.sendTemplateSync(
+                eq("+56944444444"),
+                eq("promo_halloween_bunnycure"),
+                eq("es_CL"),
+                isNull(),
+                anyList(),
+                isNull()
+        )).thenReturn(true);
+
+        CampaignDispatchRequestDto request = CampaignDispatchRequestDto.builder()
+                .templateName("promo_halloween_bunnycure")
+                .audienceType(AudienceType.SPECIFIC_CUSTOMERS)
+                .customerIds(List.of(10L))
+                .build();
+
+        CampaignDispatchResultDto result = campaignService.dispatchCampaign(request);
+        assertFalse(result.isTestRun());
+        assertEquals(1, result.getTotalTargeted());
+        assertEquals(1, result.getSentCount());
+        assertEquals(0, result.getFailedCount());
+
+        verify(whatsAppService).sendTemplateSync(
+                eq("+56944444444"),
+                eq("promo_halloween_bunnycure"),
+                eq("es_CL"),
+                isNull(),
+                eq(List.of("Valentina")),
+                isNull()
+        );
+        verify(notificationLogService).logMarketingWhatsApp(eq(c1), eq("+56944444444"), eq("promo_halloween_bunnycure"), anyString(), isNull());
     }
 
     private Customer createCustomer(Long id, String name, String phone, int completedVisits) {

@@ -86,7 +86,14 @@ public class MarketingCampaignService {
      * Previsualiza la audiencia según el criterio de segmentación.
      */
     public AudiencePreviewDto previewAudience(AudienceType audienceType) {
-        List<CustomerWithLastVisit> eligible = getEligibleCustomersWithVisit(audienceType);
+        return previewAudience(audienceType, null);
+    }
+
+    /**
+     * Previsualiza la audiencia según el criterio de segmentación y clientes específicos opcionales.
+     */
+    public AudiencePreviewDto previewAudience(AudienceType audienceType, List<Long> customerIds) {
+        List<CustomerWithLastVisit> eligible = getEligibleCustomersWithVisit(audienceType, customerIds);
 
         List<AudiencePreviewDto.SampleRecipientDto> samples = eligible.stream()
                 .limit(10)
@@ -119,7 +126,7 @@ public class MarketingCampaignService {
             return dispatchTestMessage(template, request.getTestPhoneNumber().trim(), request.getCustomBenefit(), request.getCustomParameters());
         }
 
-        List<CustomerWithLastVisit> targets = getEligibleCustomersWithVisit(request.getAudienceType());
+        List<CustomerWithLastVisit> targets = getEligibleCustomersWithVisit(request.getAudienceType(), request.getCustomerIds());
         log.info("[MARKETING-CAMPAIGN] Iniciando despacho masivo de '{}' a {} clientas (Audiencia: {})",
                 template.name(), targets.size(), request.getAudienceType());
 
@@ -294,7 +301,17 @@ public class MarketingCampaignService {
     }
 
     private List<CustomerWithLastVisit> getEligibleCustomersWithVisit(AudienceType audienceType) {
-        List<Customer> allCustomers = customerRepository.findAll();
+        return getEligibleCustomersWithVisit(audienceType, null);
+    }
+
+    private List<CustomerWithLastVisit> getEligibleCustomersWithVisit(AudienceType audienceType, List<Long> customerIds) {
+        if (audienceType == AudienceType.SPECIFIC_CUSTOMERS && (customerIds == null || customerIds.isEmpty())) {
+            return List.of();
+        }
+
+        List<Customer> allCustomers = (audienceType == AudienceType.SPECIFIC_CUSTOMERS && customerIds != null)
+                ? customerRepository.findAllById(customerIds)
+                : customerRepository.findAll();
         Map<Long, LocalDate> lastVisitMap = fetchLastVisitsMap();
 
         LocalDate today = LocalDate.now();
@@ -309,6 +326,7 @@ public class MarketingCampaignService {
                 .map(c -> new CustomerWithLastVisit(c, lastVisitMap.get(c.getId())))
                 .filter(c -> switch (audienceType) {
                     case ALL -> true;
+                    case SPECIFIC_CUSTOMERS -> customerIds != null && customerIds.contains(c.customer.getId());
                     case INACTIVE_30_DAYS -> c.lastVisit == null || c.lastVisit.isBefore(thirtyDaysAgo);
                     case INACTIVE_60_DAYS -> c.lastVisit == null || c.lastVisit.isBefore(sixtyDaysAgo);
                     case ACTIVE_RECENT -> c.lastVisit != null && !c.lastVisit.isBefore(fortyFiveDaysAgo);
