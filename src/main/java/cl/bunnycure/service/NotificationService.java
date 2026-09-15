@@ -439,6 +439,7 @@ public class NotificationService {
             String appointmentDate = appointment.getAppointmentDate().toString();
 
             int hoursAhead = appSettingsService != null ? appSettingsService.getReminderHoursAhead() : 12;
+            String subject, templateName;
 
             if ("tomorrow".equals(type)) {
                 subject = "🐰 Tu cita es mañana - Bunny Cure";
