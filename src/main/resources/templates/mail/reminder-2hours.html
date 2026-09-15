@@ -118,45 +118,45 @@
 <div class="container">
     <!-- Header -->
     <div class="header">
-        <h1>⏰ ¡Tu cita es HOY!</h1>
-        <p>Recordatorio Urgente - Bunny Cure</p>
+        <h1 th:text="'⏰ ¡Tu cita es en ' + (${hoursAhead != null} ? ${hoursAhead} : 12) + ' horas!'">⏰ ¡Tu cita es HOY!</h1>
+        <p>Recordatorio - Bunny Cure</p>
     </div>
 
     <!-- Content -->
     <div class="content">
         <p class="greeting">
-            Hola <strong th:text="${appointment.customer.name}">Cliente</strong>,
+            Hola <strong th:text="${firstName != null ? firstName : (appointment != null and appointment.customer != null ? appointment.customer.firstName : 'Cliente')}">Cliente</strong>,
         </p>
 
-        <p>¡No olvides tu cita! Tienes una sesión programada <strong>EN LAS PRÓXIMAS HORAS</strong>. 
+        <p>¡No olvides tu cita! Tienes una sesión programada <strong th:text="'EN LAS PRÓXIMAS ' + (${hoursAhead != null} ? ${hoursAhead} : 12) + ' HORAS'">EN LAS PRÓXIMAS HORAS</strong>. 
         ¡Prepárate para verte hermosa!</p>
 
         <!-- Urgent Box -->
         <div class="urgent-box">
-            <h3>🚨 Detalles de tu cita (PRÓXIMAS HORAS)</h3>
+            <h3 th:text="'🚨 Detalles de tu cita (Próximas ' + (${hoursAhead != null} ? ${hoursAhead} : 12) + ' horas)'">🚨 Detalles de tu cita (PRÓXIMAS HORAS)</h3>
             
             <div class="info-item">
                 <span class="emoji">📅</span>
                 <strong>Fecha:</strong>
-                <span th:text="${#temporals.format(appointment.appointmentDate, 'dd/MM/yyyy')}">Fecha</span>
+                <span th:text="${appointmentDate != null ? appointmentDate : (appointment != null ? #temporals.format(appointment.appointmentDate, 'dd/MM/yyyy') : '')}">Fecha</span>
             </div>
             
             <div class="info-item">
                 <span class="emoji">⏰</span>
                 <strong>Hora:</strong>
-                <span th:text="${#temporals.format(appointment.appointmentTime, 'HH:mm')}">Hora</span>
+                <span th:text="${appointmentTime != null ? appointmentTime : (appointment != null ? #temporals.format(appointment.appointmentTime, 'HH:mm') : '')}">Hora</span>
             </div>
             
             <div class="info-item">
                 <span class="emoji">💅</span>
                 <strong>Servicio:</strong>
-                <span th:text="${appointment.serviceCatalog.name}">Servicio</span>
+                <span th:text="${serviceName != null ? serviceName : (appointment != null and appointment.service != null ? appointment.service.name : '')}">Servicio</span>
             </div>
             
-            <div class="info-item">
+            <div class="info-item" th:if="${appointment != null and appointment.specialist != null}">
                 <span class="emoji">👩‍💼</span>
                 <strong>Profesional:</strong>
-                <span th:text="${appointment.professional != null ? appointment.professional : 'A asignar'}">Profesional</span>
+                <span th:text="${appointment.specialist.fullName}">Profesional</span>
             </div>
         </div>
 

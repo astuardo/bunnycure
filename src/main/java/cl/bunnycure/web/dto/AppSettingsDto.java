@@ -109,6 +109,7 @@ public class AppSettingsDto {
     public static class ReminderSettings {
         private String strategy;
         private Integer twoHoursIntervalMinutes;
+        private Integer hoursAhead;
     }
     
     @Data

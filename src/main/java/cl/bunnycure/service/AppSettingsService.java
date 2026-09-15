@@ -187,6 +187,26 @@ public class AppSettingsService {
         }
     }
 
+    /**
+     * Horas de anticipación con las que se envía el recordatorio previo a la cita.
+     * Default: 12 horas. Rango permitido: 1 a 72 horas.
+     */
+    public int getReminderHoursAhead() {
+        String raw = get("reminder.hours-ahead", "12");
+        try {
+            int value = Integer.parseInt(raw.trim());
+            if (value < 1) {
+                return 1;
+            }
+            if (value > 72) {
+                return 72;
+            }
+            return value;
+        } catch (Exception ex) {
+            return 12;
+        }
+    }
+
     // ── Identidad & Branding (Fase 1) ───────────────────────────────────────
 
     /** Nombre del negocio. Default: "BunnyCure" */

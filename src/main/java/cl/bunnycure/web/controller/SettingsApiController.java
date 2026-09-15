@@ -68,6 +68,7 @@ public class SettingsApiController {
             // Reminders
             "reminder.strategy",
             "reminder.two-hours.interval-minutes",
+            "reminder.hours-ahead",
             // Field Modes
             "field.email.mode", "field.gender.mode", "field.birth-date.mode",
             "field.emergency-phone.mode", "field.health-notes.mode", "field.general-notes.mode",
@@ -376,6 +377,7 @@ public class SettingsApiController {
         // Reminders
         m.put("reminder.strategy", "2hours");
         m.put("reminder.two-hours.interval-minutes", "30");
+        m.put("reminder.hours-ahead", "12");
 
         // Field Modes
         m.put("field.email.mode", "OPTIONAL");
@@ -471,6 +473,7 @@ public class SettingsApiController {
         return AppSettingsDto.ReminderSettings.builder()
                 .strategy(settingsService.getReminderStrategy())
                 .twoHoursIntervalMinutes(settingsService.getReminderTwoHoursIntervalMinutes())
+                .hoursAhead(settingsService.getReminderHoursAhead())
                 .build();
     }
 
@@ -523,10 +526,21 @@ public class SettingsApiController {
             try {
                 int minutes = Integer.parseInt(value);
                 if (minutes < 5 || minutes > 120) {
-                    return "Frecuencia inválida. Debe estar entre 5 y 120 minutos.";
+                    return "El intervalo de ejecución debe estar entre 5 y 120 minutos";
                 }
-            } catch (NumberFormatException ex) {
-                return "Frecuencia inválida. Debe ser un número entero.";
+            } catch (NumberFormatException e) {
+                return "El intervalo debe ser un número entero";
+            }
+        }
+
+        if (key.equals("reminder.hours-ahead")) {
+            try {
+                int hours = Integer.parseInt(value.trim());
+                if (hours < 1 || hours > 72) {
+                    return "Las horas de anticipación deben estar entre 1 y 72 horas";
+                }
+            } catch (NumberFormatException e) {
+                return "Las horas de anticipación deben ser un número entero";
             }
         }
 

@@ -438,13 +438,15 @@ public class NotificationService {
                     appointment.getAppointmentTime().toString() : "";
             String appointmentDate = appointment.getAppointmentDate().toString();
 
-            String subject, templateName;
+            int hoursAhead = appSettingsService != null ? appSettingsService.getReminderHoursAhead() : 12;
 
             if ("tomorrow".equals(type)) {
                 subject = "🐰 Tu cita es mañana - Bunny Cure";
                 templateName = "mail/reminder-tomorrow";
             } else if ("2hours".equals(type)) {
-                subject = "⏰ Tu cita es en 2 horas - Bunny Cure";
+                subject = hoursAhead == 1
+                        ? "⏰ Tu cita es en 1 hora - Bunny Cure"
+                        : String.format("⏰ Tu cita es en %d horas - Bunny Cure", hoursAhead);
                 templateName = "mail/reminder-2hours";
             } else {
                 // Soporta envío manual desde panel admin.
@@ -456,10 +458,12 @@ public class NotificationService {
             if (isMailEnabled() && pref != null && pref.allowsEmail()) {
                 try {
                     Context context = new Context();
+                    context.setVariable("appointment", appointment);
                     context.setVariable("firstName", customerName);
                     context.setVariable("serviceName", serviceName);
                     context.setVariable("appointmentTime", appointmentTime);
                     context.setVariable("appointmentDate", appointmentDate);
+                    context.setVariable("hoursAhead", hoursAhead);
                     String html = templateEngine.process(templateName, context);
                     sendEmail(email, subject, html);
                 } catch (Exception e) {

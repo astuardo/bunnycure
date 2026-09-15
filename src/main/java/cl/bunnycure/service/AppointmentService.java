@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -259,24 +260,41 @@ public class AppointmentService {
     }
 
     /**
-     * Envía recordatorios para citas en las próximas 2 horas.
-     * Usa query JPQL filtrada por fecha y ventana horaria para evitar traer toda la tabla a memoria.
+     * Envía recordatorios para citas en las próximas X horas configuradas (default 12h).
+     * Soporta ventanas intradía y ventanas que cruzan medianoche o varios días.
      */
     @Transactional
     public void sendRemindersForAppointmentsIn2Hours() {
         ZonedDateTime nowInZone = getNowInConfiguredZone();
-        LocalDate today = nowInZone.toLocalDate();
-        LocalTime now = nowInZone.toLocalTime();
-        LocalTime inTwoHours = now.plusHours(2);
+        LocalDateTime startDateTime = nowInZone.toLocalDateTime();
+        int hoursAhead = appSettingsService.getReminderHoursAhead();
+        LocalDateTime endDateTime = startDateTime.plusHours(hoursAhead);
 
-        List<Appointment> appointments = appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
-                List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
-                today,
-                now,
-                inTwoHours
-        );
+        LocalDate startDate = startDateTime.toLocalDate();
+        LocalTime startTime = startDateTime.toLocalTime();
+        LocalDate endDate = endDateTime.toLocalDate();
+        LocalTime endTime = endDateTime.toLocalTime();
 
-        log.info("[REMINDER] {} citas encontradas en ventana 2h ({} - {})", appointments.size(), now, inTwoHours);
+        List<Appointment> appointments;
+        if (startDate.equals(endDate)) {
+            appointments = appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
+                    List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
+                    startDate,
+                    startTime,
+                    endTime
+            );
+        } else {
+            appointments = appointmentRepository.findPendingRemindersInDateTimeWindow(
+                    List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
+                    startDate,
+                    startTime,
+                    endDate,
+                    endTime
+            );
+        }
+
+        log.info("[REMINDER] {} citas encontradas en ventana {}h ({} {} - {} {})",
+                appointments.size(), hoursAhead, startDate, startTime, endDate, endTime);
 
         // ✅ OPTIMIZED: Collect appointments that need reminder, send bulk update
         List<Appointment> appointmentsToUpdate = new ArrayList<>();
@@ -286,8 +304,8 @@ public class AppointmentService {
                 appointment.setReminderSent(true);
                 appointmentsToUpdate.add(appointment);
             } catch (Exception e) {
-                log.error("[REMINDER] Error enviando recordatorio 2h para cita {}: {}",
-                        appointment.getId(), e.getMessage(), e);
+                log.error("[REMINDER] Error enviando recordatorio {}h para cita {}: {}",
+                        hoursAhead, appointment.getId(), e.getMessage(), e);
             }
         }
         

@@ -237,4 +237,18 @@ class AppointmentServiceTest {
         verify(appointmentRepository).findPendingRemindersForDateAndTimeWindowByStatuses(
                 anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class));
     }
+
+    @Test
+    void sendRemindersForAppointments_shouldUseDateTimeWindowWhenSpanningDays() {
+        when(appSettingsService.getAppTimezone()).thenReturn("America/Santiago");
+        when(appSettingsService.getReminderHoursAhead()).thenReturn(48);
+        when(appointmentRepository.findPendingRemindersInDateTimeWindow(
+                anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalDate.class), any(LocalTime.class)))
+                .thenReturn(List.of());
+
+        assertDoesNotThrow(() -> appointmentService.sendRemindersForAppointmentsIn2Hours());
+
+        verify(appointmentRepository).findPendingRemindersInDateTimeWindow(
+                anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalDate.class), any(LocalTime.class));
+    }
 }
