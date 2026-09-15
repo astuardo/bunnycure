@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS marketing_templates (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    display_name VARCHAR(150) NOT NULL,
+    occasion VARCHAR(150),
+    emoji VARCHAR(20),
+    category VARCHAR(50) NOT NULL DEFAULT 'MARKETING',
+    language VARCHAR(20) NOT NULL DEFAULT 'es_CL',
+    header_text VARCHAR(255),
+    body_text TEXT NOT NULL,
+    footer_text VARCHAR(100),
+    button_text VARCHAR(100),
+    button_url VARCHAR(255),
+    sample_variables TEXT,
+    meta_status VARCHAR(50) NOT NULL DEFAULT 'NOT_REGISTERED',
+    meta_id VARCHAR(100),
+    source VARCHAR(50) DEFAULT 'AI_AGENT',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_marketing_templates_name ON marketing_templates(name);
+CREATE INDEX IF NOT EXISTS idx_marketing_templates_meta_status ON marketing_templates(meta_status);

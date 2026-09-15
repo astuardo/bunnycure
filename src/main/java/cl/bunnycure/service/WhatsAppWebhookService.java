@@ -54,6 +54,12 @@ public class WhatsAppWebhookService {
     private final CustomerServiceRecordService customerServiceRecordService;
     private final WebPushNotificationService webPushNotificationService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private cl.bunnycure.service.marketing.MarketingTemplateAiService marketingTemplateAiService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private cl.bunnycure.domain.repository.MarketingTemplateRepository marketingTemplateRepository;
+
     @Value("${bunnycure.whatsapp.number:}")
     private String adminWhatsAppNumber;
 
@@ -62,6 +68,17 @@ public class WhatsAppWebhookService {
 
     @Value("${whatsapp.webhook.customer-record.authorized-numbers:}")
     private String customerRecordAuthorizedNumbers;
+
+    @Value("${app.frontend.base-url:https://bunnycure-frontend.vercel.app}")
+    private String frontendBaseUrl;
+
+    public void setMarketingTemplateAiService(cl.bunnycure.service.marketing.MarketingTemplateAiService marketingTemplateAiService) {
+        this.marketingTemplateAiService = marketingTemplateAiService;
+    }
+
+    public void setMarketingTemplateRepository(cl.bunnycure.domain.repository.MarketingTemplateRepository marketingTemplateRepository) {
+        this.marketingTemplateRepository = marketingTemplateRepository;
+    }
 
     public boolean isSignatureValid(String rawPayload, String signatureHeader, String appSecret) {
         byte[] payloadBytes = rawPayload != null
@@ -198,6 +215,7 @@ public class WhatsAppWebhookService {
                 break;
                 
             case "message_template_status_update":
+                handleTemplateStatusUpdate(value);
                 handleOperationalWebhookEvent("message_template_status_update", value, isTemplateStatusRisk(value));
                 break;
                 
@@ -332,6 +350,12 @@ public class WhatsAppWebhookService {
             return;
         }
 
+        // Si es la administradora/dueña y solicita crear una plantilla de marketing
+        if (isCustomerRecordOwnerMessage(message) && isMarketingTemplateAiCommand(text)) {
+            handleAdminAiTemplateCreation(message, text);
+            return;
+        }
+
         if (isHandoffEnabled()) {
             sendHandoffMessage(message.getFrom(), "text_free_form");
             return;
@@ -342,6 +366,118 @@ public class WhatsAppWebhookService {
                 "Hola! Gracias por escribir a BunnyCure. " +
                         "Si quieres confirmar una cita, responde con el boton de confirmacion del mensaje que te enviamos."
         );
+    }
+
+    private boolean isMarketingTemplateAiCommand(String text) {
+        String lower = text.toLowerCase(Locale.ROOT).trim();
+        return lower.startsWith("crear plantilla")
+                || lower.startsWith("nueva plantilla")
+                || lower.startsWith("crea plantilla")
+                || lower.startsWith("plantilla:")
+                || lower.startsWith("promo:")
+                || lower.startsWith("crea una promo")
+                || lower.startsWith("crear promo")
+                || lower.startsWith("genera plantilla")
+                || lower.startsWith("generar plantilla");
+    }
+
+    private void handleAdminAiTemplateCreation(WhatsAppWebhookDto.Message message, String text) {
+        if (marketingTemplateAiService == null) {
+            log.warn("[WEBHOOK-AI] ⚠️ Solicitud de plantilla recibida pero marketingTemplateAiService no está disponible");
+            whatsAppService.sendTextMessage(message.getFrom(), "⚠️ Servicio de IA para plantillas no disponible en este momento.");
+            return;
+        }
+
+        try {
+            log.info("[WEBHOOK-AI] 🤖 Solicitud de plantilla recibida desde WhatsApp admin (from={}): {}", message.getFrom(), text);
+
+            String prompt = cleanAiCommandPrompt(text);
+            whatsAppService.sendTextMessage(
+                    message.getFrom(),
+                    "🤖 *Agente BunnyCure IA:* Procesando tu instrucción para la plantilla de marketing:\n"
+                            + "«" + prompt + "»\n\n"
+                            + "Validando políticas de Meta y registrando en caliente, dame un momento por favor 💅✨"
+            );
+
+            cl.bunnycure.web.dto.marketing.MarketingTemplateDto result =
+                    marketingTemplateAiService.generateAndSaveTemplate(prompt, true, "WHATSAPP_ADMIN");
+
+            StringBuilder reply = new StringBuilder();
+            reply.append("✨ *¡Plantilla Creada y Registrada con Éxito!*\n\n");
+            reply.append("📌 *Nombre Meta:* `").append(result.getName()).append("`\n");
+            reply.append("🏷️ *Campaña:* ").append(result.getDisplayName()).append("\n");
+            if (result.getHeaderText() != null && !result.getHeaderText().isBlank()) {
+                reply.append("📢 *Cabecera:* ").append(result.getHeaderText()).append("\n\n");
+            }
+            reply.append("💬 *Cuerpo:* \n\"").append(result.getBodyText()).append("\"\n\n");
+            if (result.getButtonText() != null && !result.getButtonText().isBlank()) {
+                reply.append("🔗 *Botón:* ").append(result.getButtonText()).append(" (").append(result.getButtonUrl()).append(")\n\n");
+            }
+
+            if (result.getMetaId() != null && !result.getMetaId().isBlank()) {
+                reply.append("🚀 *Estado en Meta:* Enviada a revisión automática (ID: `").append(result.getMetaId()).append("`).\n");
+                reply.append("Te avisaré automáticamente por acá en cuanto Meta la apruebe.");
+            } else {
+                reply.append("💾 Guardada en el catálogo interno de BunnyCure.");
+            }
+
+            reply.append("\n\n📱 Ver en panel web: ")
+                    .append(frontendBaseUrl != null ? frontendBaseUrl : "https://bunnycure-frontend.vercel.app")
+                    .append("/marketing");
+
+            whatsAppService.sendTextMessage(message.getFrom(), reply.toString());
+        } catch (Exception ex) {
+            log.error("[WEBHOOK-AI] ❌ Error creando plantilla desde WhatsApp: {}", ex.getMessage(), ex);
+            whatsAppService.sendTextMessage(message.getFrom(), "❌ *Agente BunnyCure IA:* Ocurrió un error al generar la plantilla: " + ex.getMessage());
+        }
+    }
+
+    private String cleanAiCommandPrompt(String text) {
+        return text.replaceFirst("(?i)^(crear plantilla|nueva plantilla|crea plantilla|plantilla:|promo:|crea una promo|crear promo|genera plantilla|generar plantilla)\\s*[:,-]?\\s*", "").trim();
+    }
+
+    private void handleTemplateStatusUpdate(WhatsAppWebhookDto.Value value) {
+        if (marketingTemplateRepository == null || value == null || value.getExtraFields() == null) {
+            return;
+        }
+
+        Map<String, Object> extra = value.getExtraFields();
+        String templateName = null;
+        if (extra.containsKey("message_template_name")) {
+            templateName = String.valueOf(extra.get("message_template_name"));
+        } else if (extra.containsKey("template_name")) {
+            templateName = String.valueOf(extra.get("template_name"));
+        } else if (extra.containsKey("element_name")) {
+            templateName = String.valueOf(extra.get("element_name"));
+        }
+
+        String event = extra.containsKey("event") ? String.valueOf(extra.get("event")) : null;
+        if (event == null && extra.containsKey("status")) {
+            event = String.valueOf(extra.get("status"));
+        }
+
+        if (templateName != null && event != null) {
+            log.info("[WEBHOOK-TEMPLATE] 🔄 Meta notificó actualización de plantilla: name='{}', event='{}'", templateName, event);
+            Optional<cl.bunnycure.domain.model.MarketingTemplateEntity> opt = marketingTemplateRepository.findByNameIgnoreCase(templateName);
+            if (opt.isPresent()) {
+                cl.bunnycure.domain.model.MarketingTemplateEntity entity = opt.get();
+                entity.setMetaStatus(event.toUpperCase(Locale.ROOT));
+                marketingTemplateRepository.save(entity);
+                log.info("[WEBHOOK-TEMPLATE] ✅ Estado de plantilla '{}' actualizado a '{}' en BD", entity.getName(), entity.getMetaStatus());
+
+                if ("APPROVED".equalsIgnoreCase(event)) {
+                    String adminPhone = resolveAdminWhatsAppNumber();
+                    if (adminPhone != null && !adminPhone.isBlank()) {
+                        String msg = "🎉 *¡Meta aprobó tu plantilla de marketing!*\n\n"
+                                + "La plantilla *\"" + entity.getDisplayName() + "\"* (`" + entity.getName() + "`) "
+                                + "ha sido aprobada oficialmente por WhatsApp.\n\n"
+                                + "Ya está disponible para despacho en tu panel: "
+                                + (frontendBaseUrl != null ? frontendBaseUrl : "https://bunnycure-frontend.vercel.app") + "/marketing";
+                        whatsAppService.sendTextMessage(adminPhone, msg);
+                    }
+                }
+            }
+        }
     }
 
     private void processButtonMessage(WhatsAppWebhookDto.Message message) {

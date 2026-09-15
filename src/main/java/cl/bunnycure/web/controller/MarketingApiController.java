@@ -26,6 +26,20 @@ import java.util.Map;
 public class MarketingApiController {
 
     private final MarketingCampaignService campaignService;
+    private final cl.bunnycure.service.marketing.MarketingTemplateAiService templateAiService;
+
+    @Operation(summary = "Crear y registrar plantilla de marketing mediante Agente IA")
+    @PostMapping("/templates/ai-generate")
+    public ResponseEntity<ApiResponse<MarketingTemplateDto>> generateAiTemplate(
+            @Valid @RequestBody cl.bunnycure.web.dto.marketing.AiTemplateGenerateRequestDto request) {
+        log.info("[API-MARKETING] Solicitud de creación de plantilla con IA: prompt='{}'", request.getPrompt());
+        MarketingTemplateDto template = templateAiService.generateAndSaveTemplate(
+                request.getPrompt(),
+                request.isAutoRegisterInMeta(),
+                "WEB_UI"
+        );
+        return ResponseEntity.ok(ApiResponse.success(template));
+    }
 
     @Operation(summary = "Obtener catálogo de plantillas de marketing con estado en Meta")
     @GetMapping("/templates")

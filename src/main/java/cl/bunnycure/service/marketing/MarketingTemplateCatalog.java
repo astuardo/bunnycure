@@ -225,13 +225,70 @@ public class MarketingTemplateCatalog {
             )
     );
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private cl.bunnycure.domain.repository.MarketingTemplateRepository marketingTemplateRepository;
+
+    public MarketingTemplateCatalog() {
+    }
+
+    public MarketingTemplateCatalog(cl.bunnycure.domain.repository.MarketingTemplateRepository marketingTemplateRepository) {
+        this.marketingTemplateRepository = marketingTemplateRepository;
+    }
+
     public List<TemplateDefinition> getAllDefinitions() {
-        return templates;
+        List<TemplateDefinition> all = new ArrayList<>(templates);
+        if (marketingTemplateRepository != null) {
+            try {
+                List<cl.bunnycure.domain.model.MarketingTemplateEntity> dbTemplates = marketingTemplateRepository.findAllByOrderByCreatedAtDesc();
+                for (cl.bunnycure.domain.model.MarketingTemplateEntity entity : dbTemplates) {
+                    if (all.stream().noneMatch(t -> t.name().equalsIgnoreCase(entity.getName()))) {
+                        all.add(toDefinition(entity));
+                    }
+                }
+            } catch (Exception ex) {
+                // Ignorar en entornos de test o inicialización temprana
+            }
+        }
+        return all;
     }
 
     public Optional<TemplateDefinition> findByName(String name) {
+        if (marketingTemplateRepository != null) {
+            try {
+                Optional<cl.bunnycure.domain.model.MarketingTemplateEntity> optDb = marketingTemplateRepository.findByNameIgnoreCase(name);
+                if (optDb.isPresent()) {
+                    return Optional.of(toDefinition(optDb.get()));
+                }
+            } catch (Exception ex) {
+                // Fallback a plantillas estáticas
+            }
+        }
         return templates.stream()
                 .filter(t -> t.name().equalsIgnoreCase(name))
                 .findFirst();
+    }
+
+    public static TemplateDefinition toDefinition(cl.bunnycure.domain.model.MarketingTemplateEntity entity) {
+        List<String> sampleVars = List.of("Camila");
+        if (entity.getSampleVariables() != null && !entity.getSampleVariables().isBlank()) {
+            sampleVars = java.util.Arrays.stream(entity.getSampleVariables().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
+        }
+        return new TemplateDefinition(
+                entity.getName(),
+                entity.getDisplayName(),
+                entity.getOccasion() != null ? entity.getOccasion() : "General",
+                entity.getEmoji() != null ? entity.getEmoji() : "✨",
+                entity.getCategory() != null ? entity.getCategory() : "MARKETING",
+                entity.getLanguage() != null ? entity.getLanguage() : "es_CL",
+                entity.getHeaderText(),
+                entity.getBodyText(),
+                entity.getFooterText(),
+                entity.getButtonText(),
+                entity.getButtonUrl(),
+                sampleVars
+        );
     }
 }
