@@ -58,11 +58,14 @@ public class MarketingTemplateCatalog {
             List<Map<String, Object>> components = new ArrayList<>();
 
             if (headerText != null && !headerText.isBlank()) {
-                components.add(Map.of(
-                        "type", "HEADER",
-                        "format", "TEXT",
-                        "text", headerText
-                ));
+                String cleanHeader = sanitizeHeaderForMeta(headerText);
+                if (cleanHeader != null && !cleanHeader.isBlank()) {
+                    components.add(Map.of(
+                            "type", "HEADER",
+                            "format", "TEXT",
+                            "text", cleanHeader
+                    ));
+                }
             }
 
             Map<String, Object> bodyComponent = new HashMap<>();
@@ -94,6 +97,20 @@ public class MarketingTemplateCatalog {
             payload.put("components", components);
             return payload;
         }
+    }
+
+    public static String sanitizeHeaderForMeta(String text) {
+        if (text == null) return null;
+        // Meta Cloud API: No emojis, no newlines, no asterisks/formatting characters
+        String cleaned = text.replaceAll("[\\r\\n]+", " ")
+                .replaceAll("[*_~`]", "")
+                .replaceAll("[\\p{So}\\p{Cn}\\p{Cs}\\x{1F300}-\\x{1F9FF}\\x{2600}-\\x{26FF}\\x{2700}-\\x{27BF}]", "")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (cleaned.length() > 60) {
+            cleaned = cleaned.substring(0, 60).trim();
+        }
+        return cleaned;
     }
 
     private final List<TemplateDefinition> templates = List.of(
@@ -202,7 +219,7 @@ public class MarketingTemplateCatalog {
                     "🎃",
                     "MARKETING",
                     "es_CL",
-                    "¡Halloween de Terror y Belleza en BunnyCure! 🎃",
+                    "Halloween de Terror y Belleza en BunnyCure",
                     "¡Hola {{1}}! 🎃👻✨\n\n¿Lista para impactar en esta noche de brujas? En BunnyCure ya tenemos disponibles nuestros diseños temáticos más pedidos 💅🕷️\n\nUñas con nail art de fantasmitas, calabazas, efectos velvet oscuros, glow in the dark y sangre glam para lucir una manicura de ensueño.\n\n⚠️ ¡La agenda para la semana de Halloween ya está abierta y los cupos vuelan!\n\n¿Aseguramos tu cita antes de que se agoten?",
                     "BunnyCure Studio",
                     "Reservar mi cita",

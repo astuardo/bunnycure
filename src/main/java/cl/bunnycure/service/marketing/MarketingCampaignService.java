@@ -259,11 +259,14 @@ public class MarketingCampaignService {
 
         List<Map<String, Object>> components = new ArrayList<>();
         if (request.getHeaderText() != null && !request.getHeaderText().isBlank()) {
-            components.add(Map.of(
-                    "type", "HEADER",
-                    "format", "TEXT",
-                    "text", request.getHeaderText().trim()
-            ));
+            String cleanHeader = MarketingTemplateCatalog.sanitizeHeaderForMeta(request.getHeaderText());
+            if (cleanHeader != null && !cleanHeader.isBlank()) {
+                components.add(Map.of(
+                        "type", "HEADER",
+                        "format", "TEXT",
+                        "text", cleanHeader
+                ));
+            }
         }
 
         Map<String, Object> bodyComp = new HashMap<>();

@@ -136,7 +136,7 @@ public class MarketingTemplateAiService {
                     - category: MARKETING
                     - language: es_CL
                     - bodyText: DEBE incluir {{1}} para el nombre de la clienta (ej: ¡Hola {{1}}! ...). Max 1024 caracteres.
-                    - headerText: breve y atractivo, max 60 caracteres.
+                    - headerText: breve y atractivo, max 60 caracteres. IMPORTANTE: NO incluyas emojis, asteriscos, formato ni saltos de línea en headerText (regla estricta de Meta Cloud API).
                     - buttonText: max 25 caracteres (ej: Reservar mi cita).
                     - buttonUrl: https://reservar.bunnycure.cl
                     
@@ -247,10 +247,7 @@ public class MarketingTemplateAiService {
         }
 
         String uniqueName = generateUniqueName(baseName);
-        String headerText = "¡" + theme + " en BunnyCure! " + emoji;
-        if (headerText.length() > 60) {
-            headerText = theme + " en BunnyCure " + emoji;
-        }
+        String headerText = MarketingTemplateCatalog.sanitizeHeaderForMeta(theme + " en BunnyCure");
 
         StringBuilder body = new StringBuilder();
         body.append("¡Hola {{1}}! ").append(emoji).append("✨\n\n");
@@ -286,8 +283,9 @@ public class MarketingTemplateAiService {
         String displayName = raw.displayName() != null ? raw.displayName() : "Campaña Especial ✨";
         String occasion = raw.occasion() != null ? raw.occasion() : "Especial";
         String emoji = raw.emoji() != null ? raw.emoji() : "✨";
-        String header = raw.headerText() != null ? raw.headerText() : "¡Especial en BunnyCure! 💅✨";
-        if (header.length() > 60) header = header.substring(0, 57) + "...";
+        String header = MarketingTemplateCatalog.sanitizeHeaderForMeta(
+                raw.headerText() != null && !raw.headerText().isBlank() ? raw.headerText() : "Especial en BunnyCure"
+        );
 
         String body = raw.bodyText();
         if (body == null || body.isBlank() || !body.contains("{{1}}")) {
@@ -390,11 +388,14 @@ public class MarketingTemplateAiService {
         List<Map<String, Object>> components = new ArrayList<>();
 
         if (draft.headerText() != null && !draft.headerText().isBlank()) {
-            components.add(Map.of(
-                    "type", "HEADER",
-                    "format", "TEXT",
-                    "text", draft.headerText()
-            ));
+            String cleanHeader = MarketingTemplateCatalog.sanitizeHeaderForMeta(draft.headerText());
+            if (cleanHeader != null && !cleanHeader.isBlank()) {
+                components.add(Map.of(
+                        "type", "HEADER",
+                        "format", "TEXT",
+                        "text", cleanHeader
+                ));
+            }
         }
 
         Map<String, Object> bodyComp = new HashMap<>();
