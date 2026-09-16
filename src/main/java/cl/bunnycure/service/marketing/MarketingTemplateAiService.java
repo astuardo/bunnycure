@@ -39,7 +39,14 @@ public class MarketingTemplateAiService {
     private final WhatsAppService whatsAppService;
     private final MarketingTemplateCatalog templateCatalog;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate = createFastRestTemplate();
+
+    private static RestTemplate createFastRestTemplate() {
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(3000); // 3s connect timeout
+        factory.setReadTimeout(5500);    // 5.5s read timeout para no bloquearse con modelos saturados
+        return new RestTemplate(factory);
+    }
 
     @Autowired(required = false)
     private AppSettingsService appSettingsService;
@@ -65,16 +72,16 @@ public class MarketingTemplateAiService {
     }
 
     private static final List<String> PREFERRED_MODELS = List.of(
-            "gemini-3.8-flash",
-            "gemini-3.7-flash",
             "gemini-3.6-flash",
+            "gemini-2.5-flash",
             "gemini-3.5-flash",
+            "gemini-2.0-flash",
             "gemini-3.1-flash-lite",
             "gemini-flash-latest",
-            "gemini-2.5-flash",
-            "gemini-2.0-flash",
             "gemini-2.0-flash-lite",
-            "gemini-1.5-flash-8b"
+            "gemini-1.5-flash-8b",
+            "gemini-3.7-flash",
+            "gemini-3.8-flash"
     );
 
     private List<String> getCandidateGeminiModels(String apiKey) {
@@ -87,11 +94,11 @@ public class MarketingTemplateAiService {
                 return List.of(fromDb.trim().replace("models/", ""));
             }
         }
-        if (resolvedGeminiModel != null) {
-            return List.of(resolvedGeminiModel);
-        }
 
         List<String> result = new ArrayList<>();
+        if (resolvedGeminiModel != null && !resolvedGeminiModel.isBlank()) {
+            result.add(resolvedGeminiModel.trim().replace("models/", ""));
+        }
         try {
             String listUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=" + apiKey.trim();
             ResponseEntity<String> response = restTemplate.getForEntity(listUrl, String.class);
@@ -426,7 +433,14 @@ public class MarketingTemplateAiService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
+        long startTime = System.currentTimeMillis();
+        long maxTotalTimeMs = 15000; // Máximo 15 segundos en total para no exceder timeout H12 de Heroku (30s)
+
         for (String modelName : modelsToTry) {
+            if (System.currentTimeMillis() - startTime > maxTotalTimeMs) {
+                log.warn("[AI-MARKETING] Tiempo límite de 15s alcanzado evaluando modelos Gemini. Pasando a Salon Copy Engine de respaldo para evitar timeout H12 de Heroku.");
+                break;
+            }
             try {
                 String url = String.format("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
                         modelName, apiKey.trim());
