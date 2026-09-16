@@ -154,4 +154,66 @@ class MarketingTemplateAiServiceTest {
         assertTrue(result.getBodyText().contains("{{1}}"));
         assertFalse(result.getHeaderText().contains("💕"));
     }
+
+    @Test
+    void generateDraftPreview_ReturnsDraftWithoutSavingOrRegisteringInMeta() {
+        String prompt = "Especial San Valentín 20% descuento";
+
+        when(templateRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
+
+        MarketingTemplateDto draft = aiService.generateDraftPreview(prompt);
+
+        assertNotNull(draft);
+        assertEquals("DRAFT", draft.getMetaStatus());
+        assertNull(draft.getMetaId());
+        assertTrue(draft.getBodyText().contains("{{1}}"));
+        assertTrue(draft.getBodyText().contains("20%"));
+        // Asegurar que NO se guardó en BD ni se llamó a Meta
+        verify(templateRepository, never()).save(any());
+        verify(whatsAppService, never()).createMessageTemplate(anyMap());
+    }
+
+    @Test
+    void saveApprovedTemplate_PersistsUserEditsAndRegistersInMeta() {
+        cl.bunnycure.web.dto.marketing.SaveApprovedTemplateRequestDto request =
+                cl.bunnycure.web.dto.marketing.SaveApprovedTemplateRequestDto.builder()
+                        .name("promo_san_valentin_personalizada")
+                        .displayName("San Valentín Editado ✨")
+                        .occasion("San Valentín")
+                        .emoji("💖")
+                        .headerText("Especial Amor BunnyCure")
+                        .bodyText("¡Hola {{1}}! Hemos ajustado este mensaje especialmente para ti.")
+                        .footerText("BunnyCure Studio")
+                        .buttonText("Pedir Cita")
+                        .buttonUrl("https://reservar.bunnycure.cl/san-valentin")
+                        .sampleVariables(List.of("Camila"))
+                        .autoRegisterInMeta(true)
+                        .build();
+
+        when(templateRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
+        when(templateRepository.save(any(MarketingTemplateEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        String metaJson = "{\"id\":\"meta-approved-888\",\"status\":\"PENDING\",\"category\":\"MARKETING\"}";
+        try {
+            var metaNode = new ObjectMapper().readTree(metaJson);
+            when(whatsAppService.createMessageTemplate(anyMap())).thenReturn(Optional.of(metaNode));
+        } catch (Exception e) {
+            fail(e);
+        }
+
+        MarketingTemplateDto result = aiService.saveApprovedTemplate(request, "WEB_UI");
+
+        assertNotNull(result);
+        assertEquals("promo_san_valentin_personalizada", result.getName());
+        assertEquals("San Valentín Editado ✨", result.getDisplayName());
+        assertEquals("Especial Amor BunnyCure", result.getHeaderText());
+        assertEquals("¡Hola {{1}}! Hemos ajustado este mensaje especialmente para ti.", result.getBodyText());
+        assertEquals("Pedir Cita", result.getButtonText());
+        assertEquals("https://reservar.bunnycure.cl/san-valentin", result.getButtonUrl());
+        assertEquals("PENDING", result.getMetaStatus());
+        assertEquals("meta-approved-888", result.getMetaId());
+
+        verify(templateRepository).save(any(MarketingTemplateEntity.class));
+        verify(whatsAppService).createMessageTemplate(anyMap());
+    }
 }

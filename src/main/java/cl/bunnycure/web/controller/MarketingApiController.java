@@ -28,7 +28,26 @@ public class MarketingApiController {
     private final MarketingCampaignService campaignService;
     private final cl.bunnycure.service.marketing.MarketingTemplateAiService templateAiService;
 
-    @Operation(summary = "Crear y registrar plantilla de marketing mediante Agente IA")
+    @Operation(summary = "Generar propuesta/borrador de plantilla con Agente IA para revisión previa")
+    @PostMapping("/templates/ai-draft")
+    public ResponseEntity<ApiResponse<MarketingTemplateDto>> generateAiDraft(
+            @Valid @RequestBody cl.bunnycure.web.dto.marketing.AiTemplateGenerateRequestDto request) {
+        log.info("[API-MARKETING] Solicitud de propuesta borrador IA: prompt='{}'", request.getPrompt());
+        MarketingTemplateDto draft = templateAiService.generateDraftPreview(request.getPrompt());
+        return ResponseEntity.ok(ApiResponse.success(draft));
+    }
+
+    @Operation(summary = "Guardar y registrar en Meta plantilla aprobada y ajustada por el usuario")
+    @PostMapping("/templates/save-approved")
+    public ResponseEntity<ApiResponse<MarketingTemplateDto>> saveApprovedTemplate(
+            @Valid @RequestBody cl.bunnycure.web.dto.marketing.SaveApprovedTemplateRequestDto request) {
+        log.info("[API-MARKETING] Solicitud de guardado de plantilla con visto bueno: name='{}', displayName='{}'",
+                request.getName(), request.getDisplayName());
+        MarketingTemplateDto template = templateAiService.saveApprovedTemplate(request, "WEB_UI");
+        return ResponseEntity.ok(ApiResponse.success(template));
+    }
+
+    @Operation(summary = "Crear y registrar plantilla de marketing mediante Agente IA (legado directo)")
     @PostMapping("/templates/ai-generate")
     public ResponseEntity<ApiResponse<MarketingTemplateDto>> generateAiTemplate(
             @Valid @RequestBody cl.bunnycure.web.dto.marketing.AiTemplateGenerateRequestDto request) {

@@ -181,6 +181,132 @@ public class MarketingTemplateAiService {
     ) {}
 
     /**
+     * Genera únicamente la propuesta/borrador de la plantilla con IA para que el usuario
+     * pueda revisar el mensaje, ajustarlo o editarlo antes de dar su visto bueno.
+     * NO persiste en la base de datos ni envía a Meta.
+     */
+    public MarketingTemplateDto generateDraftPreview(String prompt) {
+        log.info("[AI-MARKETING] Generando borrador previo para visto bueno. Prompt='{}'", prompt);
+        GeneratedTemplateDraft draft = generateDraft(prompt);
+
+        return MarketingTemplateDto.builder()
+                .name(draft.name())
+                .displayName(draft.displayName())
+                .occasion(draft.occasion())
+                .emoji(draft.emoji())
+                .category("MARKETING")
+                .language("es_CL")
+                .headerText(draft.headerText())
+                .bodyText(draft.bodyText())
+                .footerText(draft.footerText())
+                .buttonText(draft.buttonText())
+                .buttonUrl(draft.buttonUrl())
+                .sampleVariables(draft.sampleVariables())
+                .metaStatus("DRAFT")
+                .metaId(null)
+                .build();
+    }
+
+    /**
+     * Guarda y opcionalmente registra en Meta una plantilla aprobada y ajustada por el usuario.
+     */
+    @Transactional
+    public MarketingTemplateDto saveApprovedTemplate(cl.bunnycure.web.dto.marketing.SaveApprovedTemplateRequestDto request, String source) {
+        log.info("[AI-MARKETING] Guardando plantilla aprobada con visto bueno: name='{}', displayName='{}'",
+                request.getName(), request.getDisplayName());
+
+        String rawName = (request.getName() != null && !request.getName().isBlank())
+                ? request.getName()
+                : (request.getDisplayName() != null ? request.getDisplayName() : "promo_ai_bunnycure");
+        String finalName = generateUniqueName(rawName);
+
+        String cleanHeader = MarketingTemplateCatalog.sanitizeHeaderForMeta(request.getHeaderText());
+        String body = request.getBodyText();
+        if (body != null && !body.contains("{{1}}")) {
+            // Asegurar variable {{1}} para cumplimiento estricto de Meta
+            body = "¡Hola {{1}}! ✨\n\n" + body;
+        }
+        if (body != null && body.length() > 1024) {
+            body = body.substring(0, 1024);
+        }
+
+        String footer = request.getFooterText();
+        if (footer != null && footer.length() > 60) {
+            footer = footer.substring(0, 60);
+        }
+
+        String buttonText = request.getButtonText();
+        if (buttonText != null && buttonText.length() > 25) {
+            buttonText = buttonText.substring(0, 25);
+        }
+
+        String buttonUrl = (request.getButtonUrl() != null && request.getButtonUrl().startsWith("http"))
+                ? request.getButtonUrl().trim()
+                : "https://reservar.bunnycure.cl";
+
+        List<String> sampleVars = (request.getSampleVariables() != null && !request.getSampleVariables().isEmpty())
+                ? request.getSampleVariables()
+                : List.of("Camila");
+
+        GeneratedTemplateDraft draft = new GeneratedTemplateDraft(
+                finalName,
+                request.getDisplayName() != null && !request.getDisplayName().isBlank() ? request.getDisplayName().trim() : "Campaña Especial ✨",
+                request.getOccasion() != null && !request.getOccasion().isBlank() ? request.getOccasion().trim() : "Promoción Especial",
+                request.getEmoji() != null && !request.getEmoji().isBlank() ? request.getEmoji().trim() : "💅",
+                cleanHeader,
+                body,
+                footer,
+                buttonText,
+                buttonUrl,
+                sampleVars
+        );
+
+        String metaStatus = "NOT_REGISTERED";
+        String metaId = null;
+
+        if (request.isAutoRegisterInMeta()) {
+            Map<String, Object> metaPayload = buildMetaPayload(draft);
+            try {
+                log.info("[AI-MARKETING] Registrando plantilla aprobada '{}' en Meta Cloud API v22.0...", draft.name());
+                Optional<JsonNode> metaResponse = whatsAppService.createMessageTemplate(metaPayload);
+                if (metaResponse.isPresent()) {
+                    JsonNode root = metaResponse.get();
+                    metaId = root.path("id").asText(null);
+                    metaStatus = root.path("status").asText("PENDING");
+                    log.info("[AI-MARKETING] ✅ Plantilla aprobada registrada exitosamente en Meta. id={}, status={}", metaId, metaStatus);
+                } else {
+                    log.warn("[AI-MARKETING] ⚠️ Meta no retornó respuesta satisfactoria al registrar template '{}'", draft.name());
+                }
+            } catch (Exception ex) {
+                log.error("[AI-MARKETING] ❌ Error al registrar plantilla aprobada en Meta: {}", ex.getMessage(), ex);
+            }
+        }
+
+        MarketingTemplateEntity entity = MarketingTemplateEntity.builder()
+                .name(draft.name())
+                .displayName(draft.displayName())
+                .occasion(draft.occasion())
+                .emoji(draft.emoji())
+                .category("MARKETING")
+                .language("es_CL")
+                .headerText(draft.headerText())
+                .bodyText(draft.bodyText())
+                .footerText(draft.footerText())
+                .buttonText(draft.buttonText())
+                .buttonUrl(draft.buttonUrl())
+                .sampleVariables(String.join(",", draft.sampleVariables()))
+                .metaStatus(metaStatus)
+                .metaId(metaId)
+                .source(source != null ? source : "AI_AGENT_APPROVED")
+                .build();
+
+        MarketingTemplateEntity saved = templateRepository.save(entity);
+        log.info("[AI-MARKETING] ✅ Plantilla aprobada '{}' persistida en BD con ID {}", saved.getName(), saved.getId());
+
+        return MarketingTemplateCatalog.toDefinition(saved).toDto(saved.getMetaStatus(), saved.getMetaId());
+    }
+
+    /**
      * Procesa un prompt en lenguaje natural, genera el copy con guardrails de Meta,
      * guarda en base de datos y opcionalmente lo registra en Meta Graph API en caliente.
      */
