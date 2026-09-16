@@ -35,6 +35,13 @@ public class MarketingCampaignService {
     private final NotificationLogService notificationLogService;
     private final MarketingTemplateCatalog templateCatalog;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private cl.bunnycure.domain.repository.MarketingTemplateRepository marketingTemplateRepository;
+
+    public void setMarketingTemplateRepository(cl.bunnycure.domain.repository.MarketingTemplateRepository marketingTemplateRepository) {
+        this.marketingTemplateRepository = marketingTemplateRepository;
+    }
+
     /**
      * Obtiene el catálogo de plantillas combinando la definición local con su estado real en Meta.
      */
@@ -387,6 +394,55 @@ public class MarketingCampaignService {
         if (phone == null || phone.length() < 6) return phone;
         int len = phone.length();
         return phone.substring(0, len - 4).replaceAll("\\d", "*") + phone.substring(len - 4);
+    }
+
+    /**
+     * Elimina una plantilla de marketing tanto de la base de datos/catálogo como de Meta Cloud API.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public boolean deleteTemplate(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+
+        String templateName = name.trim().toLowerCase();
+        log.info("[MARKETING-DELETE] Solicitud de eliminación para plantilla '{}'", templateName);
+
+        // 1. Eliminar de Meta Graph API
+        boolean metaDeleted = false;
+        try {
+            metaDeleted = whatsAppService.deleteMessageTemplate(templateName);
+            log.info("[MARKETING-DELETE] Respuesta de Meta al eliminar '{}': {}", templateName, metaDeleted);
+        } catch (Exception ex) {
+            log.warn("[MARKETING-DELETE] Error al eliminar plantilla de Meta: {}", ex.getMessage());
+        }
+
+        // 2. Eliminar de base de datos o marcar como DELETED si es predefinida
+        boolean dbHandled = false;
+        if (marketingTemplateRepository != null) {
+            Optional<cl.bunnycure.domain.model.MarketingTemplateEntity> entityOpt = marketingTemplateRepository.findByNameIgnoreCase(templateName);
+            boolean isBuiltIn = templateCatalog.isBuiltIn(templateName);
+
+            if (isBuiltIn) {
+                cl.bunnycure.domain.model.MarketingTemplateEntity tombstone = entityOpt.orElseGet(() -> cl.bunnycure.domain.model.MarketingTemplateEntity.builder()
+                        .name(templateName)
+                        .displayName(templateName)
+                        .category("MARKETING")
+                        .language("es_CL")
+                        .bodyText("Deleted template")
+                        .build());
+                tombstone.setMetaStatus("DELETED");
+                marketingTemplateRepository.save(tombstone);
+                dbHandled = true;
+                log.info("[MARKETING-DELETE] Plantilla predefinida '{}' marcada como DELETED en base de datos", templateName);
+            } else if (entityOpt.isPresent()) {
+                marketingTemplateRepository.delete(entityOpt.get());
+                dbHandled = true;
+                log.info("[MARKETING-DELETE] Plantilla personalizada '{}' eliminada de la base de datos", templateName);
+            }
+        }
+
+        return metaDeleted || dbHandled;
     }
 
     public record CustomerWithLastVisit(Customer customer, LocalDate lastVisit) {}

@@ -252,13 +252,25 @@ public class MarketingTemplateCatalog {
         this.marketingTemplateRepository = marketingTemplateRepository;
     }
 
+    public boolean isBuiltIn(String templateName) {
+        if (templateName == null) return false;
+        return templates.stream().anyMatch(t -> t.name().equalsIgnoreCase(templateName.trim()));
+    }
+
     public List<TemplateDefinition> getAllDefinitions() {
         List<TemplateDefinition> all = new ArrayList<>(templates);
         if (marketingTemplateRepository != null) {
             try {
                 List<cl.bunnycure.domain.model.MarketingTemplateEntity> dbTemplates = marketingTemplateRepository.findAllByOrderByCreatedAtDesc();
+                java.util.Set<String> deletedNames = dbTemplates.stream()
+                        .filter(e -> "DELETED".equalsIgnoreCase(e.getMetaStatus()))
+                        .map(e -> e.getName().toLowerCase())
+                        .collect(java.util.stream.Collectors.toSet());
+
+                all.removeIf(t -> deletedNames.contains(t.name().toLowerCase()));
+
                 for (cl.bunnycure.domain.model.MarketingTemplateEntity entity : dbTemplates) {
-                    if (all.stream().noneMatch(t -> t.name().equalsIgnoreCase(entity.getName()))) {
+                    if (!"DELETED".equalsIgnoreCase(entity.getMetaStatus()) && all.stream().noneMatch(t -> t.name().equalsIgnoreCase(entity.getName()))) {
                         all.add(toDefinition(entity));
                     }
                 }
@@ -270,10 +282,14 @@ public class MarketingTemplateCatalog {
     }
 
     public Optional<TemplateDefinition> findByName(String name) {
+        if (name == null) return Optional.empty();
         if (marketingTemplateRepository != null) {
             try {
                 Optional<cl.bunnycure.domain.model.MarketingTemplateEntity> optDb = marketingTemplateRepository.findByNameIgnoreCase(name);
                 if (optDb.isPresent()) {
+                    if ("DELETED".equalsIgnoreCase(optDb.get().getMetaStatus())) {
+                        return Optional.empty();
+                    }
                     return Optional.of(toDefinition(optDb.get()));
                 }
             } catch (Exception ex) {

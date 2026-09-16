@@ -86,4 +86,23 @@ public class MarketingApiController {
                 .map(t -> ResponseEntity.ok(ApiResponse.success(t)))
                 .orElseGet(() -> ResponseEntity.badRequest().body(ApiResponse.error("No se pudo actualizar la plantilla en Meta", "UPDATE_FAILED")));
     }
+
+    @Operation(summary = "Eliminar plantilla de marketing del catálogo y de Meta Graph API")
+    @DeleteMapping("/templates/{name}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteTemplate(@PathVariable String name) {
+        log.info("[API-MARKETING] Solicitud de eliminación para plantilla '{}'", name);
+        boolean deleted = campaignService.deleteTemplate(name);
+        if (deleted) {
+            return ResponseEntity.ok(ApiResponse.success(Map.of(
+                    "name", name,
+                    "deleted", true,
+                    "message", "Plantilla eliminada exitosamente del catálogo y de Meta"
+            )));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "No se pudo eliminar la plantilla",
+                    "DELETE_FAILED"
+            ));
+        }
+    }
 }

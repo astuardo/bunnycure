@@ -119,4 +119,39 @@ class MarketingTemplateAiServiceTest {
         List<MarketingTemplateCatalog.TemplateDefinition> all = templateCatalog.getAllDefinitions();
         assertTrue(all.stream().anyMatch(t -> "promo_black_friday_custom".equals(t.name())));
     }
+
+    @Test
+    void generateAndSaveTemplate_FloresAmarillasPrompt() {
+        String prompt = "Crea una campaña para el día en que se dan flores amarillas";
+
+        when(templateRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
+        when(templateRepository.save(any(MarketingTemplateEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        MarketingTemplateDto result = aiService.generateAndSaveTemplate(prompt, false, "WEB_UI");
+
+        assertNotNull(result);
+        assertEquals("promo_flores_amarillas", result.getName());
+        assertTrue(result.getDisplayName().contains("Flores Amarillas"));
+        assertTrue(result.getBodyText().contains("flores amarillas"));
+        assertTrue(result.getBodyText().contains("{{1}}"));
+        assertFalse(result.getHeaderText().contains("🎃"));
+        assertFalse(result.getHeaderText().contains("🌼"));
+    }
+
+    @Test
+    void generateAndSaveTemplate_DiaDeLaNoviaPrompt() {
+        String prompt = "crea campaña para el dia de la novia";
+
+        when(templateRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
+        when(templateRepository.save(any(MarketingTemplateEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        MarketingTemplateDto result = aiService.generateAndSaveTemplate(prompt, false, "WEB_UI");
+
+        assertNotNull(result);
+        assertEquals("promo_dia_de_la_novia", result.getName());
+        assertTrue(result.getDisplayName().contains("Día de la Novia"));
+        assertTrue(result.getBodyText().contains("Día de la Novia"));
+        assertTrue(result.getBodyText().contains("{{1}}"));
+        assertFalse(result.getHeaderText().contains("💕"));
+    }
 }

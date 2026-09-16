@@ -292,6 +292,16 @@ class MarketingCampaignServiceTest {
         verify(notificationLogService).logMarketingWhatsApp(eq(c1), eq("+56944444444"), eq("promo_halloween_bunnycure"), anyString(), isNull());
     }
 
+    @Test
+    void deleteTemplate_DeletesFromMetaAndDb() {
+        when(whatsAppService.deleteMessageTemplate("promo_test")).thenReturn(true);
+
+        boolean deleted = campaignService.deleteTemplate("promo_test");
+
+        assertTrue(deleted);
+        verify(whatsAppService).deleteMessageTemplate("promo_test");
+    }
+
     private Customer createCustomer(Long id, String name, String phone, int completedVisits) {
         Customer c = new Customer();
         c.setId(id);

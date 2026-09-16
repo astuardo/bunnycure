@@ -264,6 +264,60 @@ public class WhatsAppService {
     }
 
     /**
+     * Elimina una plantilla en la cuenta de WhatsApp Business (WABA).
+     * Endpoint: DELETE https://graph.facebook.com/v22.0/{businessAccountId}/message_templates?name={templateName}
+     */
+    public boolean deleteMessageTemplate(String templateName) {
+        return deleteMessageTemplate(config.getBusinessAccountId(), templateName);
+    }
+
+    public boolean deleteMessageTemplate(String businessAccountId, String templateName) {
+        if (businessAccountId == null || businessAccountId.isBlank()) {
+            log.warn("[WHATSAPP-TEMPLATES] Business Account ID no configurado para eliminar template");
+            return false;
+        }
+        if (config.getToken() == null || config.getToken().isBlank()) {
+            log.warn("[WHATSAPP-SKIP] Token no configurado para eliminar template");
+            return false;
+        }
+        if (templateName == null || templateName.isBlank()) {
+            log.warn("[WHATSAPP-TEMPLATES] Nombre de template no especificado para eliminar");
+            return false;
+        }
+
+        try {
+            String url = String.format("%s/%s/message_templates?name=%s",
+                    WHATSAPP_API_URL, businessAccountId.trim(), templateName.trim());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(config.getToken());
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            log.info("[WHATSAPP-TEMPLATES] Eliminando template '{}' en Meta API: {}", templateName, url);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.DELETE,
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("[WHATSAPP-TEMPLATES] ✅ Template '{}' eliminado exitosamente de Meta Cloud API", templateName);
+                return true;
+            } else {
+                log.warn("[WHATSAPP-TEMPLATES] ⚠️ Meta retornó respuesta no exitosa al eliminar template '{}'. Status: {}, Body: {}",
+                        templateName, response.getStatusCode(), response.getBody());
+                return false;
+            }
+        } catch (Exception ex) {
+            log.warn("[WHATSAPP-TEMPLATES] ⚠️ Error o excepción al eliminar template '{}' en Meta: {}", templateName, ex.getMessage());
+            // Si el error es 404 Not Found, la plantilla ya no existía en Meta
+            return ex.getMessage() != null && ex.getMessage().contains("404");
+        }
+    }
+
+    /**
      * Marca un mensaje como leído (Read Receipt - Doble check azul en WhatsApp).
      * Endpoint: POST https://graph.facebook.com/v22.0/{phoneId}/messages
      */

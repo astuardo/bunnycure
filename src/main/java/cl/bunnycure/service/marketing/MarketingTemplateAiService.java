@@ -2,12 +2,14 @@ package cl.bunnycure.service.marketing;
 
 import cl.bunnycure.domain.model.MarketingTemplateEntity;
 import cl.bunnycure.domain.repository.MarketingTemplateRepository;
+import cl.bunnycure.service.AppSettingsService;
 import cl.bunnycure.service.WhatsAppService;
 import cl.bunnycure.web.dto.marketing.MarketingTemplateDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -39,8 +41,112 @@ public class MarketingTemplateAiService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
+    @Autowired(required = false)
+    private AppSettingsService appSettingsService;
+
     @Value("${bunnycure.ai.gemini.api-key:${GEMINI_API_KEY:}}")
     private String geminiApiKey;
+
+    @Value("${bunnycure.ai.gemini.model:${GEMINI_MODEL:}}")
+    private String configuredGeminiModel;
+
+    private volatile String resolvedGeminiModel = null;
+
+    public void setAppSettingsService(AppSettingsService appSettingsService) {
+        this.appSettingsService = appSettingsService;
+    }
+
+    public void setGeminiApiKey(String geminiApiKey) {
+        this.geminiApiKey = geminiApiKey;
+    }
+
+    public void setConfiguredGeminiModel(String configuredGeminiModel) {
+        this.configuredGeminiModel = configuredGeminiModel;
+    }
+
+    private String getOrResolveGeminiModel(String apiKey) {
+        if (configuredGeminiModel != null && !configuredGeminiModel.isBlank()) {
+            return configuredGeminiModel.trim().replace("models/", "");
+        }
+        if (appSettingsService != null) {
+            String fromDb = appSettingsService.get("bunnycure.ai.gemini.model", null);
+            if (fromDb != null && !fromDb.isBlank()) {
+                return fromDb.trim().replace("models/", "");
+            }
+        }
+        if (resolvedGeminiModel != null) {
+            return resolvedGeminiModel;
+        }
+
+        // Detección automática consultando la lista de modelos habilitados para la API key
+        try {
+            String listUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=" + apiKey.trim();
+            ResponseEntity<String> response = restTemplate.getForEntity(listUrl, String.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                JsonNode models = root.path("models");
+                if (models.isArray()) {
+                    List<String> candidates = new ArrayList<>();
+                    for (JsonNode m : models) {
+                        String name = m.path("name").asText("").replace("models/", "");
+                        JsonNode methods = m.path("supportedGenerationMethods");
+                        boolean canGenerate = false;
+                        if (methods.isArray()) {
+                            for (JsonNode method : methods) {
+                                if ("generateContent".equalsIgnoreCase(method.asText())) {
+                                    canGenerate = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (canGenerate) {
+                            candidates.add(name);
+                        }
+                    }
+
+                    // Priorizar modelos Flash más recientes
+                    Optional<String> flashModel = candidates.stream()
+                            .filter(n -> n.contains("flash"))
+                            .sorted((a, b) -> b.compareToIgnoreCase(a))
+                            .findFirst();
+
+                    if (flashModel.isPresent()) {
+                        resolvedGeminiModel = flashModel.get();
+                        log.info("[AI-MARKETING] ✅ Modelo Gemini activo detectado automáticamente: '{}'", resolvedGeminiModel);
+                        return resolvedGeminiModel;
+                    }
+
+                    if (!candidates.isEmpty()) {
+                        resolvedGeminiModel = candidates.get(0);
+                        log.info("[AI-MARKETING] ✅ Modelo Gemini compatible seleccionado: '{}'", resolvedGeminiModel);
+                        return resolvedGeminiModel;
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("[AI-MARKETING] No se pudo auto-descubrir modelos desde Gemini API: {}. Usando modelo por defecto.", ex.getMessage());
+        }
+
+        resolvedGeminiModel = "gemini-2.5-flash";
+        return resolvedGeminiModel;
+    }
+
+    private String resolveGeminiApiKey() {
+        if (geminiApiKey != null && !geminiApiKey.isBlank()) {
+            return geminiApiKey.trim();
+        }
+        if (appSettingsService != null) {
+            String fromDb = appSettingsService.get("bunnycure.ai.gemini.api-key", null);
+            if (fromDb != null && !fromDb.isBlank()) {
+                return fromDb.trim();
+            }
+            fromDb = appSettingsService.get("GEMINI_API_KEY", null);
+            if (fromDb != null && !fromDb.isBlank()) {
+                return fromDb.trim();
+            }
+        }
+        return null;
+    }
 
     public record GeneratedTemplateDraft(
             String name,
@@ -111,22 +217,29 @@ public class MarketingTemplateAiService {
     }
 
     private GeneratedTemplateDraft generateDraft(String prompt) {
-        if (geminiApiKey != null && !geminiApiKey.isBlank()) {
+        String apiKey = resolveGeminiApiKey();
+        if (apiKey != null && !apiKey.isBlank()) {
             try {
-                GeneratedTemplateDraft geminiDraft = generateWithGemini(prompt);
+                log.info("[AI-MARKETING] Conectando con Google Gemini 1.5 Flash para generar plantilla contextual...");
+                GeneratedTemplateDraft geminiDraft = generateWithGemini(prompt, apiKey);
                 if (geminiDraft != null) {
+                    log.info("[AI-MARKETING] ✅ Plantilla '{}' generada exitosamente con Gemini IA", geminiDraft.name());
                     return sanitizeDraft(geminiDraft, prompt);
                 }
             } catch (Exception ex) {
-                log.warn("[AI-MARKETING] Falla en llamada a Gemini API: {}. Usando Salon Copy Engine de respaldo.", ex.getMessage());
+                log.warn("[AI-MARKETING] ⚠️ Falla en llamada a Gemini API: {}. Usando Salon Copy Engine de respaldo.", ex.getMessage());
             }
+        } else {
+            log.warn("[AI-MARKETING] ⚠️ Variable GEMINI_API_KEY no configurada en el servidor/entorno. Usando Salon Copy Engine local de respaldo.");
         }
         return generateWithSalonCopyEngine(prompt);
     }
 
-    private GeneratedTemplateDraft generateWithGemini(String prompt) {
+    private GeneratedTemplateDraft generateWithGemini(String prompt, String apiKey) {
+        String modelName = getOrResolveGeminiModel(apiKey);
         try {
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey.trim();
+            String url = String.format("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
+                    modelName, apiKey.trim());
 
             String systemInstructions = """
                     Eres el Agente Creativo de Marketing de BunnyCure, un estudio exclusivo de manicura rusa y cuidado de uñas en Chile.
@@ -213,7 +326,15 @@ public class MarketingTemplateAiService {
         String emoji = "💅";
         String baseName = "promo_especial";
 
-        if (lower.contains("cyber") || lower.contains("black friday")) {
+        if (lower.contains("novia") || lower.contains("novio") || lower.contains("pareja")) {
+            theme = "Día de la Novia";
+            emoji = "💕";
+            baseName = "promo_dia_de_la_novia";
+        } else if (lower.contains("amarill") || lower.contains("flor")) {
+            theme = "Flores Amarillas";
+            emoji = "🌼";
+            baseName = "promo_flores_amarillas";
+        } else if (lower.contains("cyber") || lower.contains("black friday")) {
             theme = "Especial Cyber";
             emoji = "🛍️";
             baseName = "promo_cyber_bunnycure";
@@ -253,12 +374,20 @@ public class MarketingTemplateAiService {
         body.append("¡Hola {{1}}! ").append(emoji).append("✨\n\n");
         body.append("En BunnyCure queremos consentirte y preparamos una oportunidad perfecta para lucir tus manos impecables 💅💖\n\n");
 
-        if (lower.contains("acrilic") || lower.contains("acrílic")) {
+        if (lower.contains("novia") || lower.contains("novio") || lower.contains("pareja")) {
+            body.append("¡Celebra el Día de la Novia con una manicura de ensueño! 💕✨\n\n");
+            body.append("En BunnyCure queremos regalonearte: tenemos diseños románticos exclusivos, manicura rusa y esmaltado de máxima duración para que tus manos luzcan radiantes 💅💖\n\n");
+            body.append("Aprovecha ").append(discount).append(" y reserva tu momento especial de desconexión y belleza.\n\n");
+        } else if (lower.contains("amarill") || lower.contains("flor")) {
+            body.append("¡Celebremos el día de las flores amarillas! 🌼✨\n\n");
+            body.append("En BunnyCure queremos que florezcas con estilo: preparamos diseños botánicos exclusivos, esmaltados en tonos amarillos pastel y manicura rusa impecable para que tus manos luzcan radiantes 💅💛\n\n");
+            body.append("Aprovecha ").append(discount).append(" y celebra esta fecha especial luciendo una manicura soñada.\n\n");
+        } else if (lower.contains("acrilic") || lower.contains("acrílic")) {
             body.append("Aprovecha ").append(discount).append(" en postura y mantenimiento de uñas acrílicas con acabado natural y nail art de tendencia.\n\n");
         } else if (lower.contains("rusa") || lower.contains("permanente")) {
             body.append("Disfruta de ").append(discount).append(" en manicura rusa combinada con esmaltado permanente de larga duración.\n\n");
         } else {
-            body.append("Pensando en ti, activamos ").append(discount).append(" en nuestros servicios más pedidos de manicura y cuidado profesional de uñas.\n\n");
+            body.append("Pensando en ti y en la ocasión especial de ").append(theme).append(", activamos ").append(discount).append(" en nuestros servicios más pedidos de manicura y cuidado profesional de uñas 💅💖\n\n");
         }
 
         body.append("⚠️ Recuerda que los cupos semanales son limitados para brindarte una atención 100% personalizada.\n\n");
@@ -358,7 +487,13 @@ public class MarketingTemplateAiService {
         String clean = sanitizeName(text);
         String[] parts = clean.split("_");
         List<String> valid = new ArrayList<>();
-        Set<String> stopWords = Set.of("crear", "plantilla", "para", "con", "de", "la", "el", "un", "una", "por", "favor", "en", "que", "y", "los", "las");
+        Set<String> stopWords = Set.of(
+                "crear", "crea", "haz", "hacer", "genera", "generar", "dame", "escribe", "quiero", "necesito",
+                "plantilla", "campana", "campaña", "mensaje", "texto", "promo", "promocion", "promoción",
+                "para", "con", "de", "del", "la", "el", "los", "las", "un", "una", "unos", "unas",
+                "por", "favor", "en", "que", "se", "dan", "da", "dar", "y", "o", "al", "dia", "día",
+                "dias", "días", "fecha", "estilo", "tiempo", "ano", "año", "mes"
+        );
         for (String p : parts) {
             if (p.length() > 2 && !stopWords.contains(p)) {
                 valid.add(p);
