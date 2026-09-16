@@ -64,21 +64,32 @@ public class MarketingTemplateAiService {
         this.configuredGeminiModel = configuredGeminiModel;
     }
 
-    private String getOrResolveGeminiModel(String apiKey) {
+    private static final List<String> PREFERRED_MODELS = List.of(
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-1.5-flash-8b",
+            "gemini-1.5-flash-latest",
+            "gemini-2.5-pro",
+            "gemini-2.0-pro-exp-02-05",
+            "gemini-1.5-pro"
+    );
+
+    private List<String> getCandidateGeminiModels(String apiKey) {
         if (configuredGeminiModel != null && !configuredGeminiModel.isBlank()) {
-            return configuredGeminiModel.trim().replace("models/", "");
+            return List.of(configuredGeminiModel.trim().replace("models/", ""));
         }
         if (appSettingsService != null) {
             String fromDb = appSettingsService.get("bunnycure.ai.gemini.model", null);
             if (fromDb != null && !fromDb.isBlank()) {
-                return fromDb.trim().replace("models/", "");
+                return List.of(fromDb.trim().replace("models/", ""));
             }
         }
         if (resolvedGeminiModel != null) {
-            return resolvedGeminiModel;
+            return List.of(resolvedGeminiModel);
         }
 
-        // Detección automática consultando la lista de modelos habilitados para la API key
+        List<String> result = new ArrayList<>();
         try {
             String listUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=" + apiKey.trim();
             ResponseEntity<String> response = restTemplate.getForEntity(listUrl, String.class);
@@ -86,49 +97,55 @@ public class MarketingTemplateAiService {
                 JsonNode root = objectMapper.readTree(response.getBody());
                 JsonNode models = root.path("models");
                 if (models.isArray()) {
-                    List<String> candidates = new ArrayList<>();
+                    Set<String> supported = new HashSet<>();
                     for (JsonNode m : models) {
                         String name = m.path("name").asText("").replace("models/", "");
+                        // Excluir modelos experimentales o sin cuota Free Tier (como gemini-omni-flash)
+                        if (name.contains("omni") || name.contains("robotics") || name.contains("embedding") || name.contains("tts")) {
+                            continue;
+                        }
                         JsonNode methods = m.path("supportedGenerationMethods");
-                        boolean canGenerate = false;
                         if (methods.isArray()) {
                             for (JsonNode method : methods) {
                                 if ("generateContent".equalsIgnoreCase(method.asText())) {
-                                    canGenerate = true;
+                                    supported.add(name);
                                     break;
                                 }
                             }
                         }
-                        if (canGenerate) {
-                            candidates.add(name);
+                    }
+
+                    // 1. Agregar modelos preferidos probados con cuota free tier
+                    for (String pref : PREFERRED_MODELS) {
+                        if (supported.contains(pref)) {
+                            result.add(pref);
                         }
                     }
 
-                    // Priorizar modelos Flash más recientes
-                    Optional<String> flashModel = candidates.stream()
-                            .filter(n -> n.contains("flash"))
-                            .sorted((a, b) -> b.compareToIgnoreCase(a))
-                            .findFirst();
-
-                    if (flashModel.isPresent()) {
-                        resolvedGeminiModel = flashModel.get();
-                        log.info("[AI-MARKETING] ✅ Modelo Gemini activo detectado automáticamente: '{}'", resolvedGeminiModel);
-                        return resolvedGeminiModel;
+                    // 2. Agregar otros modelos que contengan 'flash' (excluyendo omni)
+                    for (String name : supported) {
+                        if (name.contains("flash") && !result.contains(name)) {
+                            result.add(name);
+                        }
                     }
 
-                    if (!candidates.isEmpty()) {
-                        resolvedGeminiModel = candidates.get(0);
-                        log.info("[AI-MARKETING] ✅ Modelo Gemini compatible seleccionado: '{}'", resolvedGeminiModel);
-                        return resolvedGeminiModel;
+                    // 3. Agregar cualquier otro modelo con generateContent
+                    for (String name : supported) {
+                        if (!result.contains(name)) {
+                            result.add(name);
+                        }
                     }
                 }
             }
         } catch (Exception ex) {
-            log.warn("[AI-MARKETING] No se pudo auto-descubrir modelos desde Gemini API: {}. Usando modelo por defecto.", ex.getMessage());
+            log.warn("[AI-MARKETING] No se pudo auto-descubrir modelos desde Gemini API: {}. Usando lista preferida por defecto.", ex.getMessage());
         }
 
-        resolvedGeminiModel = "gemini-2.5-flash";
-        return resolvedGeminiModel;
+        if (result.isEmpty()) {
+            result.addAll(PREFERRED_MODELS);
+        }
+        log.info("[AI-MARKETING] Modelos Gemini candidatos detectados para uso: {}", result);
+        return result;
     }
 
     private String resolveGeminiApiKey() {
@@ -236,76 +253,102 @@ public class MarketingTemplateAiService {
     }
 
     private GeneratedTemplateDraft generateWithGemini(String prompt, String apiKey) {
-        String modelName = getOrResolveGeminiModel(apiKey);
-        try {
-            String url = String.format("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
-                    modelName, apiKey.trim());
+        List<String> modelsToTry = getCandidateGeminiModels(apiKey);
 
-            String systemInstructions = """
-                    Eres el Agente Creativo de Marketing de BunnyCure, un estudio exclusivo de manicura rusa y cuidado de uñas en Chile.
-                    Crea una plantilla de WhatsApp para Meta Cloud API basada en la petición de la clienta o administradora.
-                    Reglas estrictas de Meta:
-                    - name: snake_case en minúsculas, solo letras y guiones bajos (ej: promo_cyberday_bunnycure), max 64 caracteres.
-                    - category: MARKETING
-                    - language: es_CL
-                    - bodyText: DEBE incluir {{1}} para el nombre de la clienta (ej: ¡Hola {{1}}! ...). Max 1024 caracteres.
-                    - headerText: breve y atractivo, max 60 caracteres. IMPORTANTE: NO incluyas emojis, asteriscos, formato ni saltos de línea en headerText (regla estricta de Meta Cloud API).
-                    - buttonText: max 25 caracteres (ej: Reservar mi cita).
-                    - buttonUrl: https://reservar.bunnycure.cl
-                    
-                    Devuelve ÚNICAMENTE un objeto JSON con este formato exacto:
-                    {
-                      "name": "promo_...",
-                      "displayName": "Nombre con emoji",
-                      "occasion": "Ocasión o festividad",
-                      "emoji": "💅",
-                      "headerText": "Texto de cabecera",
-                      "bodyText": "Cuerpo del mensaje incluyendo {{1}}",
-                      "footerText": "BunnyCure Studio",
-                      "buttonText": "Reservar mi cita",
-                      "buttonUrl": "https://reservar.bunnycure.cl",
-                      "sampleVariables": ["Camila"]
+        String systemInstructions = """
+                Eres el Agente Creativo de Marketing de BunnyCure, un estudio exclusivo de manicura rusa y cuidado de uñas en Chile.
+                Crea una plantilla de WhatsApp para Meta Cloud API basada en la petición de la clienta o administradora.
+                Reglas estrictas de Meta:
+                - name: snake_case en minúsculas, solo letras y guiones bajos (ej: promo_cyberday_bunnycure), max 64 caracteres.
+                - category: MARKETING
+                - language: es_CL
+                - bodyText: DEBE incluir {{1}} para el nombre de la clienta (ej: ¡Hola {{1}}! ...). Max 1024 caracteres.
+                - headerText: breve y atractivo, max 60 caracteres. IMPORTANTE: NO incluyas emojis, asteriscos, formato ni saltos de línea en headerText (regla estricta de Meta Cloud API).
+                - buttonText: max 25 caracteres (ej: Reservar mi cita).
+                - buttonUrl: https://reservar.bunnycure.cl
+                
+                Devuelve ÚNICAMENTE un objeto JSON con este formato exacto:
+                {
+                  "name": "promo_...",
+                  "displayName": "Nombre con emoji",
+                  "occasion": "Ocasión o festividad",
+                  "emoji": "💅",
+                  "headerText": "Texto de cabecera",
+                  "bodyText": "Cuerpo del mensaje incluyendo {{1}}",
+                  "footerText": "BunnyCure Studio",
+                  "buttonText": "Reservar mi cita",
+                  "buttonUrl": "https://reservar.bunnycure.cl",
+                  "sampleVariables": ["Camila"]
+                }
+                """;
+
+        Map<String, Object> requestBody = Map.of(
+                "contents", List.of(
+                        Map.of("parts", List.of(
+                                Map.of("text", systemInstructions + "\n\nInstrucción del usuario:\n" + prompt)
+                        ))
+                ),
+                "generationConfig", Map.of(
+                        "responseMimeType", "application/json",
+                        "temperature", 0.7
+                )
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+        for (String modelName : modelsToTry) {
+            try {
+                String url = String.format("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
+                        modelName, apiKey.trim());
+
+                ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    JsonNode root = objectMapper.readTree(response.getBody());
+                    JsonNode candidates = root.path("candidates");
+                    if (!candidates.isArray() || candidates.isEmpty()) {
+                        continue;
                     }
-                    """;
+                    String jsonText = candidates.get(0).path("content").path("parts").get(0).path("text").asText("");
+                    JsonNode data = objectMapper.readTree(jsonText);
 
-            Map<String, Object> requestBody = Map.of(
-                    "contents", List.of(
-                            Map.of("parts", List.of(
-                                    Map.of("text", systemInstructions + "\n\nInstrucción del usuario:\n" + prompt)
-                            ))
-                    ),
-                    "generationConfig", Map.of(
-                            "responseMimeType", "application/json",
-                            "temperature", 0.7
-                    )
-            );
+                    String name = data.hasNonNull("name") ? data.path("name").asText("") : "";
+                    String displayName = data.hasNonNull("displayName") ? data.path("displayName").asText("Campaña Especial ✨") : "Campaña Especial ✨";
+                    String occasion = data.hasNonNull("occasion") ? data.path("occasion").asText("Promoción Especial") : "Promoción Especial";
+                    String emoji = data.hasNonNull("emoji") ? data.path("emoji").asText("💅") : "💅";
+                    String headerText = data.hasNonNull("headerText") ? data.path("headerText").asText("¡Especial en BunnyCure!")
+                            : (data.hasNonNull("header") ? data.path("header").asText("¡Especial en BunnyCure!") : "¡Especial en BunnyCure!");
+                    String bodyText = data.hasNonNull("bodyText") ? data.path("bodyText").asText("")
+                            : (data.hasNonNull("body_text") ? data.path("body_text").asText("") : data.path("body").asText(""));
+                    String footerText = data.hasNonNull("footerText") ? data.path("footerText").asText("BunnyCure Studio") : "BunnyCure Studio";
+                    String buttonText = data.hasNonNull("buttonText") ? data.path("buttonText").asText("Reservar mi cita") : "Reservar mi cita";
+                    String buttonUrl = data.hasNonNull("buttonUrl") ? data.path("buttonUrl").asText("https://reservar.bunnycure.cl") : "https://reservar.bunnycure.cl";
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+                    resolvedGeminiModel = modelName;
+                    log.info("[AI-MARKETING] ✅ Plantilla generada exitosamente con modelo Gemini '{}'", modelName);
 
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                JsonNode root = objectMapper.readTree(response.getBody());
-                String jsonText = root.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText("");
-                JsonNode data = objectMapper.readTree(jsonText);
-
-                return new GeneratedTemplateDraft(
-                        sanitizeName(data.path("name").asText("")),
-                        data.path("displayName").asText("Campaña Especial ✨"),
-                        data.path("occasion").asText("Promoción Especial"),
-                        data.path("emoji").asText("💅"),
-                        data.path("headerText").asText("¡Especial en BunnyCure! 💅✨"),
-                        data.path("bodyText").asText(""),
-                        data.path("footerText").asText("BunnyCure Studio"),
-                        data.path("buttonText").asText("Reservar mi cita"),
-                        data.path("buttonUrl").asText("https://reservar.bunnycure.cl"),
-                        List.of("Camila")
-                );
+                    return new GeneratedTemplateDraft(
+                            sanitizeName(name),
+                            displayName,
+                            occasion,
+                            emoji,
+                            headerText,
+                            bodyText,
+                            footerText,
+                            buttonText,
+                            buttonUrl,
+                            List.of("Camila")
+                    );
+                }
+            } catch (Exception ex) {
+                log.warn("[AI-MARKETING] Error consultando Gemini con modelo '{}': {}. Probando siguiente modelo.",
+                        modelName, ex.getMessage());
+                if (modelName.equals(resolvedGeminiModel)) {
+                    resolvedGeminiModel = null;
+                }
             }
-        } catch (Exception ex) {
-            log.error("[AI-MARKETING] Error consultando Gemini: {}", ex.getMessage());
         }
         return null;
     }
