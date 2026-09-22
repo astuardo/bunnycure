@@ -18,6 +18,11 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import cl.bunnycure.domain.enums.OutboxMessageType;
+import cl.bunnycure.domain.event.WhatsAppFailedMessageEvent;
+import cl.bunnycure.domain.model.WhatsAppSendResult;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -47,6 +52,9 @@ public class WhatsAppService {
     private final ObjectMapper objectMapper;
     private final WhatsAppHandoffService whatsAppHandoffService;
     private final LoyaltyRewardService loyaltyRewardService;
+
+    @Autowired(required = false)
+    private ApplicationEventPublisher eventPublisher;
 
     @Value("${bunnycure.whatsapp.admin-alert.enabled:true}")
     private boolean adminAlertEnabledFallback;
@@ -730,24 +738,21 @@ public class WhatsAppService {
         return sendTextMessageSync(toPhoneNumber, message, null);
     }
 
-    public boolean sendTextMessageSync(String toPhoneNumber, String message, Appointment appointment) {
+    public WhatsAppSendResult sendTextMessageDirect(String toPhoneNumber, String message) {
         try {
             if (config.getToken() == null || config.getToken().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Token no configurado");
-                return false;
+                return WhatsAppSendResult.fail("Token de WhatsApp no configurado");
             }
 
             if (config.getPhoneId() == null || config.getPhoneId().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Phone ID no configurado");
-                return false;
+                return WhatsAppSendResult.fail("Phone ID de WhatsApp no configurado");
             }
 
             String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
-
-            // Normalizar número de teléfono (quitar caracteres especiales)
             String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
 
-            // Construir el payload
             Map<String, Object> payload = new HashMap<>();
             payload.put("messaging_product", "whatsapp");
             payload.put("to", normalizedPhone);
@@ -757,19 +762,13 @@ public class WhatsAppService {
             text.put("body", message);
             payload.put("text", text);
 
-            // Configurar headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(config.getToken());
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
-            // Log del payload para debug
             log.debug("[WHATSAPP-DEBUG] Enviando a URL: {}", url);
-            log.debug("[WHATSAPP-DEBUG] Payload: {}", payload);
-            log.debug("[WHATSAPP-DEBUG] Número normalizado: {}", normalizedPhone);
-
-            // Enviar petición
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -777,7 +776,6 @@ public class WhatsAppService {
                     String.class
             );
 
-            // Log detallado de la respuesta
             log.info("[WHATSAPP-RESPONSE] Status: {}", response.getStatusCode());
             log.info("[WHATSAPP-RESPONSE] Body: {}", response.getBody());
 
@@ -792,21 +790,40 @@ public class WhatsAppService {
                 } catch (Exception e) {
                     log.warn("[WHATSAPP-LOG] No se pudo parsear wamid de la respuesta: {}", e.getMessage());
                 }
-                
-                log.info("[WHATSAPP] ✅ Mensaje enviado exitosamente a {}. WAMID: {}", normalizedPhone, wamid);
-                
-                // Guardar Log
-                notificationLogService.logWhatsApp(appointment, normalizedPhone, "TEXT_MESSAGE", message, wamid);
-                
-                return true;
+                return WhatsAppSendResult.ok(wamid);
             } else {
-                log.error("[WHATSAPP] ❌ Error al enviar mensaje. Status: {}, Body: {}", 
-                        response.getStatusCode(), response.getBody());
-                return false;
+                return WhatsAppSendResult.fail("Status: " + response.getStatusCode() + " - " + response.getBody());
             }
-
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            String err = e.getStatusCode() + ": " + e.getResponseBodyAsString();
+            log.error("[WHATSAPP] ❌ Error HTTP al enviar mensaje a {}: {}", toPhoneNumber, err);
+            return WhatsAppSendResult.fail(err);
         } catch (Exception e) {
             log.error("[WHATSAPP] ❌ Excepción al enviar mensaje a {}: {}", toPhoneNumber, e.getMessage());
+            return WhatsAppSendResult.fail(e.getMessage());
+        }
+    }
+
+    public boolean sendTextMessageSync(String toPhoneNumber, String message, Appointment appointment) {
+        String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
+        WhatsAppSendResult result = sendTextMessageDirect(toPhoneNumber, message);
+
+        if (result.success()) {
+            log.info("[WHATSAPP] ✅ Mensaje enviado exitosamente a {}. WAMID: {}", normalizedPhone, result.wamid());
+            notificationLogService.logWhatsApp(appointment, normalizedPhone, "TEXT_MESSAGE", message, result.wamid());
+            return true;
+        } else {
+            log.error("[WHATSAPP] ❌ Error al enviar mensaje a {}: {}", normalizedPhone, result.errorMessage());
+            if (eventPublisher != null) {
+                eventPublisher.publishEvent(WhatsAppFailedMessageEvent.builder()
+                        .appointment(appointment)
+                        .customer(appointment != null ? appointment.getCustomer() : null)
+                        .recipientPhone(normalizedPhone)
+                        .messageType(OutboxMessageType.TEXT)
+                        .textContent(message)
+                        .errorMessage(result.errorMessage())
+                        .build());
+            }
             return false;
         }
     }
@@ -1040,39 +1057,35 @@ public class WhatsAppService {
         return sendTemplateSync(toPhoneNumber, templateName, languageCode, headerParam, bodyParams, null);
     }
 
-    public boolean sendTemplateSync(String toPhoneNumber,
-                                    String templateName,
-                                    String languageCode,
-                                    String headerParam,
-                                    List<String> bodyParams,
-                                    Appointment appointment) {
+    public WhatsAppSendResult sendTemplateDirect(String toPhoneNumber,
+                                                 String templateName,
+                                                 String languageCode,
+                                                 String headerParam,
+                                                 List<String> bodyParams) {
         try {
             if (config.getToken() == null || config.getToken().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Token no configurado");
-                return false;
+                return WhatsAppSendResult.fail("Token de WhatsApp no configurado");
             }
 
             if (config.getPhoneId() == null || config.getPhoneId().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Phone ID no configurado");
-                return false;
+                return WhatsAppSendResult.fail("Phone ID de WhatsApp no configurado");
             }
 
             String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
-
-            // Normalizar número de teléfono
             String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
 
-            // Construir el payload para template
             Map<String, Object> payload = new HashMap<>();
             payload.put("messaging_product", "whatsapp");
             payload.put("to", normalizedPhone);
             payload.put("type", "template");
-            
+
             Map<String, Object> template = new HashMap<>();
             template.put("name", templateName);
-            
+
             Map<String, String> language = new HashMap<>();
-            language.put("code", languageCode);
+            language.put("code", languageCode != null && !languageCode.isBlank() ? languageCode : config.getCitaConfirmadaLanguageCode());
             template.put("language", language);
 
             List<Map<String, Object>> components = new ArrayList<>();
@@ -1109,22 +1122,19 @@ public class WhatsAppService {
             if (!components.isEmpty()) {
                 template.put("components", components);
             }
-            
+
             payload.put("template", template);
 
-            // Configurar headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(config.getToken());
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
-            // Log del payload para debug
             log.debug("[WHATSAPP-TEMPLATE] Enviando template '{}' a URL: {}", templateName, url);
             log.debug("[WHATSAPP-TEMPLATE] Payload: {}", payload);
             log.debug("[WHATSAPP-TEMPLATE] Número normalizado: {}", normalizedPhone);
 
-            // Enviar petición
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -1132,7 +1142,6 @@ public class WhatsAppService {
                     String.class
             );
 
-            // Log detallado de la respuesta
             log.info("[WHATSAPP-TEMPLATE] Status: {}", response.getStatusCode());
             log.info("[WHATSAPP-TEMPLATE] Body: {}", response.getBody());
 
@@ -1147,24 +1156,50 @@ public class WhatsAppService {
                 } catch (Exception e) {
                     log.warn("[WHATSAPP-LOG] No se pudo parsear wamid de la respuesta: {}", e.getMessage());
                 }
-
-                log.info("[WHATSAPP] ✅ Template '{}' enviado exitosamente a {}. WAMID: {}", templateName, normalizedPhone, wamid);
-
-                // Guardar Log
-                String contentSummary = String.format("Template: %s | Header: %s | Params: %s", 
-                        templateName, headerParam, bodyParams);
-                notificationLogService.logWhatsApp(appointment, normalizedPhone, templateName, contentSummary, wamid);
-
-                return true;
+                return WhatsAppSendResult.ok(wamid);
             } else {
-                log.error("[WHATSAPP] ❌ Error al enviar template. Status: {}, Body: {}", 
-                        response.getStatusCode(), response.getBody());
-                return false;
+                return WhatsAppSendResult.fail("Status: " + response.getStatusCode() + " - " + response.getBody());
             }
-
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            String err = e.getStatusCode() + ": " + e.getResponseBodyAsString();
+            log.error("[WHATSAPP] ❌ Error HTTP al enviar template '{}' a {}: {}", templateName, toPhoneNumber, err);
+            return WhatsAppSendResult.fail(err);
         } catch (Exception e) {
             log.error("[WHATSAPP] ❌ Excepción al enviar template '{}' a {}: {}", templateName, toPhoneNumber, e.getMessage());
-            log.error("[WHATSAPP] ℹ️ Detalles del error:", e);
+            return WhatsAppSendResult.fail(e.getMessage());
+        }
+    }
+
+    public boolean sendTemplateSync(String toPhoneNumber,
+                                    String templateName,
+                                    String languageCode,
+                                    String headerParam,
+                                    List<String> bodyParams,
+                                    Appointment appointment) {
+        String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
+        WhatsAppSendResult result = sendTemplateDirect(toPhoneNumber, templateName, languageCode, headerParam, bodyParams);
+
+        if (result.success()) {
+            log.info("[WHATSAPP] ✅ Template '{}' enviado exitosamente a {}. WAMID: {}", templateName, normalizedPhone, result.wamid());
+            String contentSummary = String.format("Template: %s | Header: %s | Params: %s", 
+                    templateName, headerParam, bodyParams);
+            notificationLogService.logWhatsApp(appointment, normalizedPhone, templateName, contentSummary, result.wamid());
+            return true;
+        } else {
+            log.error("[WHATSAPP] ❌ Error al enviar template '{}' a {}: {}", templateName, normalizedPhone, result.errorMessage());
+            if (eventPublisher != null) {
+                eventPublisher.publishEvent(WhatsAppFailedMessageEvent.builder()
+                        .appointment(appointment)
+                        .customer(appointment != null ? appointment.getCustomer() : null)
+                        .recipientPhone(normalizedPhone)
+                        .messageType(OutboxMessageType.TEMPLATE)
+                        .templateName(templateName)
+                        .languageCode(languageCode)
+                        .headerParam(headerParam)
+                        .bodyParams(bodyParams)
+                        .errorMessage(result.errorMessage())
+                        .build());
+            }
             return false;
         }
     }

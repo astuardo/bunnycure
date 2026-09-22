@@ -95,7 +95,7 @@ public class SecurityConfig {
 			auth.requestMatchers("/api/appointments/**").authenticated();
 			auth.requestMatchers("/api/customers/**").authenticated();
 			auth.requestMatchers("/api/services/**").authenticated();
-			auth.requestMatchers("/api/whatsapp/messages/**").authenticated();
+			auth.requestMatchers("/api/whatsapp/**").authenticated();
 			
 			// Webhook de WhatsApp (público para Meta: soporta plural /webhooks/ y singular /webhook/)
 			auth.requestMatchers(HttpMethod.GET, "/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**", "/api/webhook/whatsapp", "/api/webhook/whatsapp/**").permitAll();
