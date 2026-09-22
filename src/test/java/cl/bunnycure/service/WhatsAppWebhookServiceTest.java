@@ -442,4 +442,40 @@ class WhatsAppWebhookServiceTest {
                 .build();
         return appointment;
     }
+
+    @Test
+    void processWebhookNotification_TextMessage_Confirmo_ConfirmsAppointment() {
+        Appointment appointment = createAppointment(1L, AppointmentStatus.PENDING, "+56 9 1234 5678");
+        when(appointmentRepository.findByStatus(AppointmentStatus.PENDING)).thenReturn(List.of(appointment));
+
+        webhookService.processWebhookNotification(
+                webhookWithMessage(textMessage("wamid-text-confirm", "56912345678", "Confirmo mi cita"))
+        );
+
+        assertEquals(AppointmentStatus.CONFIRMED, appointment.getStatus());
+        verify(appointmentRepository).save(appointment);
+        verify(whatsAppService).sendTextMessage("56912345678", "Perfecto! Tu cita quedó confirmada. Te esperamos en BunnyCure.");
+    }
+
+    @Test
+    void processWebhookNotification_TextMessage_Si_ConfirmsAppointment() {
+        Appointment appointment = createAppointment(2L, AppointmentStatus.PENDING, "912345678");
+        when(appointmentRepository.findByStatus(AppointmentStatus.PENDING)).thenReturn(List.of(appointment));
+
+        webhookService.processWebhookNotification(
+                webhookWithMessage(textMessage("wamid-text-si", "56912345678", "Sí"))
+        );
+
+        assertEquals(AppointmentStatus.CONFIRMED, appointment.getStatus());
+        verify(appointmentRepository).save(appointment);
+    }
+
+    @Test
+    void matchesPhone_ValidatesChileanFormats() {
+        org.junit.jupiter.api.Assertions.assertTrue(webhookService.matchesPhone("56912345678", "912345678"));
+        org.junit.jupiter.api.Assertions.assertTrue(webhookService.matchesPhone("+56912345678", "56912345678"));
+        org.junit.jupiter.api.Assertions.assertTrue(webhookService.matchesPhone("+56 9 1234 5678", "912345678"));
+        org.junit.jupiter.api.Assertions.assertFalse(webhookService.matchesPhone("56912345678", "56999999999"));
+        org.junit.jupiter.api.Assertions.assertFalse(webhookService.matchesPhone("", "56912345678"));
+    }
 }

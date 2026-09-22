@@ -388,6 +388,6 @@ public class AppSettingsService {
     /** Cuerpo para notificaciones 2h antes. Default con variables */
     public String getNotificationTwoHourBody() {
         return get("notification.template.2hour.body",
-                "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). ¡Te esperamos!");
+                "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). Tolerancia máxima: 15 minutos o la cita se dará por cancelada. ¡Te esperamos!");
     }
 }

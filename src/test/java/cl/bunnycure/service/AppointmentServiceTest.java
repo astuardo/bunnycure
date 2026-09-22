@@ -142,6 +142,8 @@ class AppointmentServiceTest {
 
         assertFalse(appointment.isReminderSent(),
                 "reminderSent debe resetearse a false cuando cambia la fecha de la cita");
+        assertFalse(appointment.isSecondReminderSent(),
+                "secondReminderSent debe resetearse a false cuando cambia la fecha de la cita");
     }
 
     @Test
@@ -158,6 +160,7 @@ class AppointmentServiceTest {
                 .appointmentTime(originalTime)
                 .status(AppointmentStatus.CONFIRMED)
                 .reminderSent(true)
+                .secondReminderSent(true)
                 .build();
 
         AppointmentDto dto = AppointmentDto.builder()
@@ -177,6 +180,8 @@ class AppointmentServiceTest {
 
         assertFalse(appointment.isReminderSent(),
                 "reminderSent debe resetearse a false cuando cambia la hora de la cita");
+        assertFalse(appointment.isSecondReminderSent(),
+                "secondReminderSent debe resetearse a false cuando cambia la hora de la cita");
     }
 
     @Test
@@ -251,4 +256,71 @@ class AppointmentServiceTest {
         verify(appointmentRepository).findPendingRemindersInDateTimeWindow(
                 anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalDate.class), any(LocalTime.class));
     }
+
+    @Test
+    void sendRemindersForAppointmentsIn2Hours_shouldSendSecondReminderToPendingAppointments() {
+        when(appSettingsService.getAppTimezone()).thenReturn("America/Santiago");
+        when(appSettingsService.getReminderHoursAhead()).thenReturn(12);
+
+        // Sin citas pendientes para el recordatorio principal
+        when(appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
+                anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
+                .thenReturn(List.of());
+
+        // Cita pendiente que ya tuvo recordatorio 12h pero no el de 2h
+        Appointment pendingAppointment = Appointment.builder()
+                .id(99L)
+                .customer(new Customer("Camila", "+56912345678", "camila@test.com"))
+                .service(ServiceCatalog.builder().id(1L).name("Esmaltado").build())
+                .appointmentDate(LocalDate.now())
+                .appointmentTime(LocalTime.now().plusHours(1))
+                .status(AppointmentStatus.PENDING)
+                .reminderSent(true)
+                .secondReminderSent(false)
+                .build();
+
+        when(appointmentRepository.findPendingSecondRemindersForDateAndTimeWindow(
+                eq(AppointmentStatus.PENDING), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
+                .thenReturn(List.of(pendingAppointment));
+
+        appointmentService.sendRemindersForAppointmentsIn2Hours();
+
+        verify(notificationService).sendReminderNotification(pendingAppointment, "2hours");
+        assertTrue(pendingAppointment.isSecondReminderSent(),
+                "secondReminderSent debe ser true tras el reenvío");
+        verify(appointmentRepository).saveAll(List.of(pendingAppointment));
+    }
+
+    @Test
+    void sendRemindersForAppointmentsIn2Hours_shouldMarkSecondReminderSentIfBookedWithin2Hours() {
+        when(appSettingsService.getAppTimezone()).thenReturn("America/Santiago");
+        when(appSettingsService.getReminderHoursAhead()).thenReturn(12);
+
+        // Cita agendada dentro de la ventana de 2 horas
+        Appointment urgentAppointment = Appointment.builder()
+                .id(100L)
+                .customer(new Customer("Sofia", "+56987654321", "sofia@test.com"))
+                .service(ServiceCatalog.builder().id(1L).name("Manicure").build())
+                .appointmentDate(LocalDate.now())
+                .appointmentTime(LocalTime.now().plusMinutes(45))
+                .status(AppointmentStatus.PENDING)
+                .reminderSent(false)
+                .secondReminderSent(false)
+                .build();
+
+        when(appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
+                anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
+                .thenReturn(List.of(urgentAppointment));
+        when(appointmentRepository.findPendingSecondRemindersForDateAndTimeWindow(
+                eq(AppointmentStatus.PENDING), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
+                .thenReturn(List.of());
+
+        appointmentService.sendRemindersForAppointmentsIn2Hours();
+
+        verify(notificationService).sendReminderNotification(urgentAppointment, "2hours");
+        assertTrue(urgentAppointment.isReminderSent());
+        assertTrue(urgentAppointment.isSecondReminderSent(),
+                "Cita agendada con <2h de anticipación debe marcar secondReminderSent para no duplicar");
+    }
 }
+

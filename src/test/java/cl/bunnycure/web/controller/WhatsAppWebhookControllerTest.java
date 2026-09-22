@@ -26,8 +26,10 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -150,6 +152,48 @@ class WhatsAppWebhookControllerTest {
                 .andExpect(content().string("EVENT_RECEIVED"));
 
         verify(webhookService, never()).processWebhookNotification(any());
+    }
+
+    @Test
+    void verifyWebhook_WithValidTokenPluralPath_ReturnsChallenge() throws Exception {
+        mockMvc.perform(get("/api/webhooks/whatsapp")
+                        .param("hub.mode", "subscribe")
+                        .param("hub.challenge", "1158201444")
+                        .param("hub.verify_token", "verify-token-test"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("1158201444"));
+    }
+
+    @Test
+    void verifyWebhook_WithValidTokenSingularPathAndWhitespace_ReturnsChallenge() throws Exception {
+        mockMvc.perform(get("/api/webhook/whatsapp")
+                        .param("hub.mode", "subscribe")
+                        .param("hub.challenge", "987654321")
+                        .param("hub.verify_token", " verify-token-test "))
+                .andExpect(status().isOk())
+                .andExpect(content().string("987654321"));
+    }
+
+    @Test
+    void verifyWebhook_WithInvalidToken_ReturnsForbidden() throws Exception {
+        mockMvc.perform(get("/api/webhooks/whatsapp")
+                        .param("hub.mode", "subscribe")
+                        .param("hub.challenge", "1158201444")
+                        .param("hub.verify_token", "wrong-token"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().string("Invalid verify token"));
+    }
+
+    @Test
+    void getWebhookStatus_ReturnsDiagnosticInfo() throws Exception {
+        when(webhookService.getConfiguredZoneId()).thenReturn(java.time.ZoneId.of("America/Santiago"));
+
+        mockMvc.perform(get("/api/webhooks/whatsapp/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("active"))
+                .andExpect(jsonPath("$.verifyTokenConfigured").value(true))
+                .andExpect(jsonPath("$.appSecretConfigured").value(true))
+                .andExpect(jsonPath("$.configuredTimezone").value("America/Santiago"));
     }
 
     private byte[] webhookPayload() throws Exception {

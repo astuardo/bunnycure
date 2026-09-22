@@ -19,6 +19,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -88,9 +89,14 @@ public class WhatsAppWebhookService {
     }
 
     public boolean isSignatureValid(byte[] rawPayloadBytes, String signatureHeader, String appSecret) {
-        if (appSecret == null || appSecret.isBlank()) {
+        String cleanSecret = cleanAppSecret(appSecret);
+        if (cleanSecret.isBlank()) {
             // Signature verification can be disabled explicitly in non-production environments.
             return true;
+        }
+
+        if (cleanSecret.startsWith("EAAG") || cleanSecret.startsWith("EAA")) {
+            log.error("[WEBHOOK] ❌ CRITICAL: whatsapp.webhook.app-secret appears to be an Access Token (starts with EAA...) instead of the Meta App Secret (App Dashboard -> Basic Settings -> App Secret). Signatures will fail!");
         }
 
         List<String> expectedSignatures = extractExpectedSignatures(signatureHeader);
@@ -101,7 +107,7 @@ public class WhatsAppWebhookService {
 
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(appSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            mac.init(new SecretKeySpec(cleanSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             byte[] digest = mac.doFinal(rawPayloadBytes != null ? rawPayloadBytes : new byte[0]);
             String actual = toHex(digest);
             boolean valid = expectedSignatures.stream().anyMatch(expected ->
@@ -146,6 +152,19 @@ public class WhatsAppWebhookService {
             signatures.add(value);
         }
         return signatures;
+    }
+
+    private String cleanAppSecret(String secret) {
+        if (secret == null) {
+            return "";
+        }
+        String s = secret.trim();
+        if ((s.startsWith("\"") && s.endsWith("\"")) || (s.startsWith("'") && s.endsWith("'"))) {
+            if (s.length() >= 2) {
+                s = s.substring(1, s.length() - 1).trim();
+            }
+        }
+        return s;
     }
 
     /**
@@ -356,6 +375,20 @@ public class WhatsAppWebhookService {
             return;
         }
 
+        // Si el cliente responde confirmando la cita por texto (ej: "Confirmo", "Si", "Confirmar")
+        if (isConfirmPayload(text, "")) {
+            log.info("[WEBHOOK] 💬 Confirmación detectada en mensaje de texto para from={}", message.getFrom());
+            handleConfirmAttendance(message);
+            return;
+        }
+
+        // Si el cliente solicita reprogramar por texto (ej: "reprogramar", "cambiar hora")
+        if (isReschedulePayload(text, "")) {
+            log.info("[WEBHOOK] 💬 Reprogramación detectada en mensaje de texto para from={}", message.getFrom());
+            handleRescheduleRequest(message);
+            return;
+        }
+
         if (isHandoffEnabled()) {
             sendHandoffMessage(message.getFrom(), "text_free_form");
             return;
@@ -510,10 +543,32 @@ public class WhatsAppWebhookService {
     private boolean isConfirmPayload(String text, String payload) {
         String normalizedPayload = normalizeKey(payload);
         String normalizedText = normalizeKey(text);
-        return normalizedPayload.contains("confirmar")
+
+        if (normalizedPayload.contains("confirmar")
                 || normalizedPayload.contains("confirmacion")
                 || normalizedPayload.contains("confirmar_asistencia")
-                || normalizedText.contains("confirmar");
+                || normalizedPayload.contains("confirm")) {
+            return true;
+        }
+
+        if (normalizedText.contains("confirmar")
+                || normalizedText.contains("confirmo")
+                || normalizedText.contains("confirmada")
+                || normalizedText.contains("confirmado")
+                || normalizedText.contains("confirmacion")
+                || normalizedText.contains("asistire")
+                || normalizedText.contains("asistiré")) {
+            return true;
+        }
+
+        // Respuestas afirmativas breves directas
+        return normalizedText.equals("si")
+                || normalizedText.equals("sí")
+                || normalizedText.startsWith("si ")
+                || normalizedText.startsWith("sí ")
+                || normalizedText.equals("voy")
+                || normalizedText.equals("ok")
+                || normalizedText.equals("dale");
     }
 
     private boolean isReschedulePayload(String text, String payload) {
@@ -523,8 +578,15 @@ public class WhatsAppWebhookService {
                 || normalizedPayload.contains("reagendar")
                 || normalizedPayload.contains("cambiar_hora")
                 || normalizedPayload.contains("cambiar_cita")
+                || normalizedPayload.contains("cancelar")
                 || normalizedText.contains("reprogramar")
-                || normalizedText.contains("reagendar");
+                || normalizedText.contains("reagendar")
+                || normalizedText.contains("cambiar hora")
+                || normalizedText.contains("cambiar cita")
+                || normalizedText.contains("cancelar cita")
+                || normalizedText.contains("no podre")
+                || normalizedText.contains("no podré")
+                || normalizedText.contains("no voy");
     }
 
     private void handleConfirmAttendance(WhatsAppWebhookDto.Message message) {
@@ -618,13 +680,13 @@ public class WhatsAppWebhookService {
                     .filter(a -> a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.CONFIRMED);
         }
 
-        String normalizedFrom = normalizePhone(message.getFrom());
-        LocalDate today = LocalDate.now();
+        LocalDate today = getTodayInConfiguredZone();
+        String from = message.getFrom();
 
         return appointmentRepository.findByStatus(AppointmentStatus.PENDING).stream()
                 .filter(a -> a.getAppointmentDate() != null && !a.getAppointmentDate().isBefore(today))
                 .filter(a -> a.getCustomer() != null)
-                .filter(a -> normalizePhone(a.getCustomer().getPhone()).equals(normalizedFrom))
+                .filter(a -> matchesPhone(a.getCustomer().getPhone(), from))
                 .findFirst();
     }
 
@@ -637,8 +699,8 @@ public class WhatsAppWebhookService {
                             || a.getStatus() == AppointmentStatus.RESCHEDULE_REQUESTED);
         }
 
-        String normalizedFrom = normalizePhone(message.getFrom());
-        LocalDate today = LocalDate.now();
+        LocalDate today = getTodayInConfiguredZone();
+        String from = message.getFrom();
 
         return appointmentRepository.findAll().stream()
                 .filter(a -> a.getStatus() == AppointmentStatus.PENDING
@@ -646,7 +708,7 @@ public class WhatsAppWebhookService {
                         || a.getStatus() == AppointmentStatus.RESCHEDULE_REQUESTED)
                 .filter(a -> a.getAppointmentDate() != null && !a.getAppointmentDate().isBefore(today))
                 .filter(a -> a.getCustomer() != null)
-                .filter(a -> normalizePhone(a.getCustomer().getPhone()).equals(normalizedFrom))
+                .filter(a -> matchesPhone(a.getCustomer().getPhone(), from))
                 .findFirst();
     }
 
@@ -692,23 +754,60 @@ public class WhatsAppWebhookService {
         }
     }
 
-    private String normalizePhone(String phone) {
+    public String normalizePhone(String phone) {
         if (phone == null) {
             return "";
         }
         return phone.replaceAll("\\D", "");
     }
 
+    public boolean matchesPhone(String p1, String p2) {
+        String n1 = normalizePhone(p1);
+        String n2 = normalizePhone(p2);
+        if (n1.isEmpty() || n2.isEmpty()) {
+            return false;
+        }
+        if (n1.equals(n2)) {
+            return true;
+        }
+        // Normalize Chilean prefix 56 (e.g. 56912345678 -> 912345678)
+        String tail1 = (n1.startsWith("56") && n1.length() == 11) ? n1.substring(2) : n1;
+        String tail2 = (n2.startsWith("56") && n2.length() == 11) ? n2.substring(2) : n2;
+        if (tail1.equals(tail2)) {
+            return true;
+        }
+        if (tail1.endsWith(tail2) || tail2.endsWith(tail1)) {
+            int minLen = Math.min(tail1.length(), tail2.length());
+            if (minLen >= 8) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public ZoneId getConfiguredZoneId() {
+        try {
+            String timezone = appSettingsService.get("app.timezone", "America/Santiago");
+            return ZoneId.of(timezone);
+        } catch (Exception ex) {
+            return ZoneId.of("America/Santiago");
+        }
+    }
+
+    public LocalDate getTodayInConfiguredZone() {
+        return LocalDate.now(getConfiguredZoneId());
+    }
+
     private boolean isCustomerRecordOwnerMessage(WhatsAppWebhookDto.Message message) {
-        String from = normalizePhone(message != null ? message.getFrom() : null);
-        if (from.isBlank() || customerRecordAuthorizedNumbers == null || customerRecordAuthorizedNumbers.isBlank()) {
+        String from = message != null ? message.getFrom() : null;
+        if (from == null || from.isBlank() || customerRecordAuthorizedNumbers == null || customerRecordAuthorizedNumbers.isBlank()) {
             log.warn("[WEBHOOK] ⚠️ Owner check: sin números autorizados configurados o sender vacío. sender='{}'", from);
             return false;
         }
         boolean authorized = java.util.Arrays.stream(customerRecordAuthorizedNumbers.split(","))
-                .map(n -> normalizePhone(n.trim()))
+                .map(String::trim)
                 .filter(n -> !n.isBlank())
-                .anyMatch(n -> n.equals(from));
+                .anyMatch(n -> matchesPhone(n, from));
         log.info("[WEBHOOK] 🔐 Owner check: authorized='{}' sender='{}' match={}",
                 customerRecordAuthorizedNumbers, from, authorized);
         return authorized;

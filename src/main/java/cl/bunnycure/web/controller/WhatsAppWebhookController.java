@@ -28,7 +28,7 @@ import java.util.Arrays;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/webhooks/whatsapp")
+@RequestMapping({"/api/webhooks/whatsapp", "/api/webhook/whatsapp"})
 public class WhatsAppWebhookController {
 
     private static final int MAX_WEBHOOK_PAYLOAD_BYTES = 512 * 1024;
@@ -91,8 +91,11 @@ public class WhatsAppWebhookController {
         }
 
         // Verificar que el token coincida
-        if (!verifyToken.equals(token)) {
-            log.error("[WEBHOOK-VERIFY] ❌ Token no coincide");
+        String expectedToken = verifyToken != null ? verifyToken.trim() : "";
+        String receivedToken = token.trim();
+        if (!expectedToken.equals(receivedToken)) {
+            log.error("[WEBHOOK-VERIFY] ❌ Token no coincide (expected len={}, received len={})",
+                    expectedToken.length(), receivedToken.length());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Invalid verify token");
         }
@@ -186,17 +189,31 @@ public class WhatsAppWebhookController {
      */
     @GetMapping("/status")
     public ResponseEntity<java.util.Map<String, Object>> getWebhookStatus() {
-        if (!isLocalProfile()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-
         java.util.Map<String, Object> status = new java.util.HashMap<>();
         status.put("status", "active");
-        status.put("endpoint", "/api/webhooks/whatsapp");
-        status.put("verifyTokenConfigured", verifyToken != null && !verifyToken.isEmpty());
+        status.put("endpoints", java.util.List.of("/api/webhooks/whatsapp", "/api/webhook/whatsapp"));
+        status.put("verifyTokenConfigured", verifyToken != null && !verifyToken.isBlank());
+        status.put("verifyTokenLength", verifyToken != null ? verifyToken.trim().length() : 0);
+        status.put("appSecretConfigured", appSecret != null && !appSecret.isBlank());
+        status.put("appSecretLength", appSecret != null ? appSecret.trim().length() : 0);
+
+        boolean appSecretHasTokenPrefix = appSecret != null && (appSecret.trim().startsWith("EAAG") || appSecret.trim().startsWith("EAA"));
+        status.put("appSecretStartsWithTokenPrefix", appSecretHasTokenPrefix);
+        if (appSecretHasTokenPrefix) {
+            status.put("warning", "appSecret starts with EAAG/EAA. It looks like an Access Token instead of the Meta App Secret (found in Meta App Dashboard > Settings > Basic > App Secret)!");
+        }
+
+        try {
+            java.time.ZoneId zone = webhookService.getConfiguredZoneId();
+            status.put("configuredTimezone", zone.getId());
+            status.put("serverTimeInZone", java.time.ZonedDateTime.now(zone).toString());
+        } catch (Exception ex) {
+            status.put("timezoneError", ex.getMessage());
+        }
+
         status.put("description", "WhatsApp Cloud API Webhook Endpoint");
         status.put("documentation", "https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks");
-        
+
         log.info("[WEBHOOK-STATUS] 📊 Estado consultado");
         return ResponseEntity.ok(status);
     }

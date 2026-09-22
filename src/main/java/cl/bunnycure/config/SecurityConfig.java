@@ -96,14 +96,15 @@ public class SecurityConfig {
 			auth.requestMatchers("/api/customers/**").authenticated();
 			auth.requestMatchers("/api/services/**").authenticated();
 			
-			// Webhook de WhatsApp (solo endpoint oficial público)
-			auth.requestMatchers(HttpMethod.GET, "/api/webhooks/whatsapp").permitAll();
-			auth.requestMatchers(HttpMethod.POST, "/api/webhooks/whatsapp").permitAll();
+			// Webhook de WhatsApp (público para Meta: soporta plural /webhooks/ y singular /webhook/)
+			auth.requestMatchers(HttpMethod.GET, "/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**", "/api/webhook/whatsapp", "/api/webhook/whatsapp/**").permitAll();
+			auth.requestMatchers(HttpMethod.POST, "/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**", "/api/webhook/whatsapp", "/api/webhook/whatsapp/**").permitAll();
+			auth.requestMatchers("/api/webhooks/whatsapp/status", "/api/webhook/whatsapp/status").permitAll();
 			
 			// API de pruebas WhatsApp (solo en local)
 			if (isLocal) {
 				auth.requestMatchers("/api/test/**").permitAll();
-				auth.requestMatchers("/api/webhooks/whatsapp/test", "/api/webhooks/whatsapp/status").permitAll();
+				auth.requestMatchers("/api/webhooks/whatsapp/test", "/api/webhook/whatsapp/test").permitAll();
 			}
 
 			if (isLocal) {
@@ -171,6 +172,7 @@ public class SecurityConfig {
 					new AntPathRequestMatcher("/api/customers/lookup"),
 					new AntPathRequestMatcher("/api/public/**"),
 					new AntPathRequestMatcher("/api/webhooks/**"),
+					new AntPathRequestMatcher("/api/webhook/**"),
 					new AntPathRequestMatcher("/api/push-subscriptions/**"),
 					new AntPathRequestMatcher("/login"),
 					new AntPathRequestMatcher("/forgot-password"),
@@ -187,6 +189,7 @@ public class SecurityConfig {
 				new AntPathRequestMatcher("/api/customers/lookup"),
 				new AntPathRequestMatcher("/api/public/**"),
 				new AntPathRequestMatcher("/api/webhooks/**"),
+				new AntPathRequestMatcher("/api/webhook/**"),
 				new AntPathRequestMatcher("/api/push-subscriptions/**"),
 				new AntPathRequestMatcher("/login"),
 				new AntPathRequestMatcher("/forgot-password"),

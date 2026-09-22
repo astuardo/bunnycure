@@ -212,7 +212,7 @@ public class DataInitializer implements CommandLineRunner {
                     new AppSettings("notification.template.default.title", "Recordatorio de Cita", "Título por defecto de notificación"),
                     new AppSettings("notification.template.default.body", "Hola {customerName}, tienes una cita de {serviceName} el {date} a las {time}.", "Cuerpo por defecto de notificación"),
                     new AppSettings("notification.template.2hour.title", "¡Tu cita es pronto!", "Título de notificación 2 horas"),
-                    new AppSettings("notification.template.2hour.body", "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). ¡Te esperamos!", "Cuerpo de notificación 2 horas")
+                    new AppSettings("notification.template.2hour.body", "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). Tolerancia máxima: 15 minutos o la cita se dará por cancelada. ¡Te esperamos!", "Cuerpo de notificación 2 horas")
             ));
             log.info("✅ Configuración inicial cargada");
         }

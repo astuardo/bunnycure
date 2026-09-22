@@ -391,7 +391,7 @@ public class SettingsApiController {
         m.put("notification.template.default.title", "Recordatorio de Cita");
         m.put("notification.template.default.body", "Hola {customerName}, tienes una cita de {serviceName} el {date} a las {time}.");
         m.put("notification.template.2hour.title", "¡Tu cita es pronto!");
-        m.put("notification.template.2hour.body", "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). ¡Te esperamos!");
+        m.put("notification.template.2hour.body", "Hola {customerName}, tu cita de {serviceName} es en {minutesUntil} minutos ({time}). Tolerancia máxima: 15 minutos o la cita se dará por cancelada. ¡Te esperamos!");
 
         return m;
     }

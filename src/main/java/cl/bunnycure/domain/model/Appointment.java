@@ -74,6 +74,10 @@ public class Appointment {
     @Builder.Default
     private boolean reminderSent = false;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean secondReminderSent = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

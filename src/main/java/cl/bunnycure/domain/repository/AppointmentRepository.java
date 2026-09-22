@@ -164,6 +164,49 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             @Param("endTime") LocalTime endTime);
 
     @Query("""
+                SELECT DISTINCT a FROM Appointment a
+                JOIN FETCH a.customer
+                JOIN FETCH a.service
+                LEFT JOIN FETCH a.services
+                WHERE a.status = :status
+                AND a.secondReminderSent = false
+                AND a.appointmentDate = :date
+                AND a.appointmentTime >= :startTime
+                AND a.appointmentTime <= :endTime
+                ORDER BY a.appointmentTime ASC
+            """)
+    List<Appointment> findPendingSecondRemindersForDateAndTimeWindow(
+            @Param("status") AppointmentStatus status,
+            @Param("date") LocalDate date,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime);
+
+    @Query("""
+                SELECT DISTINCT a FROM Appointment a
+                JOIN FETCH a.customer
+                JOIN FETCH a.service
+                LEFT JOIN FETCH a.services
+                WHERE a.status = :status
+                AND a.secondReminderSent = false
+                AND (
+                    (:startDate = :endDate AND a.appointmentDate = :startDate AND a.appointmentTime >= :startTime AND a.appointmentTime <= :endTime)
+                    OR
+                    (:startDate < :endDate AND (
+                        (a.appointmentDate = :startDate AND a.appointmentTime >= :startTime)
+                        OR (a.appointmentDate > :startDate AND a.appointmentDate < :endDate)
+                        OR (a.appointmentDate = :endDate AND a.appointmentTime <= :endTime)
+                    ))
+                )
+                ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
+            """)
+    List<Appointment> findPendingSecondRemindersInDateTimeWindow(
+            @Param("status") AppointmentStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("startTime") LocalTime startTime,
+            @Param("endDate") LocalDate endDate,
+            @Param("endTime") LocalTime endTime);
+
+    @Query("""
                 SELECT COUNT(a) FROM Appointment a
                 WHERE a.status IN :statuses
                 AND a.reminderSent = true

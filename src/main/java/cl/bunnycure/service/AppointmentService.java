@@ -56,7 +56,8 @@ public class AppointmentService {
         boolean dateOrTimeChanged = dateChanged || timeChanged;
         if (dateOrTimeChanged) {
             appointment.setReminderSent(false);
-            log.info("[APPOINTMENT] Cita {} reagendada a {}/{} — reminderSent reseteado",
+            appointment.setSecondReminderSent(false);
+            log.info("[APPOINTMENT] Cita {} reagendada a {}/{} — recordatorios reseteados",
                     id, dto.getAppointmentDate(), dto.getAppointmentTime());
         }
 
@@ -302,6 +303,12 @@ public class AppointmentService {
             try {
                 notificationService.sendReminderNotification(appointment, "2hours");
                 appointment.setReminderSent(true);
+                // Si la cita ya está dentro de la ventana de 2 horas (ej: agendada a última hora),
+                // marcamos también secondReminderSent = true para evitar duplicar el aviso inmediatamente.
+                LocalDateTime appointmentDateTime = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime());
+                if (!appointmentDateTime.isAfter(startDateTime.plusHours(2))) {
+                    appointment.setSecondReminderSent(true);
+                }
                 appointmentsToUpdate.add(appointment);
             } catch (Exception e) {
                 log.error("[REMINDER] Error enviando recordatorio {}h para cita {}: {}",
@@ -313,6 +320,57 @@ public class AppointmentService {
         if (!appointmentsToUpdate.isEmpty()) {
             appointmentRepository.saveAll(appointmentsToUpdate);
             log.info("[REMINDER] ✅ {} recordatorios guardados en batch", appointmentsToUpdate.size());
+        }
+
+        // ── Segundo recordatorio (2 horas antes) para citas que SIGUEN PENDIENTES ──
+        if (hoursAhead > 2) {
+            LocalDateTime end2hDateTime = startDateTime.plusHours(2);
+            LocalDate start2hDate = startDateTime.toLocalDate();
+            LocalTime start2hTime = startDateTime.toLocalTime();
+            LocalDate end2hDate = end2hDateTime.toLocalDate();
+            LocalTime end2hTime = end2hDateTime.toLocalTime();
+
+            List<Appointment> pendingSecondReminders;
+            if (start2hDate.equals(end2hDate)) {
+                pendingSecondReminders = appointmentRepository.findPendingSecondRemindersForDateAndTimeWindow(
+                        AppointmentStatus.PENDING,
+                        start2hDate,
+                        start2hTime,
+                        end2hTime
+                );
+            } else {
+                pendingSecondReminders = appointmentRepository.findPendingSecondRemindersInDateTimeWindow(
+                        AppointmentStatus.PENDING,
+                        start2hDate,
+                        start2hTime,
+                        end2hDate,
+                        end2hTime
+                );
+            }
+
+            log.info("[REMINDER-2H] {} citas pendientes encontradas para segundo recordatorio 2h",
+                    pendingSecondReminders.size());
+
+            List<Appointment> secondRemindersToUpdate = new ArrayList<>();
+            for (Appointment appointment : pendingSecondReminders) {
+                try {
+                    log.info("[REMINDER-2H] Reenviando recordatorio 2h para cita ID {} (estado PENDING)",
+                            appointment.getId());
+                    notificationService.sendReminderNotification(appointment, "2hours");
+                    appointment.setSecondReminderSent(true);
+                    appointment.setReminderSent(true);
+                    secondRemindersToUpdate.add(appointment);
+                } catch (Exception e) {
+                    log.error("[REMINDER-2H] Error enviando segundo recordatorio para cita {}: {}",
+                            appointment.getId(), e.getMessage(), e);
+                }
+            }
+
+            if (!secondRemindersToUpdate.isEmpty()) {
+                appointmentRepository.saveAll(secondRemindersToUpdate);
+                log.info("[REMINDER-2H] ✅ {} segundos recordatorios guardados en batch",
+                        secondRemindersToUpdate.size());
+            }
         }
     }
 

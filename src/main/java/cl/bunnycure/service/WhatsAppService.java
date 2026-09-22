@@ -839,6 +839,7 @@ public class WhatsAppService {
                     "Tu cita ha sido confirmada para el *%s*.\n\n" +
                     "📋 *Servicio:* %s\n" +
                     "⏱️ *Duración:* %d minutos\n\n" +
+                    "⚠️ *Tolerancia:* Se esperará un máximo de 15 minutos o la cita se dará por cancelada.\n\n" +
                     "Nos vemos pronto! 🐇✨",
                     appointment.getCustomer().getFullName(),
                     fechaFormateada,
@@ -910,6 +911,7 @@ public class WhatsAppService {
                     "Te recordamos tu cita para el *%s*.\n\n" +
                     "📋 *Servicio:* %s\n" +
                     "⏱️ *Duración:* %d minutos\n\n" +
+                    "⚠️ *Tolerancia:* Se esperará un máximo de 15 minutos o la cita se dará por cancelada.\n\n" +
                     "Te esperamos! 🐇✨",
                     appointment.getCustomer().getFullName(),
                     fechaFormateada,
