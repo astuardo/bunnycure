@@ -61,6 +61,9 @@ public class WhatsAppWebhookService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private cl.bunnycure.domain.repository.MarketingTemplateRepository marketingTemplateRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private IncomingWhatsAppMessageService incomingWhatsAppMessageService;
+
     @Value("${bunnycure.whatsapp.number:}")
     private String adminWhatsAppNumber;
 
@@ -79,6 +82,10 @@ public class WhatsAppWebhookService {
 
     public void setMarketingTemplateRepository(cl.bunnycure.domain.repository.MarketingTemplateRepository marketingTemplateRepository) {
         this.marketingTemplateRepository = marketingTemplateRepository;
+    }
+
+    public void setIncomingWhatsAppMessageService(IncomingWhatsAppMessageService incomingWhatsAppMessageService) {
+        this.incomingWhatsAppMessageService = incomingWhatsAppMessageService;
     }
 
     public boolean isSignatureValid(String rawPayload, String signatureHeader, String appSecret) {
@@ -305,7 +312,7 @@ public class WhatsAppWebhookService {
             // Procesar según el tipo de mensaje
             switch (message.getType()) {
                 case "text":
-                    processTextMessage(message);
+                    processTextMessage(message, contactName);
                     break;
 
                 case "image":
@@ -358,7 +365,7 @@ public class WhatsAppWebhookService {
         }
     }
 
-    private void processTextMessage(WhatsAppWebhookDto.Message message) {
+    private void processTextMessage(WhatsAppWebhookDto.Message message, String contactName) {
         if (message.getText() == null || message.getText().getBody() == null) {
             return;
         }
@@ -367,6 +374,21 @@ public class WhatsAppWebhookService {
         log.info("[WEBHOOK] 💬 Texto: {}", text);
         if (text.isEmpty() || message.getFrom() == null || message.getFrom().isBlank()) {
             return;
+        }
+
+        // Registrar mensaje entrante en la bandeja de BunnyCure y disparar notificación push
+        if (incomingWhatsAppMessageService != null) {
+            try {
+                incomingWhatsAppMessageService.saveIncomingMessage(
+                        message.getId(),
+                        message.getFrom(),
+                        contactName,
+                        text,
+                        "text"
+                );
+            } catch (Exception e) {
+                log.error("[WEBHOOK] ❌ Error guardando mensaje entrante en bandeja: {}", e.getMessage(), e);
+            }
         }
 
         // Si es la administradora/dueña y solicita crear una plantilla de marketing
