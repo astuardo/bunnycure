@@ -67,7 +67,7 @@ class IncomingWhatsAppMessageControllerTest {
                 .build();
 
         Page<IncomingWhatsAppMessageDto> page = new PageImpl<>(List.of(dto), PageRequest.of(0, 10), 1);
-        when(messageService.getMessages(anyInt(), anyInt(), anyBoolean())).thenReturn(page);
+        when(messageService.getMessages(anyInt(), anyInt(), anyBoolean(), anyBoolean())).thenReturn(page);
 
         mockMvc.perform(get("/api/whatsapp/messages?page=0&size=10")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -93,5 +93,14 @@ class IncomingWhatsAppMessageControllerTest {
         mockMvc.perform(patch("/api/whatsapp/messages/10/read"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.success").value(true));
+    }
+
+    @Test
+    void markByPhoneAsRead_ReturnsOk() throws Exception {
+        when(messageService.markByPhoneAsRead("56987654321")).thenReturn(3);
+
+        mockMvc.perform(patch("/api/whatsapp/messages/by-phone/56987654321/read"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.markedCount").value(3));
     }
 }

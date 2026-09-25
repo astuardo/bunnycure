@@ -67,10 +67,20 @@ public class IncomingWhatsAppMessageService {
 
     @Transactional(readOnly = true)
     public Page<IncomingWhatsAppMessageDto> getMessages(int page, int size, boolean unreadOnly) {
+        return getMessages(page, size, unreadOnly, false);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<IncomingWhatsAppMessageDto> getMessages(int page, int size, boolean unreadOnly, boolean readOnly) {
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)));
-        Page<IncomingWhatsAppMessage> result = unreadOnly
-                ? messageRepository.findByIsReadFalseOrderByCreatedAtDesc(pageable)
-                : messageRepository.findAllByOrderByCreatedAtDesc(pageable);
+        Page<IncomingWhatsAppMessage> result;
+        if (unreadOnly) {
+            result = messageRepository.findByIsReadFalseOrderByCreatedAtDesc(pageable);
+        } else if (readOnly) {
+            result = messageRepository.findByIsReadTrueOrderByCreatedAtDesc(pageable);
+        } else {
+            result = messageRepository.findAllByOrderByCreatedAtDesc(pageable);
+        }
         return result.map(IncomingWhatsAppMessageDto::fromEntity);
     }
 
@@ -94,6 +104,15 @@ public class IncomingWhatsAppMessageService {
     @Transactional
     public int markAllAsRead() {
         return messageRepository.markAllAsRead();
+    }
+
+    @Transactional
+    public int markByPhoneAsRead(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return 0;
+        }
+        String cleanPhone = phone.replaceAll("\\D", "");
+        return messageRepository.markByPhoneAsRead(phone, cleanPhone);
     }
 
     private Customer findCustomerByPhone(String rawPhone) {

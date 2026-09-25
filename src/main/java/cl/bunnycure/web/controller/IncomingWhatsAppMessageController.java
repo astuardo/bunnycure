@@ -27,8 +27,9 @@ public class IncomingWhatsAppMessageController {
     public ResponseEntity<ApiResponse<Page<IncomingWhatsAppMessageDto>>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "false") boolean unreadOnly) {
-        Page<IncomingWhatsAppMessageDto> messages = messageService.getMessages(page, size, unreadOnly);
+            @RequestParam(defaultValue = "false") boolean unreadOnly,
+            @RequestParam(defaultValue = "false") boolean readOnly) {
+        Page<IncomingWhatsAppMessageDto> messages = messageService.getMessages(page, size, unreadOnly, readOnly);
         return ResponseEntity.ok(ApiResponse.success(messages));
     }
 
@@ -50,6 +51,13 @@ public class IncomingWhatsAppMessageController {
     @PatchMapping("/read-all")
     public ResponseEntity<ApiResponse<Map<String, Object>>> markAllAsRead() {
         int count = messageService.markAllAsRead();
+        return ResponseEntity.ok(ApiResponse.success(Map.of("markedCount", count)));
+    }
+
+    @Operation(summary = "Marcar todos los mensajes de un número/remitente como leídos")
+    @PatchMapping("/by-phone/{phone}/read")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> markByPhoneAsRead(@PathVariable String phone) {
+        int count = messageService.markByPhoneAsRead(phone);
         return ResponseEntity.ok(ApiResponse.success(Map.of("markedCount", count)));
     }
 }

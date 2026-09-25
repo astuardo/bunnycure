@@ -112,4 +112,20 @@ class IncomingWhatsAppMessageServiceTest {
         assertThat(updated).isTrue();
         assertThat(msg.isRead()).isTrue();
     }
+
+    @Test
+    void markByPhoneAsRead_CallsRepositoryWithCleanPhone() {
+        when(messageRepository.markByPhoneAsRead("+56987654321", "56987654321")).thenReturn(2);
+
+        int count = service.markByPhoneAsRead("+56987654321");
+        assertThat(count).isEqualTo(2);
+        verify(messageRepository).markByPhoneAsRead("+56987654321", "56987654321");
+    }
+
+    @Test
+    void markByPhoneAsRead_EmptyPhone_ReturnsZero() {
+        int count = service.markByPhoneAsRead("   ");
+        assertThat(count).isEqualTo(0);
+        verify(messageRepository, never()).markByPhoneAsRead(anyString(), anyString());
+    }
 }

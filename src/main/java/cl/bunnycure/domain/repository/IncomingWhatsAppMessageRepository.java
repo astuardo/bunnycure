@@ -18,6 +18,8 @@ public interface IncomingWhatsAppMessageRepository extends JpaRepository<Incomin
 
     Page<IncomingWhatsAppMessage> findByIsReadFalseOrderByCreatedAtDesc(Pageable pageable);
 
+    Page<IncomingWhatsAppMessage> findByIsReadTrueOrderByCreatedAtDesc(Pageable pageable);
+
     long countByIsReadFalse();
 
     Optional<IncomingWhatsAppMessage> findByWamid(String wamid);
@@ -27,4 +29,8 @@ public interface IncomingWhatsAppMessageRepository extends JpaRepository<Incomin
     @Modifying
     @Query("UPDATE IncomingWhatsAppMessage m SET m.isRead = true WHERE m.isRead = false")
     int markAllAsRead();
+
+    @Modifying
+    @Query("UPDATE IncomingWhatsAppMessage m SET m.isRead = true WHERE (m.fromPhone = :phone OR m.fromPhone = :cleanPhone) AND m.isRead = false")
+    int markByPhoneAsRead(@org.springframework.data.repository.query.Param("phone") String phone, @org.springframework.data.repository.query.Param("cleanPhone") String cleanPhone);
 }
