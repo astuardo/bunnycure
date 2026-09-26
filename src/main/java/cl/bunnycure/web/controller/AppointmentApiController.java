@@ -49,6 +49,8 @@ public class AppointmentApiController {
     private final NotificationService notificationService;
     private final cl.bunnycure.service.AppointmentReminderService reminderService;
     private final cl.bunnycure.service.UserService userService;
+    private final cl.bunnycure.service.WhatsAppService whatsAppService;
+    private final cl.bunnycure.service.NotificationLogService notificationLogService;
 
     @Operation(
             summary = "Listar citas",
@@ -437,6 +439,44 @@ public class AppointmentApiController {
         result.put("status", "DISPATCHED");
         result.put("message", "Recordatorio enviado correctamente");
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @Operation(
+            summary = "Reenviar confirmación de cita por WhatsApp",
+            description = "Despacha manualmente la plantilla de confirmación de WhatsApp a la clienta asociada a la cita.")
+    @PostMapping("/{id}/whatsapp/confirmation")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> resendWhatsAppConfirmation(
+            @Parameter(description = "ID de la cita", required = true)
+            @PathVariable Long id) {
+        log.info("[API] Solicitud de reenvío de confirmación WhatsApp para cita ID {}", id);
+        Appointment appointment = appointmentService.findById(id);
+
+        if (appointment.getCustomer() == null || appointment.getCustomer().getPhone() == null || appointment.getCustomer().getPhone().isBlank()) {
+            throw new ValidationException("La clienta asociada a la cita no posee número de teléfono registrado");
+        }
+
+        whatsAppService.sendCitaConfirmadaTemplate(appointment);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("appointmentId", id);
+        result.put("customerName", appointment.getCustomer().getFullName());
+        result.put("phone", appointment.getCustomer().getPhone());
+        result.put("template", "confirmacion_cita");
+        result.put("status", "DISPATCHED");
+        result.put("message", "Confirmación enviada correctamente por WhatsApp");
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @Operation(
+            summary = "Obtener historial de notificaciones enviadas para la cita",
+            description = "Retorna el registro histórico de mensajes de WhatsApp y Email despachados para esta cita.")
+    @GetMapping("/{id}/notifications")
+    public ResponseEntity<ApiResponse<List<cl.bunnycure.web.dto.NotificationLogDto>>> getAppointmentNotifications(
+            @Parameter(description = "ID de la cita", required = true)
+            @PathVariable Long id) {
+        log.debug("[API] Obteniendo historial de notificaciones para cita ID {}", id);
+        List<cl.bunnycure.web.dto.NotificationLogDto> logs = notificationLogService.getLogsByAppointment(id);
+        return ResponseEntity.ok(ApiResponse.success(logs));
     }
 
     @Operation(

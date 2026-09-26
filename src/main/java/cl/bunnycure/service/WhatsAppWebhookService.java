@@ -64,6 +64,9 @@ public class WhatsAppWebhookService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private IncomingWhatsAppMessageService incomingWhatsAppMessageService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private NotificationLogService notificationLogService;
+
     @Value("${bunnycure.whatsapp.number:}")
     private String adminWhatsAppNumber;
 
@@ -75,6 +78,10 @@ public class WhatsAppWebhookService {
 
     @Value("${app.frontend.base-url:https://bunnycure-frontend.vercel.app}")
     private String frontendBaseUrl;
+
+    public void setNotificationLogService(NotificationLogService notificationLogService) {
+        this.notificationLogService = notificationLogService;
+    }
 
     public void setMarketingTemplateAiService(cl.bunnycure.service.marketing.MarketingTemplateAiService marketingTemplateAiService) {
         this.marketingTemplateAiService = marketingTemplateAiService;
@@ -906,6 +913,14 @@ public class WhatsAppWebhookService {
                     break;
                 default:
                     log.info("[WEBHOOK] ℹ️ Estado: {}", status.getStatus());
+            }
+
+            if (notificationLogService != null && status.getId() != null && status.getStatus() != null) {
+                try {
+                    notificationLogService.updateStatusByWamid(status.getId(), status.getStatus());
+                } catch (Exception e) {
+                    log.warn("[WEBHOOK] Error actualizando status de log para wamid {}: {}", status.getId(), e.getMessage());
+                }
             }
 
             // Información adicional
