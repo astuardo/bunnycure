@@ -77,6 +77,27 @@ public class NotificationLogService {
         saveLog(null, customer, "WHATSAPP", recipient, "[MARKETING] " + templateName, content, wamid);
     }
 
+    @Transactional
+    public void logIncomingCustomerAction(Appointment appointment, String fromPhone, String action, String content, String wamid) {
+        try {
+            Customer customer = appointment != null ? appointment.getCustomer() : null;
+            NotificationLog logEntry = NotificationLog.builder()
+                    .appointment(appointment)
+                    .customer(customer)
+                    .channel("WHATSAPP")
+                    .recipient(fromPhone)
+                    .subject("Respuesta clienta: " + action)
+                    .content(content)
+                    .wamid(wamid)
+                    .status("RECEIVED")
+                    .build();
+            repository.save(logEntry);
+            log.info("[NOTIFICATION-LOG] Registrada acción entrante de clienta '{}' para cita ID={}", action, appointment != null ? appointment.getId() : "N/A");
+        } catch (Exception e) {
+            log.error("[NOTIFICATION-LOG-ERROR] No se pudo guardar log de acción entrante: {}", e.getMessage());
+        }
+    }
+
     private void saveLog(Appointment appointment, Customer customer, String channel, String recipient, String subject, String content, String wamid) {
         try {
             NotificationLog logEntry = NotificationLog.builder()

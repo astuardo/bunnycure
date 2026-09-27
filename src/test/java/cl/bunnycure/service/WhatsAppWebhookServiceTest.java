@@ -64,6 +64,12 @@ class WhatsAppWebhookServiceTest {
     @Mock
     private WebPushNotificationService webPushNotificationService;
 
+    @Mock
+    private NotificationLogService notificationLogService;
+
+    @Mock
+    private IncomingWhatsAppMessageService incomingWhatsAppMessageService;
+
     private WhatsAppWebhookService webhookService;
 
     @BeforeEach
@@ -78,6 +84,8 @@ class WhatsAppWebhookServiceTest {
                 customerServiceRecordService,
                 webPushNotificationService
         );
+        webhookService.setNotificationLogService(notificationLogService);
+        ReflectionTestUtils.setField(webhookService, "incomingWhatsAppMessageService", incomingWhatsAppMessageService);
     }
 
     @Test
@@ -119,6 +127,35 @@ class WhatsAppWebhookServiceTest {
         verify(webPushNotificationService).sendAdminCustomNotification(contains("reprogramada"), anyString(), eq("/appointments?status=RESCHEDULE_REQUESTED"));
         verify(whatsAppService).sendTextMessage(eq("56964499995"), contains("SOLICITUD DE REPROGRAMACIÓN"));
         verify(whatsAppService, never()).sendTextMessage(eq("56912345678"), anyString());
+    }
+
+    @Test
+    void processWebhookNotification_TextMessage_QuieroCancelar_UpdatesAppointmentStatusAndLogsTrace() {
+        Appointment appointment = createAppointment(1L, AppointmentStatus.PENDING, "+56912345678");
+        when(appointmentRepository.findAll()).thenReturn(List.of(appointment));
+        when(appSettingsService.getAdminAlertWhatsappNumber(any())).thenReturn("56964499995");
+        when(whatsAppHandoffService.generateWhatsAppUrl(any())).thenReturn("https://wa.me/56912345678");
+
+        webhookService.processWebhookNotification(webhookWithMessage(textMessage("wamid-cancel-text", "56912345678", "Hola, quiero cancelar")));
+
+        assertEquals(AppointmentStatus.RESCHEDULE_REQUESTED, appointment.getStatus());
+        verify(appointmentRepository).save(appointment);
+        verify(webPushNotificationService).sendAdminCustomNotification(contains("reprogramada"), anyString(), eq("/appointments?status=RESCHEDULE_REQUESTED"));
+        verify(whatsAppService).sendTextMessage(eq("56964499995"), contains("SOLICITUD DE REPROGRAMACIÓN"));
+        verify(notificationLogService).logIncomingCustomerAction(eq(appointment), eq("+56912345678"), contains("Solicitud de Reprogramación"), anyString(), eq("wamid-cancel-text"));
+    }
+
+    @Test
+    void processWebhookNotification_RescheduleButton_SavesToIncomingTrayAndLogsTrace() {
+        Appointment appointment = createAppointment(1L, AppointmentStatus.PENDING, "+56912345678");
+        when(appointmentRepository.findByIdWithDetails(1L)).thenReturn(Optional.of(appointment));
+        when(appSettingsService.getAdminAlertWhatsappNumber(any())).thenReturn("56964499995");
+        when(whatsAppHandoffService.generateWhatsAppUrl(any())).thenReturn("https://wa.me/56912345678");
+
+        webhookService.processWebhookNotification(webhookWithMessage(buttonMessage("wamid-btn-reschedule", "56912345678", "Reprogramar cita", "reprogramar:1")));
+
+        verify(incomingWhatsAppMessageService).saveIncomingMessage(eq("wamid-btn-reschedule"), eq("56912345678"), any(), contains("Reprogramar cita"), eq("button"));
+        verify(notificationLogService).logIncomingCustomerAction(eq(appointment), eq("+56912345678"), contains("Solicitud de Reprogramación"), anyString(), eq("wamid-btn-reschedule"));
     }
 
     @Test

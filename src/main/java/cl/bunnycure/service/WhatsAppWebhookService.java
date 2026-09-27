@@ -359,11 +359,11 @@ public class WhatsAppWebhookService {
                     break;
 
                 case "button":
-                    processButtonMessage(message);
+                    processButtonMessage(message, contactName);
                     break;
 
                 case "interactive":
-                    processInteractiveMessage(message);
+                    processInteractiveMessage(message, contactName);
                     break;
                 
                 default:
@@ -542,7 +542,7 @@ public class WhatsAppWebhookService {
         }
     }
 
-    private void processButtonMessage(WhatsAppWebhookDto.Message message) {
+    private void processButtonMessage(WhatsAppWebhookDto.Message message, String contactName) {
         if (message.getButton() == null) {
             log.warn("[WEBHOOK] ⚠️ Mensaje tipo button sin contenido button");
             return;
@@ -552,6 +552,22 @@ public class WhatsAppWebhookService {
         String payload = message.getButton().getPayload();
         log.info("[WEBHOOK] 🔘 Button text: {}", text);
         log.info("[WEBHOOK] 🔘 Button payload: {}", payload);
+
+        // Guardar botón presionado en la bandeja de entrada de WhatsApp
+        if (incomingWhatsAppMessageService != null) {
+            try {
+                String content = (text != null && !text.isBlank()) ? text : (payload != null ? payload : "Botón presionado");
+                incomingWhatsAppMessageService.saveIncomingMessage(
+                        message.getId(),
+                        message.getFrom(),
+                        contactName,
+                        "🔘 " + content,
+                        "button"
+                );
+            } catch (Exception e) {
+                log.error("[WEBHOOK] ❌ Error guardando botón en bandeja: {}", e.getMessage(), e);
+            }
+        }
 
         if (isConfirmPayload(text, payload)) {
             handleConfirmAttendance(message);
@@ -603,18 +619,38 @@ public class WhatsAppWebhookService {
     private boolean isReschedulePayload(String text, String payload) {
         String normalizedPayload = normalizeKey(payload);
         String normalizedText = normalizeKey(text);
-        return normalizedPayload.contains("reprogramar")
+
+        if (normalizedPayload.contains("reprogramar")
                 || normalizedPayload.contains("reagendar")
                 || normalizedPayload.contains("cambiar_hora")
                 || normalizedPayload.contains("cambiar_cita")
+                || normalizedPayload.contains("cambiar_fecha")
                 || normalizedPayload.contains("cancelar")
+                || normalizedPayload.contains("anular")) {
+            return true;
+        }
+
+        return normalizedText.contains("cancelar")
+                || normalizedText.contains("cancelo")
+                || normalizedText.contains("anular")
+                || normalizedText.contains("anulo")
                 || normalizedText.contains("reprogramar")
                 || normalizedText.contains("reagendar")
                 || normalizedText.contains("cambiar hora")
                 || normalizedText.contains("cambiar cita")
-                || normalizedText.contains("cancelar cita")
+                || normalizedText.contains("cambiar fecha")
+                || normalizedText.contains("cambiar dia")
+                || normalizedText.contains("cambiar día")
+                || normalizedText.contains("modificar cita")
+                || normalizedText.contains("modificar hora")
+                || normalizedText.contains("otra hora")
+                || normalizedText.contains("otro dia")
+                || normalizedText.contains("otro día")
+                || normalizedText.contains("otra fecha")
                 || normalizedText.contains("no podre")
                 || normalizedText.contains("no podré")
+                || normalizedText.contains("no puedo")
+                || normalizedText.contains("no alcanzo")
                 || normalizedText.contains("no voy");
     }
 
@@ -640,7 +676,19 @@ public class WhatsAppWebhookService {
 
         target.setStatus(AppointmentStatus.CONFIRMED);
         appointmentRepository.save(target);
-        log.info("[WEBHOOK] ✅ Cita confirmada desde button. appointmentId={}", target.getId());
+        log.info("[WEBHOOK] ✅ Cita confirmada desde button/texto. appointmentId={}", target.getId());
+
+        // Registrar en historial de notificaciones
+        if (notificationLogService != null) {
+            notificationLogService.logIncomingCustomerAction(
+                    target,
+                    from,
+                    "Confirmación de Asistencia",
+                    "La clienta confirmó su asistencia a la cita.",
+                    message.getId()
+            );
+        }
+
         whatsAppService.sendTextMessage(from, "Perfecto! Tu cita quedó confirmada. Te esperamos en BunnyCure.");
     }
 
@@ -654,6 +702,23 @@ public class WhatsAppWebhookService {
         Optional<Appointment> appointmentOpt = findAppointmentToReschedule(message);
         if (appointmentOpt.isEmpty()) {
             log.warn("[WEBHOOK] ⚠️ No se encontró cita pendiente o confirmada para reprogramar. from={}", from);
+
+            // Alertar a la administradora de la solicitud no vinculada automáticamente
+            try {
+                String targetAdminPhone = resolveAdminWhatsAppNumber();
+                if (targetAdminPhone != null && !targetAdminPhone.isBlank()) {
+                    String contactUrl = whatsAppHandoffService.generateWhatsAppUrl(from);
+                    String adminAlertMessage = String.format(
+                            "⚠️ *SOLICITUD DE REPROGRAMACIÓN SIN CITA VINCULADA - BunnyCure*\n\n" +
+                            "El número %s solicitó cancelar/reprogramar, pero no se encontró una cita futura activa asociada automáticamente.\n\n" +
+                            "📱 *Contactar a clienta:*\n%s",
+                            from, contactUrl
+                    );
+                    whatsAppService.sendTextMessage(targetAdminPhone, adminAlertMessage);
+                }
+            } catch (Exception ex) {
+                log.error("[WEBHOOK] Error enviando alerta admin de reprogramación huérfana: {}", ex.getMessage());
+            }
             return;
         }
 
@@ -669,7 +734,18 @@ public class WhatsAppWebhookService {
 
         log.info("[WEBHOOK] 🔄 Cita ID={} marcada como RESCHEDULE_REQUESTED para clienta {}", appointment.getId(), customerName);
 
-        // 1. Notificación Web Push a la App (para que salte en el panel admin)
+        // 1. Guardar traza en el historial de notificaciones de la cita
+        if (notificationLogService != null) {
+            notificationLogService.logIncomingCustomerAction(
+                    appointment,
+                    customerPhone,
+                    "Solicitud de Reprogramación / Cancelación",
+                    "La clienta solicitó reprogramar o cancelar su cita vía WhatsApp.",
+                    message.getId()
+            );
+        }
+
+        // 2. Notificación Web Push a la App (para que salte en el panel admin)
         try {
             String pushTitle = "🔄 Cita necesita ser reprogramada";
             String pushBody = String.format("%s solicitó reprogramar su cita del %s a las %s (%s).",
@@ -680,7 +756,7 @@ public class WhatsAppWebhookService {
             log.error("[WEBHOOK] ❌ Error enviando WebPush de reprogramación: {}", ex.getMessage(), ex);
         }
 
-        // 2. Alerta al WhatsApp de la administradora con link para contactar
+        // 3. Alerta al WhatsApp de la administradora con link para contactar
         try {
             String targetAdminPhone = resolveAdminWhatsAppNumber();
             if (targetAdminPhone != null && !targetAdminPhone.isBlank()) {
@@ -1136,7 +1212,7 @@ public class WhatsAppWebhookService {
         }
     }
 
-    private void processInteractiveMessage(WhatsAppWebhookDto.Message message) {
+    private void processInteractiveMessage(WhatsAppWebhookDto.Message message, String contactName) {
         if (message.getInteractive() == null) {
             log.warn("[WEBHOOK] ⚠️ Mensaje tipo interactive sin contenido interactive");
             return;
@@ -1148,6 +1224,22 @@ public class WhatsAppWebhookService {
             var reply = message.getInteractive().getButtonReply();
             log.info("[WEBHOOK] 🔘 Button reply id: {}", reply.getId());
             log.info("[WEBHOOK] 🔘 Button reply title: {}", reply.getTitle());
+
+            // Guardar botón interactivo en bandeja de entrada
+            if (incomingWhatsAppMessageService != null) {
+                try {
+                    String content = (reply.getTitle() != null && !reply.getTitle().isBlank()) ? reply.getTitle() : reply.getId();
+                    incomingWhatsAppMessageService.saveIncomingMessage(
+                            message.getId(),
+                            message.getFrom(),
+                            contactName,
+                            "🔘 " + content,
+                            "interactive"
+                    );
+                } catch (Exception e) {
+                    log.error("[WEBHOOK] ❌ Error guardando interactive reply en bandeja: {}", e.getMessage(), e);
+                }
+            }
 
             if (isConfirmPayload(reply.getTitle(), reply.getId())) {
                 handleConfirmAttendance(message);
@@ -1165,6 +1257,22 @@ public class WhatsAppWebhookService {
             log.info("[WEBHOOK] 📋 List reply id: {}", reply.getId());
             log.info("[WEBHOOK] 📋 List reply title: {}", reply.getTitle());
             log.info("[WEBHOOK] 📋 List reply description: {}", reply.getDescription());
+
+            // Guardar lista interactiva en bandeja de entrada
+            if (incomingWhatsAppMessageService != null) {
+                try {
+                    String content = (reply.getTitle() != null && !reply.getTitle().isBlank()) ? reply.getTitle() : reply.getId();
+                    incomingWhatsAppMessageService.saveIncomingMessage(
+                            message.getId(),
+                            message.getFrom(),
+                            contactName,
+                            "📋 " + content,
+                            "interactive"
+                    );
+                } catch (Exception e) {
+                    log.error("[WEBHOOK] ❌ Error guardando list reply en bandeja: {}", e.getMessage(), e);
+                }
+            }
 
             if (isConfirmPayload(reply.getTitle(), reply.getId())) {
                 handleConfirmAttendance(message);
