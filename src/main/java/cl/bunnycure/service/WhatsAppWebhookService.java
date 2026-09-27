@@ -961,8 +961,9 @@ public class WhatsAppWebhookService {
         log.info("[WEBHOOK] 📊 Procesando {} estado(s) de mensaje(s)", statuses.size());
 
         for (WhatsAppWebhookDto.Status status : statuses) {
-            if (isDuplicateEvent("status:" + status.getId())) {
-                log.info("[WEBHOOK] ♻️ Status already processed, skipping id={}", status.getId());
+            String dedupeKey = "status:" + status.getId() + ":" + (status.getStatus() != null ? status.getStatus() : "");
+            if (isDuplicateEvent(dedupeKey)) {
+                log.info("[WEBHOOK] ♻️ Status already processed, skipping id={}, status={}", status.getId(), status.getStatus());
                 continue;
             }
 

@@ -237,6 +237,33 @@ class WhatsAppWebhookServiceTest {
     }
 
     @Test
+    void processWebhookNotification_SuccessiveStatuses_SentDeliveredRead_AllProcessed() {
+        String wamid = "wamid.HBgLNTY5NjcyNTI0MzMVAgARGBJBQTdDRjAwMzdBNkIzRkJCODcA";
+
+        webhookService.processWebhookNotification(webhookWithSimpleStatus(wamid, "sent"));
+        verify(notificationLogService).updateStatusByWamid(wamid, "sent");
+
+        webhookService.processWebhookNotification(webhookWithSimpleStatus(wamid, "delivered"));
+        verify(notificationLogService).updateStatusByWamid(wamid, "delivered");
+
+        webhookService.processWebhookNotification(webhookWithSimpleStatus(wamid, "read"));
+        verify(notificationLogService).updateStatusByWamid(wamid, "read");
+    }
+
+    private WhatsAppWebhookDto webhookWithSimpleStatus(String messageId, String statusName) {
+        WhatsAppWebhookDto.Status status = new WhatsAppWebhookDto.Status();
+        status.setId(messageId);
+        status.setStatus(statusName);
+        status.setRecipientId("56967252433");
+        status.setTimestamp("1790471584");
+
+        WhatsAppWebhookDto.Value value = new WhatsAppWebhookDto.Value();
+        value.setStatuses(List.of(status));
+
+        return webhookWithField("messages", value);
+    }
+
+    @Test
     void isSignatureValid_WithBytePayload_ReturnsTrueForValidSignature() throws Exception {
         byte[] payload = "{\"test\":true}".getBytes(StandardCharsets.UTF_8);
         String appSecret = "secret123";
