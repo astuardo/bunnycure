@@ -9,15 +9,14 @@ import cl.bunnycure.domain.model.ServiceCatalog;
 import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.domain.repository.InvoiceLogRepository;
-import cl.bunnycure.web.dto.InvoiceContrastResultDto;
 import cl.bunnycure.web.dto.InvoiceIssuedItemDto;
-import cl.bunnycure.web.dto.InvoicePendingAppointmentDto;
 import cl.bunnycure.web.dto.InvoiceSummaryDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpEntity;
@@ -29,7 +28,6 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -475,7 +473,8 @@ class ApiGatewaySiiServiceTest {
 
         when(invoiceLogRepository.findByAppointmentId(100L)).thenReturn(Optional.empty());
 
-        org.mockito.ArgumentCaptor<HttpEntity<String>> entityCaptor = org.mockito.ArgumentCaptor.forClass(HttpEntity.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<HttpEntity<String>> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
         when(restTemplate.postForEntity(eq("https://app.apigateway.cl/api/v2/sii/bhe/emitidas/emitir"), entityCaptor.capture(), eq(String.class)))
                 .thenReturn(new ResponseEntity<>("{\"folio\":\"50\",\"codigo\":\"BHE-50\"}", HttpStatus.OK));
 

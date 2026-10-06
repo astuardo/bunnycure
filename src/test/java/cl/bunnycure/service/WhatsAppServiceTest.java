@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -112,7 +113,7 @@ class WhatsAppServiceTest {
         whatsAppService.sendTextMessage("+56912345678", "Test");
 
         // Assert
-        verify(restTemplate, never()).exchange(anyString(), any(), any(), any(Class.class));
+        verify(restTemplate, never()).exchange(anyString(), any(HttpMethod.class), ArgumentMatchers.<HttpEntity<?>>any(), ArgumentMatchers.<Class<Object>>any());
     }
 
     @Test
@@ -125,7 +126,7 @@ class WhatsAppServiceTest {
         whatsAppService.sendTextMessage("+56912345678", "Test");
 
         // Assert
-        verify(restTemplate, never()).exchange(anyString(), any(), any(), any(Class.class));
+        verify(restTemplate, never()).exchange(anyString(), any(HttpMethod.class), ArgumentMatchers.<HttpEntity<?>>any(), ArgumentMatchers.<Class<Object>>any());
     }
 
     @Test
@@ -166,7 +167,7 @@ class WhatsAppServiceTest {
         whatsAppService.sendAppointmentConfirmation(appointment);
 
         // Assert
-        verify(restTemplate, never()).exchange(anyString(), any(), any(), any(Class.class));
+        verify(restTemplate, never()).exchange(anyString(), any(HttpMethod.class), ArgumentMatchers.<HttpEntity<?>>any(), ArgumentMatchers.<Class<Object>>any());
     }
 
     @Test
@@ -380,7 +381,7 @@ class WhatsAppServiceTest {
 
         // Assert
         assertFalse(sent);
-        verify(restTemplate, never()).exchange(anyString(), any(), any(), any(Class.class));
+        verify(restTemplate, never()).exchange(anyString(), any(HttpMethod.class), ArgumentMatchers.<HttpEntity<?>>any(), ArgumentMatchers.<Class<Object>>any());
     }
 
     @Test
@@ -395,7 +396,7 @@ class WhatsAppServiceTest {
 
         // Assert
         assertFalse(sent);
-        verify(restTemplate, never()).exchange(anyString(), any(), any(), any(Class.class));
+        verify(restTemplate, never()).exchange(anyString(), any(HttpMethod.class), ArgumentMatchers.<HttpEntity<?>>any(), ArgumentMatchers.<Class<Object>>any());
     }
 
     @Test
@@ -658,7 +659,6 @@ class WhatsAppServiceTest {
         List<Map<String, Object>> components = (List<Map<String, Object>>) template.get("components");
         assertNotNull(components);
 
-        @SuppressWarnings("unchecked")
         Map<String, Object> header = components.stream()
                 .filter(c -> "header".equalsIgnoreCase((String) c.get("type")))
                 .findFirst().orElseThrow();
@@ -667,7 +667,6 @@ class WhatsAppServiceTest {
         assertEquals(1, headerParams.size());
         assertEquals("María González", headerParams.get(0).get("text"));
 
-        @SuppressWarnings("unchecked")
         Map<String, Object> bodyComponent = components.stream()
                 .filter(c -> "body".equalsIgnoreCase((String) c.get("type")))
                 .findFirst().orElseThrow();

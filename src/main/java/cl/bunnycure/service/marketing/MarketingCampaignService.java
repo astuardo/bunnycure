@@ -310,10 +310,6 @@ public class MarketingCampaignService {
         return Optional.empty();
     }
 
-    private List<CustomerWithLastVisit> getEligibleCustomersWithVisit(AudienceType audienceType) {
-        return getEligibleCustomersWithVisit(audienceType, null);
-    }
-
     private List<CustomerWithLastVisit> getEligibleCustomersWithVisit(AudienceType audienceType, List<Long> customerIds) {
         if (audienceType == AudienceType.SPECIFIC_CUSTOMERS && (customerIds == null || customerIds.isEmpty())) {
             return List.of();

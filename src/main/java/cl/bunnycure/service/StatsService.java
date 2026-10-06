@@ -150,6 +150,7 @@ public class StatsService {
                 case PENDING -> pendingCount++;
                 case CONFIRMED -> confirmedCount++;
                 case CANCELLED -> cancelledCount++;
+                case RESCHEDULE_REQUESTED -> {}
             }
 
             // Detección operacional en tiempo real
