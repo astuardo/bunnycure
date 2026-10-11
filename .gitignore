@@ -213,3 +213,11 @@ htmlcov/
 *.seed
 *.pid.lock
 /src/main/resources/static/images/README.md
+
+# Capturas de red con sesiones y PII sensibles
+*.har
+
+# Archivos temporales de pruebas y scratch en raíz
+JwtTest.java
+JwtTest.class
+SecurityConfig

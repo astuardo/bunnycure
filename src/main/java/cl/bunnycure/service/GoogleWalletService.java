@@ -50,7 +50,7 @@ public class GoogleWalletService {
     @Value("${bunnycure.google.wallet.pass-type:loyalty}")
     private String passType;
 
-    @Value("${bunnycure.google.wallet.credentials-path}")
+    @Value("${bunnycure.google.wallet.credentials-path:}")
     private String credentialsPath;
 
     @Value("${GOOGLE_WALLET_CREDENTIALS:}")
@@ -129,12 +129,21 @@ public class GoogleWalletService {
     private ServiceAccountCredentials getCredentials() throws Exception {
         java.util.List<String> scopes = Collections.singletonList("https://www.googleapis.com/auth/wallet_object.issuer");
         if (credentialsJson != null && !credentialsJson.isBlank()) {
-            return (ServiceAccountCredentials) ServiceAccountCredentials.fromStream(new java.io.ByteArrayInputStream(credentialsJson.getBytes()))
-                    .createScoped(scopes);
-        } else {
-            return (ServiceAccountCredentials) ServiceAccountCredentials.fromStream(new FileInputStream(credentialsPath))
+            return (ServiceAccountCredentials) ServiceAccountCredentials.fromStream(
+                    new java.io.ByteArrayInputStream(credentialsJson.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
                     .createScoped(scopes);
         }
+        
+        if (credentialsPath != null && !credentialsPath.isBlank()) {
+            java.io.File credentialsFile = new java.io.File(credentialsPath);
+            if (credentialsFile.exists() && credentialsFile.isFile()) {
+                return (ServiceAccountCredentials) ServiceAccountCredentials.fromStream(new FileInputStream(credentialsFile))
+                        .createScoped(scopes);
+            }
+        }
+
+        throw new IllegalStateException(
+                "Credenciales de Google Wallet no configuradas. Por favor defina la variable de entorno GOOGLE_WALLET_CREDENTIALS con el JSON de la cuenta de servicio o configure un archivo válido en GOOGLE_WALLET_CREDENTIALS_PATH.");
     }
     
     public void updateCustomerStamps(Customer customer) {
