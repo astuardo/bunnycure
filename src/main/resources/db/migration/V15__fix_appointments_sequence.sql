@@ -9,6 +9,10 @@ CREATE SEQUENCE IF NOT EXISTS appointments_seq START WITH 1 INCREMENT BY 1;
 DROP SEQUENCE IF EXISTS appointments_seq;
 CREATE SEQUENCE appointments_seq START WITH 1 INCREMENT BY 1;
 
+-- Si la columna tiene IDENTITY (PostgreSQL 10+), eliminar la propiedad identity antes de asignar DEFAULT
+ALTER TABLE appointments 
+  ALTER COLUMN id DROP IDENTITY IF EXISTS;
+
 -- Alterar tabla para usar la secuencia
 ALTER TABLE appointments 
   ALTER COLUMN id SET DEFAULT nextval('appointments_seq');

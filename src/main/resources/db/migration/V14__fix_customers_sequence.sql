@@ -10,6 +10,10 @@ CREATE SEQUENCE IF NOT EXISTS customers_seq START WITH 1 INCREMENT BY 1;
 DROP SEQUENCE IF EXISTS customers_seq;
 CREATE SEQUENCE customers_seq START WITH 1 INCREMENT BY 1;
 
+-- Si la columna tiene IDENTITY (PostgreSQL 10+), eliminar la propiedad identity antes de asignar DEFAULT
+ALTER TABLE customers 
+  ALTER COLUMN id DROP IDENTITY IF EXISTS;
+
 -- Alterar tabla para usar la secuencia
 ALTER TABLE customers 
   ALTER COLUMN id SET DEFAULT nextval('customers_seq');

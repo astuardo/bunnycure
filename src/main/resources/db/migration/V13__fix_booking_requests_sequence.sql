@@ -10,6 +10,10 @@ CREATE SEQUENCE IF NOT EXISTS booking_requests_seq START WITH 1 INCREMENT BY 1;
 DROP SEQUENCE IF EXISTS booking_requests_seq;
 CREATE SEQUENCE booking_requests_seq START WITH 1 INCREMENT BY 1;
 
+-- Si la columna tiene IDENTITY (PostgreSQL 10+), eliminar la propiedad identity antes de asignar DEFAULT
+ALTER TABLE booking_requests 
+  ALTER COLUMN id DROP IDENTITY IF EXISTS;
+
 -- Alterar tabla para usar la secuencia
 ALTER TABLE booking_requests 
   ALTER COLUMN id SET DEFAULT nextval('booking_requests_seq');
