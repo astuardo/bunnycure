@@ -55,6 +55,20 @@ public class AppointmentService {
         // Resetear recordatorio si cambia la fecha u hora para que vuelva a recibir aviso
         boolean dateOrTimeChanged = dateChanged || timeChanged;
         if (dateOrTimeChanged) {
+            if (dto.getStatus() != AppointmentStatus.CANCELLED) {
+                boolean hasConflict = appointmentRepository.existsConflictingAppointment(
+                        dto.getAppointmentDate(),
+                        dto.getAppointmentTime(),
+                        dto.getSpecialistId(),
+                        dto.getCustomerId(),
+                        id);
+                if (hasConflict) {
+                    log.warn("[DOUBLE-BOOKING] Conflicto de horario al actualizar cita {}: {} {}",
+                            id, dto.getAppointmentDate(), dto.getAppointmentTime());
+                    throw new IllegalStateException("El horario " + dto.getAppointmentDate() + " a las " + dto.getAppointmentTime() + " ya se encuentra ocupado por otra cita activa.");
+                }
+            }
+
             appointment.setReminderSent(false);
             appointment.setSecondReminderSent(false);
             log.info("[APPOINTMENT] Cita {} reagendada a {}/{} — recordatorios reseteados",
@@ -84,6 +98,20 @@ public class AppointmentService {
 
     @Transactional
     public Appointment createAppointment(@Valid @NotNull AppointmentDto dto) {
+        if (dto.getAppointmentDate() != null && dto.getAppointmentTime() != null) {
+            boolean hasConflict = appointmentRepository.existsConflictingAppointment(
+                    dto.getAppointmentDate(),
+                    dto.getAppointmentTime(),
+                    dto.getSpecialistId(),
+                    dto.getCustomerId(),
+                    null);
+            if (hasConflict) {
+                log.warn("[DOUBLE-BOOKING] Conflicto de horario detectado para fecha {} hora {}",
+                        dto.getAppointmentDate(), dto.getAppointmentTime());
+                throw new IllegalStateException("El horario " + dto.getAppointmentDate() + " a las " + dto.getAppointmentTime() + " ya se encuentra ocupado por otra cita activa.");
+            }
+        }
+
         var customer = customerService.findById(dto.getCustomerId());
         var selectedServices = resolveSelectedServices(dto);
         var primaryService = selectedServices.get(0);

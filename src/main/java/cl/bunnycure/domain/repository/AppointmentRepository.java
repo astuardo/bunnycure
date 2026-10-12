@@ -279,4 +279,23 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                 GROUP BY a.customer.id
             """)
     List<Object[]> findLastCompletedAppointmentDatePerCustomer();
+
+    @Query("""
+                SELECT (COUNT(a) > 0) FROM Appointment a
+                WHERE a.appointmentDate = :date
+                AND a.appointmentTime = :time
+                AND (
+                    (:specialistId IS NOT NULL AND a.specialist.id = :specialistId)
+                    OR
+                    (:specialistId IS NULL AND a.customer.id = :customerId)
+                )
+                AND a.status NOT IN (cl.bunnycure.domain.enums.AppointmentStatus.CANCELLED)
+                AND (:excludeId IS NULL OR a.id != :excludeId)
+            """)
+    boolean existsConflictingAppointment(
+            @Param("date") LocalDate date,
+            @Param("time") LocalTime time,
+            @Param("specialistId") Long specialistId,
+            @Param("customerId") Long customerId,
+            @Param("excludeId") Long excludeId);
 }

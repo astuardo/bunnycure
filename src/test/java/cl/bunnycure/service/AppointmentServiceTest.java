@@ -322,5 +322,71 @@ class AppointmentServiceTest {
         assertTrue(urgentAppointment.isSecondReminderSent(),
                 "Cita agendada con <2h de anticipación debe marcar secondReminderSent para no duplicar");
     }
+
+    @Test
+    void createAppointment_shouldThrowIllegalStateException_whenDoubleBookingConflictExists() {
+        AppointmentDto dto = AppointmentDto.builder()
+                .customerId(1L)
+                .serviceId(1L)
+                .appointmentDate(LocalDate.of(2026, 4, 10))
+                .appointmentTime(LocalTime.of(15, 0))
+                .status(AppointmentStatus.PENDING)
+                .build();
+
+        when(appointmentRepository.existsConflictingAppointment(
+                eq(LocalDate.of(2026, 4, 10)),
+                eq(LocalTime.of(15, 0)),
+                isNull(),
+                eq(1L),
+                isNull()
+        )).thenReturn(true);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> appointmentService.createAppointment(dto));
+
+        assertTrue(ex.getMessage().contains("ya se encuentra ocupado"));
+        verify(appointmentRepository, never()).save(any());
+    }
+
+    @Test
+    void updateAppointment_shouldThrowIllegalStateException_whenRescheduleConflictExists() {
+        LocalDate originalDate = LocalDate.of(2026, 4, 10);
+        LocalDate newDate = LocalDate.of(2026, 4, 11);
+        LocalTime time = LocalTime.of(16, 0);
+
+        Appointment appointment = Appointment.builder()
+                .id(55L)
+                .customer(new Customer("Camila", "+56911112222", null))
+                .service(ServiceCatalog.builder().id(1L).name("Pestañas").build())
+                .appointmentDate(originalDate)
+                .appointmentTime(time)
+                .status(AppointmentStatus.CONFIRMED)
+                .build();
+
+        AppointmentDto dto = AppointmentDto.builder()
+                .customerId(1L)
+                .serviceId(1L)
+                .appointmentDate(newDate)
+                .appointmentTime(time)
+                .status(AppointmentStatus.CONFIRMED)
+                .build();
+
+        when(appointmentRepository.findByIdWithDetails(55L)).thenReturn(Optional.of(appointment));
+        when(customerService.findById(1L)).thenReturn(appointment.getCustomer());
+        when(serviceCatalogService.findById(1L)).thenReturn(appointment.getService());
+        when(appointmentRepository.existsConflictingAppointment(
+                eq(newDate),
+                eq(time),
+                isNull(),
+                eq(1L),
+                eq(55L)
+        )).thenReturn(true);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> appointmentService.updateAppointment(55L, dto));
+
+        assertTrue(ex.getMessage().contains("ya se encuentra ocupado"));
+        verify(appointmentRepository, never()).save(any());
+    }
 }
 

@@ -37,5 +37,7 @@ public class AppointmentDto {
     @Builder.Default
     private AppointmentStatus status = AppointmentStatus.PENDING;
 
+    private Long specialistId;
+
     private String observations;
 }
