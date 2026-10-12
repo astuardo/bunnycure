@@ -23,6 +23,11 @@ import java.util.Set;
 public class AdminUserInitializer {
 
 
+    private static final Set<String> LEGACY_DEFAULT_PASSWORDS = Set.of("changeme", "changeme-local-only");
+    private static final Set<String> LEGACY_DEFAULT_HASHES = Set.of(
+            "$2a$10$Gzs9U5CRc5uVVtQc5D0vEu.hhzpPLIDh3TP1cFVHkHJ.Kq/e3FFGW"
+    );
+
     @Value("${bunnycure.admin.username:}")
     private String adminUsername;
 
@@ -56,11 +61,14 @@ public class AdminUserInitializer {
                     user.setEnabled(true);
                     user.setRole("ADMIN");
 
-                    if (!passwordEncoder.matches(adminPassword, user.getPassword())) {
+                    boolean hasLegacyDefaultPassword = LEGACY_DEFAULT_HASHES.contains(user.getPassword())
+                            || LEGACY_DEFAULT_PASSWORDS.stream().anyMatch(legacyPassword -> passwordEncoder.matches(legacyPassword, user.getPassword()));
+
+                    if (hasLegacyDefaultPassword) {
                         user.setPassword(passwordEncoder.encode(adminPassword));
-                        log.info("[INIT] Admin user '{}' actualizado con password desde BUNNYCURE_ADMIN_PASSWORD", adminUsername);
+                        log.warn("[INIT] Admin user '{}' had legacy insecure password and was rotated from environment config", adminUsername);
                     } else {
-                        log.info("[INIT] Admin user '{}' already synchronized with environment password", adminUsername);
+                        log.info("[INIT] Admin user '{}' already exists; password preserved", adminUsername);
                     }
 
                     userRepository.save(user);
