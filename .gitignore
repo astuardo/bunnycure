@@ -186,9 +186,10 @@ NOTES.md
 *.md
 *.ps1
 
-# Permitir scripts esenciales de Maven
+# Permitir scripts esenciales de Maven y documentación de pipelines
 !mvnw.cmd
 !mvnw
+!STAGING_PIPELINE.md
 
 ##############################################################
 # Heroku

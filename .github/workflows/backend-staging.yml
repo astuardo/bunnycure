@@ -1,0 +1,89 @@
+name: Backend Staging - Build & Deploy
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+    inputs:
+      heroku_app_name:
+        description: 'Nombre de la aplicación de Staging en Heroku'
+        required: false
+        default: 'bunnycure-staging'
+
+concurrency:
+  group: backend-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-package:
+    name: 🧪 Maven Test & Package
+    runs-on: ubuntu-latest
+    outputs:
+      package_ready: ${{ steps.package_step.outcome }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Grant execute permission for Maven Wrapper
+        run: chmod +x mvnw
+
+      - name: Run Unit Tests with Maven
+        run: ./mvnw clean test -B
+
+      - name: Build Executable JAR Package
+        id: package_step
+        run: ./mvnw package -DskipTests -B
+
+      - name: Archive Staging JAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-staging-jar
+          path: target/*.jar
+          retention-days: 7
+
+      - name: Validate Docker Container Build
+        run: docker build -t bunnycure-backend:staging-${{ github.sha }} .
+
+  deploy-staging:
+    name: 🚀 Deploy to Staging (Heroku / Cloud)
+    needs: test-and-package
+    runs-on: ubuntu-latest
+    env:
+      HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy to Heroku Staging
+        if: ${{ env.HEROKU_API_KEY != '' }}
+        env:
+          HEROKU_APP_NAME: ${{ github.event.inputs.heroku_app_name || secrets.HEROKU_STAGING_APP_NAME || 'bunnycure-staging' }}
+          HEROKU_EMAIL: ${{ secrets.HEROKU_EMAIL }}
+        run: |
+          echo "Deploying BunnyCure Backend to Heroku app: $HEROKU_APP_NAME..."
+          git fetch origin staging:staging || true
+          git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git HEAD:main --force
+          echo "### 🚀 Backend Staging Desplegado a Heroku!" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Name:** \`$HEROKU_APP_NAME\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** https://$HEROKU_APP_NAME.herokuapp.com" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fallback Notification (Heroku Key not configured)
+        if: ${{ env.HEROKU_API_KEY == '' }}
+        run: |
+          echo "### ℹ️ Build de Staging Backend Completado Exitosamente" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pruebas y Empaquetado:** 100% exitoso (Maven + JDK 17)." >> $GITHUB_STEP_SUMMARY
+          echo "- **Artefacto:** \`backend-staging-jar\` archivado en este workflow." >> $GITHUB_STEP_SUMMARY
+          echo "- **Docker Image:** Validada para producción/staging." >> $GITHUB_STEP_SUMMARY
+          echo "- **Nota:** Para activar despliegue automático 1-clic a Heroku Staging, agrega los secrets \`HEROKU_API_KEY\` y \`HEROKU_STAGING_APP_NAME\` en Settings > Secrets del repositorio." >> $GITHUB_STEP_SUMMARY
