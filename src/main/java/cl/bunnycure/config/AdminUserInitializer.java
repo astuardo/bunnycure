@@ -22,7 +22,6 @@ import java.util.Set;
 @Profile("heroku")
 public class AdminUserInitializer {
 
-    private static final Set<String> LEGACY_DEFAULT_PASSWORDS = Set.of("changeme", "changeme-local-only");
 
     @Value("${bunnycure.admin.username:}")
     private String adminUsername;
@@ -57,14 +56,11 @@ public class AdminUserInitializer {
                     user.setEnabled(true);
                     user.setRole("ADMIN");
 
-                    boolean hasLegacyDefaultPassword = LEGACY_DEFAULT_PASSWORDS.stream()
-                            .anyMatch(legacyPassword -> passwordEncoder.matches(legacyPassword, user.getPassword()));
-
-                    if (hasLegacyDefaultPassword) {
+                    if (!passwordEncoder.matches(adminPassword, user.getPassword())) {
                         user.setPassword(passwordEncoder.encode(adminPassword));
-                        log.warn("[INIT] Admin user '{}' had legacy insecure password and was rotated from environment config", adminUsername);
+                        log.info("[INIT] Admin user '{}' actualizado con password desde BUNNYCURE_ADMIN_PASSWORD", adminUsername);
                     } else {
-                        log.info("[INIT] Admin user '{}' already exists; password preserved", adminUsername);
+                        log.info("[INIT] Admin user '{}' already synchronized with environment password", adminUsername);
                     }
 
                     userRepository.save(user);
