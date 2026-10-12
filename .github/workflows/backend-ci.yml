@@ -1,0 +1,41 @@
+name: Backend CI - Build & Test
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - 'feature/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - main
+      - staging
+
+jobs:
+  test-and-package:
+    name: Maven Test & Package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Grant execute permission for Maven Wrapper
+        run: chmod +x mvnw
+
+      - name: Run Unit Tests with Maven
+        run: ./mvnw clean test -B
+
+      - name: Build Executable JAR Package
+        run: ./mvnw package -DskipTests -B
+
+      - name: Validate Docker Image Build
+        run: docker build -t bunnycure-backend:${{ github.sha }} .

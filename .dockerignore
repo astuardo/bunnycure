@@ -1,0 +1,16 @@
+.git
+.gitignore
+.idea
+.vscode
+*.bat
+*.ps1
+*.png
+*.har
+*.md
+.cache_ggshield
+target/
+build/
+google_client_secret.json
+client_secret_*.json
+Procfile
+system.properties
