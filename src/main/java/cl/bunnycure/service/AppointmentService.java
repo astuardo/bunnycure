@@ -227,11 +227,7 @@ public class AppointmentService {
                     // Persist customer changes and sync wallet
                     // Use customerService to save via its repository abstraction
                     // customerService.update is DTO-based; save directly via repository for atomicity
-                    // (injecting CustomerRepository to this service)
-                    // TODO: ensure customer is attached - use repository.save to persist
-                    // this change will be visible after committing transaction
-                    // Save using appointment service's customerRepository
-                    // (customerRepository injected)
+                    // Customer is attached and persisted directly via customerRepository
                     customerRepository.save(customer);
                     googleWalletService.updateCustomerStamps(customer, true);
 
