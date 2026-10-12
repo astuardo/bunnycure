@@ -6,6 +6,7 @@ import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.CustomerDto;
 import cl.bunnycure.web.dto.CustomerSummary;
 import cl.bunnycure.web.dto.CustomerLookupResponseDto;
+import cl.bunnycure.web.dto.LoyaltyCardPublicDto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -24,6 +25,7 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final GoogleWalletService googleWalletService;
+    private final LoyaltyRewardService loyaltyRewardService;
 
     public List<Customer> findAll() {
         return customerRepository.findAll();
@@ -391,5 +393,71 @@ public class CustomerService {
         result.put("totalProcessed", totalProcessed);
         result.put("updatedCount", updatedCount);
         return result;
+    }
+
+    /**
+     * Obtiene los datos consolidados de la tarjeta de fidelización digital pública para una clienta
+     * basándose en su publicId.
+     */
+    public LoyaltyCardPublicDto getPublicLoyaltyCard(String publicId) {
+        Customer customer = findByPublicId(publicId);
+
+        int stamps = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
+        int totalVisits = customer.getTotalCompletedVisits() != null ? customer.getTotalCompletedVisits() : 0;
+        int maxStamps = 10;
+        int clampedStamps = Math.min(Math.max(stamps, 0), maxStamps);
+        int stampsRemaining = Math.max(0, maxStamps - clampedStamps);
+        int progressPercent = (clampedStamps * 100) / maxStamps;
+
+        int rewardIndex = customer.getCurrentRewardIndex() != null ? customer.getCurrentRewardIndex() : 0;
+        var reward = loyaltyRewardService.getRewardAt(rewardIndex);
+        String rewardName = (reward != null && reward.getName() != null && !reward.getName().isBlank())
+                ? reward.getName()
+                : "Premio Especial BunnyCure";
+
+        boolean rewardAvailable = clampedStamps >= maxStamps;
+        String statusMessage = rewardAvailable
+                ? "¡Felicidades! Tienes tu premio listo para canjear en tu próxima visita."
+                : (stampsRemaining == 1
+                    ? "¡Te falta solo 1 visita para ganar: " + rewardName + "!"
+                    : "Te faltan " + stampsRemaining + " visitas para ganar: " + rewardName);
+
+        String googleWalletUrl = null;
+        try {
+            googleWalletUrl = googleWalletService.createWalletLink(customer);
+        } catch (Exception e) {
+            // Google Wallet es opcional, no interrumpe la carga de la tarjeta web
+        }
+
+        String qrValue = "https://bunnycure.cl/mi-tarjeta/" + customer.getPublicId();
+
+        return LoyaltyCardPublicDto.builder()
+                .publicId(customer.getPublicId())
+                .customerName(customer.getFullName())
+                .firstName(customer.getFirstName())
+                .phone(maskPhone(customer.getPhone()))
+                .loyaltyStamps(clampedStamps)
+                .totalCompletedVisits(totalVisits)
+                .maxStamps(maxStamps)
+                .stampsRemaining(stampsRemaining)
+                .progressPercent(progressPercent)
+                .currentRewardName(rewardName)
+                .rewardAvailable(rewardAvailable)
+                .rewardStatusMessage(statusMessage)
+                .qrValue(qrValue)
+                .googleWalletUrl(googleWalletUrl)
+                .salonName("BunnyCure")
+                .salonInstagram("@bunnycure.cl")
+                .salonWhatsapp("+56927978078")
+                .build();
+    }
+
+    private String maskPhone(String phone) {
+        if (phone == null || phone.isBlank()) return "";
+        if (phone.length() <= 4) return phone;
+        int visibleDigits = 4;
+        String prefix = phone.substring(0, Math.min(phone.length() - visibleDigits, 4));
+        String suffix = phone.substring(phone.length() - visibleDigits);
+        return prefix + " •••• " + suffix;
     }
 }

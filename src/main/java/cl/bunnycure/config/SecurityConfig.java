@@ -69,7 +69,7 @@ public class SecurityConfig {
 			// API pública: búsqueda de clientes por teléfono y gift cards
 			auth.requestMatchers("/api/customers/lookup").permitAll();
 			auth.requestMatchers("/api/public/**").permitAll();
-			auth.requestMatchers("/w/**").permitAll();
+			auth.requestMatchers("/w/**", "/tarjeta/**", "/pass/**", "/mi-tarjeta/**").permitAll();
 			
 			// API pública: servicios (para portal de reservas)
 			auth.requestMatchers(HttpMethod.GET, "/api/services").permitAll();

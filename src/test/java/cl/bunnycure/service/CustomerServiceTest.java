@@ -17,7 +17,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,11 +31,14 @@ class CustomerServiceTest {
     @Mock
     private GoogleWalletService googleWalletService;
 
+    @Mock
+    private LoyaltyRewardService loyaltyRewardService;
+
     private CustomerService customerService;
 
     @BeforeEach
     void setUp() {
-        customerService = new CustomerService(customerRepository, googleWalletService);
+        customerService = new CustomerService(customerRepository, googleWalletService, loyaltyRewardService);
     }
 
     @Test
@@ -205,5 +210,38 @@ class CustomerServiceTest {
         assertEquals(0, alfredo.getTotalCompletedVisits());
         assertEquals(2, sofia.getTotalCompletedVisits());
         verify(customerRepository, times(2)).save(any(Customer.class));
+    }
+
+    @Test
+    void getPublicLoyaltyCard_ReturnsFormattedCard() {
+        Customer customer = new Customer();
+        customer.setId(10L);
+        customer.setPublicId("abc-123-uuid");
+        customer.setFullName("Valeria González");
+        customer.setPhone("+56912345678");
+        customer.setLoyaltyStamps(7);
+        customer.setTotalCompletedVisits(17);
+        customer.setCurrentRewardIndex(0);
+
+        cl.bunnycure.domain.model.LoyaltyReward reward = new cl.bunnycure.domain.model.LoyaltyReward();
+        reward.setName("Esmaltado Permanente");
+
+        when(customerRepository.findByPublicId("abc-123-uuid")).thenReturn(Optional.of(customer));
+        when(loyaltyRewardService.getRewardAt(0)).thenReturn(reward);
+
+        cl.bunnycure.web.dto.LoyaltyCardPublicDto card = customerService.getPublicLoyaltyCard("abc-123-uuid");
+
+        assertNotNull(card);
+        assertEquals("abc-123-uuid", card.getPublicId());
+        assertEquals("Valeria González", card.getCustomerName());
+        assertEquals("Valeria", card.getFirstName());
+        assertEquals(7, card.getLoyaltyStamps());
+        assertEquals(10, card.getMaxStamps());
+        assertEquals(3, card.getStampsRemaining());
+        assertEquals(70, card.getProgressPercent());
+        assertEquals("Esmaltado Permanente", card.getCurrentRewardName());
+        assertFalse(card.isRewardAvailable());
+        assertTrue(card.getRewardStatusMessage().contains("3"));
+        assertTrue(card.getPhone().contains("••••"));
     }
 }
