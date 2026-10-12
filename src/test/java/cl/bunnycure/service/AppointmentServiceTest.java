@@ -265,9 +265,12 @@ class AppointmentServiceTest {
         when(appSettingsService.getAppTimezone()).thenReturn(zoneId.getId());
         when(appSettingsService.getReminderHoursAhead()).thenReturn(12);
 
-        // Sin citas pendientes para el recordatorio principal
-        when(appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
+        // Sin citas pendientes para el recordatorio principal (intradía o跨medianoche)
+        lenient().when(appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
                 anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
+                .thenReturn(List.of());
+        lenient().when(appointmentRepository.findPendingRemindersInDateTimeWindow(
+                anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalDate.class), any(LocalTime.class)))
                 .thenReturn(List.of());
 
         ZonedDateTime pendingZdt = ZonedDateTime.now(zoneId).plusHours(1);
@@ -283,8 +286,11 @@ class AppointmentServiceTest {
                 .secondReminderSent(false)
                 .build();
 
-        when(appointmentRepository.findPendingSecondRemindersForDateAndTimeWindow(
+        lenient().when(appointmentRepository.findPendingSecondRemindersForDateAndTimeWindow(
                 eq(AppointmentStatus.PENDING), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
+                .thenReturn(List.of(pendingAppointment));
+        lenient().when(appointmentRepository.findPendingSecondRemindersInDateTimeWindow(
+                eq(AppointmentStatus.PENDING), any(LocalDate.class), any(LocalTime.class), any(LocalDate.class), any(LocalTime.class)))
                 .thenReturn(List.of(pendingAppointment));
 
         appointmentService.sendRemindersForAppointmentsIn2Hours();
@@ -314,11 +320,17 @@ class AppointmentServiceTest {
                 .secondReminderSent(false)
                 .build();
 
-        when(appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
+        lenient().when(appointmentRepository.findPendingRemindersForDateAndTimeWindowByStatuses(
                 anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
                 .thenReturn(List.of(urgentAppointment));
-        when(appointmentRepository.findPendingSecondRemindersForDateAndTimeWindow(
+        lenient().when(appointmentRepository.findPendingRemindersInDateTimeWindow(
+                anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalDate.class), any(LocalTime.class)))
+                .thenReturn(List.of(urgentAppointment));
+        lenient().when(appointmentRepository.findPendingSecondRemindersForDateAndTimeWindow(
                 eq(AppointmentStatus.PENDING), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
+                .thenReturn(List.of());
+        lenient().when(appointmentRepository.findPendingSecondRemindersInDateTimeWindow(
+                eq(AppointmentStatus.PENDING), any(LocalDate.class), any(LocalTime.class), any(LocalDate.class), any(LocalTime.class)))
                 .thenReturn(List.of());
 
         appointmentService.sendRemindersForAppointmentsIn2Hours();
