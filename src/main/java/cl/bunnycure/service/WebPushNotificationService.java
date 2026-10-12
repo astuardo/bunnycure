@@ -72,6 +72,47 @@ public class WebPushNotificationService {
         });
     }
 
+    public String getPublicKey() {
+        return webPushPublicKey;
+    }
+
+    public boolean sendTestNotification(String endpoint) {
+        if (!webPushEnabled || !isWebPushConfigured()) {
+            log.warn("[WEB-PUSH] No se puede enviar test: webPushEnabled={} isConfigured={}", webPushEnabled, isWebPushConfigured());
+            return false;
+        }
+
+        if (endpoint != null && !endpoint.isBlank()) {
+            return subscriptionRepository.findByEndpoint(endpoint)
+                    .map(sub -> {
+                        PushService pushService = buildPushService();
+                        if (pushService == null) return false;
+                        Map<String, Object> payloadMap = new LinkedHashMap<>();
+                        payloadMap.put("title", "🐰 BunnyCure Notificaciones");
+                        payloadMap.put("body", "¡Notificación de prueba recibida exitosamente en este dispositivo! ✨");
+                        payloadMap.put("icon", "/icon-192.png");
+                        payloadMap.put("badge", "/icon-192.png");
+                        payloadMap.put("url", "/calendar");
+                        payloadMap.put("tag", "test-push-" + System.currentTimeMillis());
+                        try {
+                            String payload = objectMapper.writeValueAsString(payloadMap);
+                            sendToSubscription(pushService, sub, payload);
+                            return true;
+                        } catch (Exception e) {
+                            log.error("[WEB-PUSH] Error enviando push de prueba: {}", e.getMessage());
+                            return false;
+                        }
+                    }).orElse(false);
+        } else {
+            sendAdminCustomNotification(
+                    "🐰 BunnyCure Notificaciones",
+                    "¡Notificación de prueba recibida exitosamente en tu dispositivo! ✨",
+                    "/calendar"
+            );
+            return true;
+        }
+    }
+
     public void sendAdminAppointmentReminder(Appointment appointment, String reminderType) {
         if (!webPushEnabled) {
             log.debug("[WEB-PUSH] Deshabilitado por configuración");

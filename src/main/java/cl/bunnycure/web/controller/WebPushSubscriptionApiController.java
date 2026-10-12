@@ -19,6 +19,12 @@ public class WebPushSubscriptionApiController {
 
     private final WebPushNotificationService webPushNotificationService;
 
+    @GetMapping("/public-key")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getPublicKey() {
+        String key = webPushNotificationService.getPublicKey();
+        return ResponseEntity.ok(ApiResponse.success(Map.of("publicKey", key != null ? key : "")));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<WebPushSubscriptionResponseDto>> register(
             @Valid @RequestBody WebPushSubscriptionRequestDto request
@@ -33,6 +39,15 @@ public class WebPushSubscriptionApiController {
     ) {
         webPushNotificationService.deactivateSubscription(request.getEndpoint());
         return ResponseEntity.ok(ApiResponse.success("Suscripción eliminada"));
+    }
+
+    @PostMapping("/test")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> sendTest(
+            @RequestBody(required = false) Map<String, String> body
+    ) {
+        String endpoint = body != null ? body.get("endpoint") : null;
+        boolean sent = webPushNotificationService.sendTestNotification(endpoint);
+        return ResponseEntity.ok(ApiResponse.success(Map.of("success", sent)));
     }
 
     @GetMapping("/debug")

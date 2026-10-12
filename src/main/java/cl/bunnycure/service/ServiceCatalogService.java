@@ -9,6 +9,8 @@ import cl.bunnycure.web.dto.ServiceCatalogDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -33,16 +35,19 @@ public class ServiceCatalogService {
     private final AppointmentRepository appointmentRepository;
     private final BookingRequestRepository bookingRequestRepository;
 
+    @Cacheable(value = "serviceCatalog", key = "'allActive'")
     public List<ServiceCatalog> findAllActive() {
         return repository.findByActiveTrueOrderByDisplayOrderAsc();
     }
 
+    @Cacheable(value = "serviceCatalog", key = "'all'")
     public List<ServiceCatalog> findAll() {
         return repository.findAll(
                 org.springframework.data.domain.Sort.by("displayOrder")
         );
     }
 
+    @Cacheable(value = "serviceCatalog", key = "#id")
     public ServiceCatalog findById(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Servicio no encontrado"));
@@ -80,6 +85,7 @@ public class ServiceCatalogService {
         return ordered;
     }
 
+    @CacheEvict(value = "serviceCatalog", allEntries = true)
     @Transactional
     public ServiceCatalog save(@Valid @NotNull ServiceCatalogDto dto) {
         ServiceCatalog s;
@@ -125,6 +131,7 @@ public class ServiceCatalogService {
         service.setCompatibleServices(new LinkedHashSet<>(compatibleServices));
     }
 
+    @CacheEvict(value = "serviceCatalog", allEntries = true)
     @Transactional
     public void toggleActive(Long id) {
         var s = findById(id);
@@ -132,6 +139,7 @@ public class ServiceCatalogService {
         repository.save(s);
     }
 
+    @CacheEvict(value = "serviceCatalog", allEntries = true)
     @Transactional
     public DeleteOutcome delete(Long id) {
         ServiceCatalog service = findById(id);
@@ -146,5 +154,10 @@ public class ServiceCatalogService {
 
         repository.deleteById(id);
         return DeleteOutcome.DELETED;
+    }
+
+    @CacheEvict(value = "serviceCatalog", allEntries = true)
+    public void clearCache() {
+        // Invalida toda la caché de serviceCatalog
     }
 }
