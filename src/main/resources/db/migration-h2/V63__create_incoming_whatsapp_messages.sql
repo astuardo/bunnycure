@@ -4,7 +4,7 @@ CREATE TABLE incoming_whatsapp_messages (
     wamid VARCHAR(120) UNIQUE,
     from_phone VARCHAR(30) NOT NULL,
     sender_name VARCHAR(120),
-    content CLOB NOT NULL,
+    content TEXT NOT NULL,
     message_type VARCHAR(30) DEFAULT 'text' NOT NULL,
     customer_id BIGINT,
     is_read BOOLEAN DEFAULT FALSE NOT NULL,
