@@ -46,13 +46,41 @@ public class CustomerService {
     }
 
     public Customer findByPublicId(String publicId) {
-        return customerRepository.findByPublicId(publicId)
+        Customer customer = customerRepository.findByPublicId(publicId)
+                .or(() -> {
+                    try {
+                        Long id = Long.parseLong(publicId);
+                        return customerRepository.findById(id);
+                    } catch (NumberFormatException e) {
+                        return java.util.Optional.empty();
+                    }
+                })
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado con identificador: " + publicId));
+
+        if (customer.getPublicId() == null || customer.getPublicId().isBlank()) {
+            customer.assignPublicIdIfMissing();
+            customer = customerRepository.save(customer);
+        }
+        return customer;
     }
 
     public Customer findByPublicIdWithAppointments(String publicId) {
-        return customerRepository.findByPublicIdWithAppointments(publicId)
+        Customer customer = customerRepository.findByPublicIdWithAppointments(publicId)
+                .or(() -> {
+                    try {
+                        Long id = Long.parseLong(publicId);
+                        return customerRepository.findByPublicIdWithAppointments(String.valueOf(id));
+                    } catch (NumberFormatException e) {
+                        return java.util.Optional.empty();
+                    }
+                })
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado con identificador: " + publicId));
+
+        if (customer.getPublicId() == null || customer.getPublicId().isBlank()) {
+            customer.assignPublicIdIfMissing();
+            customer = customerRepository.save(customer);
+        }
+        return customer;
     }
 
     public List<CustomerSummary> findAllSummary() {
