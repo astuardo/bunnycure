@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -259,7 +261,8 @@ class AppointmentServiceTest {
 
     @Test
     void sendRemindersForAppointmentsIn2Hours_shouldSendSecondReminderToPendingAppointments() {
-        when(appSettingsService.getAppTimezone()).thenReturn("America/Santiago");
+        ZoneId zoneId = ZoneId.of("America/Santiago");
+        when(appSettingsService.getAppTimezone()).thenReturn(zoneId.getId());
         when(appSettingsService.getReminderHoursAhead()).thenReturn(12);
 
         // Sin citas pendientes para el recordatorio principal
@@ -267,13 +270,14 @@ class AppointmentServiceTest {
                 anyList(), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class)))
                 .thenReturn(List.of());
 
+        ZonedDateTime pendingZdt = ZonedDateTime.now(zoneId).plusHours(1);
         // Cita pendiente que ya tuvo recordatorio 12h pero no el de 2h
         Appointment pendingAppointment = Appointment.builder()
                 .id(99L)
                 .customer(new Customer("Camila", "+56912345678", "camila@test.com"))
                 .service(ServiceCatalog.builder().id(1L).name("Esmaltado").build())
-                .appointmentDate(LocalDate.now())
-                .appointmentTime(LocalTime.now().plusHours(1))
+                .appointmentDate(pendingZdt.toLocalDate())
+                .appointmentTime(pendingZdt.toLocalTime())
                 .status(AppointmentStatus.PENDING)
                 .reminderSent(true)
                 .secondReminderSent(false)
@@ -293,16 +297,18 @@ class AppointmentServiceTest {
 
     @Test
     void sendRemindersForAppointmentsIn2Hours_shouldMarkSecondReminderSentIfBookedWithin2Hours() {
-        when(appSettingsService.getAppTimezone()).thenReturn("America/Santiago");
+        ZoneId zoneId = ZoneId.of("America/Santiago");
+        when(appSettingsService.getAppTimezone()).thenReturn(zoneId.getId());
         when(appSettingsService.getReminderHoursAhead()).thenReturn(12);
 
+        ZonedDateTime urgentZdt = ZonedDateTime.now(zoneId).plusMinutes(45);
         // Cita agendada dentro de la ventana de 2 horas
         Appointment urgentAppointment = Appointment.builder()
                 .id(100L)
                 .customer(new Customer("Sofia", "+56987654321", "sofia@test.com"))
                 .service(ServiceCatalog.builder().id(1L).name("Manicure").build())
-                .appointmentDate(LocalDate.now())
-                .appointmentTime(LocalTime.now().plusMinutes(45))
+                .appointmentDate(urgentZdt.toLocalDate())
+                .appointmentTime(urgentZdt.toLocalTime())
                 .status(AppointmentStatus.PENDING)
                 .reminderSent(false)
                 .secondReminderSent(false)
