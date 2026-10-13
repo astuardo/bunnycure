@@ -17,15 +17,34 @@ import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 @Service
 @Validated
 @Transactional(readOnly = true)
-@RequiredArgsConstructor
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final GoogleWalletService googleWalletService;
     private final LoyaltyRewardService loyaltyRewardService;
+    private final PwaRedirectService pwaRedirectService;
+
+    @Autowired
+    public CustomerService(CustomerRepository customerRepository,
+                           GoogleWalletService googleWalletService,
+                           LoyaltyRewardService loyaltyRewardService,
+                           PwaRedirectService pwaRedirectService) {
+        this.customerRepository = customerRepository;
+        this.googleWalletService = googleWalletService;
+        this.loyaltyRewardService = loyaltyRewardService;
+        this.pwaRedirectService = pwaRedirectService;
+    }
+
+    public CustomerService(CustomerRepository customerRepository,
+                           GoogleWalletService googleWalletService,
+                           LoyaltyRewardService loyaltyRewardService) {
+        this(customerRepository, googleWalletService, loyaltyRewardService, null);
+    }
 
     public List<Customer> findAll() {
         return customerRepository.findAll();
@@ -35,14 +54,26 @@ public class CustomerService {
         return customerRepository.findByFullNameContainingIgnoreCase(query);
     }
 
+    @Transactional
     public Customer findById(Long id) {
-        return customerRepository.findById(id)
+        Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado con ID: " + id));
+        if (customer.getPublicId() == null || customer.getPublicId().isBlank()) {
+            customer.assignPublicIdIfMissing();
+            customer = customerRepository.save(customer);
+        }
+        return customer;
     }
 
+    @Transactional
     public Customer findByIdWithAppointments(Long id) {
-        return customerRepository.findByIdWithAppointments(id)
+        Customer customer = customerRepository.findByIdWithAppointments(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado con ID: " + id));
+        if (customer.getPublicId() == null || customer.getPublicId().isBlank()) {
+            customer.assignPublicIdIfMissing();
+            customer = customerRepository.save(customer);
+        }
+        return customer;
     }
 
     public Customer findByPublicId(String publicId) {
@@ -457,7 +488,8 @@ public class CustomerService {
             // Google Wallet es opcional, no interrumpe la carga de la tarjeta web
         }
 
-        String qrValue = "https://bunnycure.cl/mi-tarjeta/" + customer.getPublicId();
+        String frontendBase = pwaRedirectService != null ? pwaRedirectService.getFrontendBaseUrl() : "https://app.bunnycure.cl";
+        String qrValue = frontendBase + "/mi-tarjeta/" + customer.getPublicId();
 
         return LoyaltyCardPublicDto.builder()
                 .publicId(customer.getPublicId())
