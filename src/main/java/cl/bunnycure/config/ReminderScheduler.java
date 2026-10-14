@@ -21,11 +21,12 @@ public class ReminderScheduler {
     private final AppSettingsService appSettingsService;
     private final cl.bunnycure.service.WebPushNotificationService webPushNotificationService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final cl.bunnycure.service.TenantExecutionService tenantExecutionService;
 
     /**
      * Recordatorio para citas de mañana.
      * Solo activo cuando reminder.strategy = "day_before".
-     * Se ejecuta con cron/zone configurables via properties.
+     * Se ejecuta con cron/zone configurables via properties para todos los salones activos.
      */
     @Scheduled(
             cron = "${bunnycure.reminder.day-before.cron:0 0 9 * * *}",
@@ -37,13 +38,15 @@ public class ReminderScheduler {
                     appSettingsService.getReminderStrategy());
             return;
         }
-        try {
-            log.info("[REMINDER-SCHEDULER] Iniciando recordatorios día anterior...");
-            appointmentService.sendRemindersForUpcomingAppointments();
-            log.info("[REMINDER-SCHEDULER] Recordatorios día anterior completados");
-        } catch (Exception e) {
-            log.error("[REMINDER-SCHEDULER] Error en recordatorios día anterior", e);
-        }
+        tenantExecutionService.executeForAllActiveTenants("Recordatorios Día Anterior", tenant -> {
+            try {
+                log.info("[REMINDER-SCHEDULER] Iniciando recordatorios día anterior para salón '{}'...", tenant.getName());
+                appointmentService.sendRemindersForUpcomingAppointments();
+                log.info("[REMINDER-SCHEDULER] Recordatorios día anterior completados para salón '{}'", tenant.getName());
+            } catch (Exception e) {
+                log.error("[REMINDER-SCHEDULER] Error en recordatorios día anterior para salón '{}'", tenant.getName(), e);
+            }
+        });
     }
 
     /**
@@ -74,14 +77,17 @@ public class ReminderScheduler {
             return;
         }
 
-        try {
-            log.info("[REMINDER-SCHEDULER] Iniciando recordatorios 2h...");
-            appointmentService.sendRemindersForAppointmentsIn2Hours();
-            appSettingsService.set(TWO_HOUR_LAST_RUN_AT_KEY, Instant.now().toString());
-            log.info("[REMINDER-SCHEDULER] Recordatorios 2h completados");
-        } catch (Exception e) {
-            log.error("[REMINDER-SCHEDULER] Error en recordatorios 2h", e);
-        }
+        tenantExecutionService.executeForAllActiveTenants("Recordatorios 2 Horas", tenant -> {
+            try {
+                log.info("[REMINDER-SCHEDULER] Iniciando recordatorios 2h para salón '{}'...", tenant.getName());
+                appointmentService.sendRemindersForAppointmentsIn2Hours();
+                log.info("[REMINDER-SCHEDULER] Recordatorios 2h completados para salón '{}'", tenant.getName());
+            } catch (Exception e) {
+                log.error("[REMINDER-SCHEDULER] Error en recordatorios 2h para salón '{}'", tenant.getName(), e);
+            }
+        });
+
+        appSettingsService.set(TWO_HOUR_LAST_RUN_AT_KEY, Instant.now().toString());
     }
 
     private boolean shouldRunTwoHourReminderNow(int intervalMinutes) {

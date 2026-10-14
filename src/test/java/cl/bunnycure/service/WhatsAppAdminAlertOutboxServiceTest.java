@@ -46,6 +46,9 @@ class WhatsAppAdminAlertOutboxServiceTest {
     @Mock
     private AppSettingsService appSettingsService;
 
+    @Mock
+    private TenantExecutionService tenantExecutionService;
+
     private WhatsAppAdminAlertOutboxService service;
 
     @BeforeEach
@@ -54,8 +57,17 @@ class WhatsAppAdminAlertOutboxServiceTest {
                 outboxRepository,
                 bookingRequestRepository,
                 whatsAppService,
-                appSettingsService
+                appSettingsService,
+                tenantExecutionService
         );
+        lenient().doAnswer(inv -> {
+            ((Runnable) inv.getArgument(1)).run();
+            return null;
+        }).when(tenantExecutionService).executeInTenantContext(any(), any(Runnable.class));
+        lenient().doAnswer(inv -> {
+            java.util.function.Supplier<?> supplier = inv.getArgument(1);
+            return supplier.get();
+        }).when(tenantExecutionService).executeInTenantContext(any(), any(java.util.function.Supplier.class));
         ReflectionTestUtils.setField(service, "adminAlertEnabled", true);
         ReflectionTestUtils.setField(service, "adminAlertNumberFallback", "56964499995");
         ReflectionTestUtils.setField(service, "outboxEnabled", true);

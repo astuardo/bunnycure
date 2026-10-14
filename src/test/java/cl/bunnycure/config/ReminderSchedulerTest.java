@@ -21,8 +21,21 @@ class ReminderSchedulerTest {
     @Mock
     private AppSettingsService appSettingsService;
 
+    @Mock
+    private cl.bunnycure.service.TenantExecutionService tenantExecutionService;
+
     @InjectMocks
     private ReminderScheduler reminderScheduler;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        org.mockito.Mockito.lenient().doAnswer(inv -> {
+            java.util.function.Consumer<cl.bunnycure.domain.model.Tenant> action = inv.getArgument(1);
+            cl.bunnycure.domain.model.Tenant tenant = cl.bunnycure.domain.model.Tenant.builder().id(1L).name("BunnyCure").build();
+            action.accept(tenant);
+            return null;
+        }).when(tenantExecutionService).executeForAllActiveTenants(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
 
     @Test
     void sendDayBeforeReminders_shouldSkipWhenStrategyDisabled() {

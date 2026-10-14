@@ -25,6 +25,10 @@ public class TenantContext {
         return tenantId != null ? tenantId : DEFAULT_TENANT_ID;
     }
 
+    public static boolean hasExplicitTenant() {
+        return CURRENT_TENANT.get() != null;
+    }
+
     public static void clear() {
         CURRENT_TENANT.remove();
     }

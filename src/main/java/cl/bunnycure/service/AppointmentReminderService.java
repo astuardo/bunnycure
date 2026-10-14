@@ -24,25 +24,35 @@ public class AppointmentReminderService {
     private final AppSettingsService appSettingsService;
     private final WhatsAppService whatsAppService;
     private final WebPushNotificationService webPushNotificationService;
+    private final TenantExecutionService tenantExecutionService;
 
     /**
      * Se ejecuta diariamente con cron/zone configurables via properties.
      * Solo activo cuando reminder.strategy = "morning" o "both".
-     * Envía recordatorios de citas para hoy a los clientes.
+     * Itera sobre cada salón activo y envía recordatorios de citas para hoy.
      */
     @Scheduled(
             cron = "${bunnycure.reminder.morning.cron:0 0 8 * * *}",
             zone = "${bunnycure.scheduler.timezone:America/Santiago}"
     )
-    @Transactional
     public void sendDailyReminders() {
+        tenantExecutionService.executeForAllActiveTenants("Recordatorios Diarios Mañana", tenant -> {
+            processDailyRemindersForTenant();
+        });
+    }
+
+    /**
+     * Procesa los recordatorios matutinos dentro del contexto transaccional del tenant actual.
+     */
+    @Transactional
+    public void processDailyRemindersForTenant() {
         if (!appSettingsService.isReminderMorningEnabled()) {
             log.debug("[REMINDER] Recordatorio mañana omitido (strategy={})",
                     appSettingsService.getReminderStrategy());
             return;
         }
 
-        log.info("[REMINDER] Iniciando envío de recordatorios diarios...");
+        log.info("[REMINDER] Iniciando envío de recordatorios diarios para salón actual...");
 
         LocalDate today = getNowInConfiguredZone().toLocalDate();
         List<Appointment> pendingReminders = appointmentRepository.findPendingRemindersForDateByStatuses(

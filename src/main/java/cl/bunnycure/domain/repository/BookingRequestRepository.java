@@ -51,4 +51,7 @@ public interface BookingRequestRepository extends JpaRepository<BookingRequest, 
         WHERE r.appointment.id = :appointmentId
     """)
     int clearAppointmentByAppointmentId(@Param("appointmentId") Long appointmentId);
+
+    @Query(value = "SELECT b.tenant_id FROM booking_requests b WHERE b.id = :id", nativeQuery = true)
+    java.util.Optional<Long> findTenantIdByBookingRequestId(@Param("id") Long id);
 }

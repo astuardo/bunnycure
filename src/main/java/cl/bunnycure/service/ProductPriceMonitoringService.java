@@ -18,17 +18,21 @@ public class ProductPriceMonitoringService {
 
     private final ProductRepository productRepository;
     private final ProductPageScrapingService productPageScrapingService;
+    private final TenantExecutionService tenantExecutionService;
 
     @Scheduled(cron = "${bunnycure.inventory.price-monitor.cron:0 30 8 * * *}", zone = "${bunnycure.scheduler.timezone:America/Santiago}")
     public void refreshAllProducts() {
-        List<Product> products = productRepository.findAllWithPurchaseUrl();
-        for (Product product : products) {
-            try {
-                refreshProduct(product);
-            } catch (Exception e) {
-                log.warn("[Inventory-Monitor] Could not refresh product {} ({}): {}", product.getId(), product.getName(), e.getMessage());
+        tenantExecutionService.executeForAllActiveTenants("Monitoreo Precios Inventario", tenant -> {
+            List<Product> products = productRepository.findAllWithPurchaseUrl();
+            for (Product product : products) {
+                try {
+                    refreshProduct(product);
+                } catch (Exception e) {
+                    log.warn("[Inventory-Monitor] Could not refresh product {} ({}) for salon '{}': {}",
+                            product.getId(), product.getName(), tenant.getName(), e.getMessage());
+                }
             }
-        }
+        });
     }
 
     public Product refreshProduct(Long productId) {

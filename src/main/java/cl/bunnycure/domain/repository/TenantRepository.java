@@ -16,4 +16,6 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
     boolean existsBySlugIgnoreCase(String slug);
 
     boolean existsByCustomDomainIgnoreCase(String customDomain);
+
+    java.util.List<Tenant> findByActiveTrue();
 }

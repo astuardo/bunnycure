@@ -30,6 +30,7 @@ public class WhatsAppAdminAlertOutboxService {
     private final BookingRequestRepository bookingRequestRepository;
     private final WhatsAppService whatsAppService;
     private final AppSettingsService appSettingsService;
+    private final TenantExecutionService tenantExecutionService;
 
     @Value("${bunnycure.whatsapp.admin-alert.enabled:true}")
     private boolean adminAlertEnabled;
@@ -115,10 +116,31 @@ public class WhatsAppAdminAlertOutboxService {
     private void processEvent(WhatsAppAdminAlertOutbox event) {
         BookingRequest request = bookingRequestRepository.findById(event.getBookingRequestId()).orElse(null);
         if (request == null) {
+            Long tenantId = bookingRequestRepository.findTenantIdByBookingRequestId(event.getBookingRequestId()).orElse(null);
+            if (tenantId != null && tenantExecutionService != null) {
+                request = tenantExecutionService.executeInTenantContext(tenantId, () ->
+                        bookingRequestRepository.findById(event.getBookingRequestId()).orElse(null)
+                );
+            }
+        }
+
+        if (request == null) {
             markAsFailed(event, "Booking request no encontrada");
             return;
         }
 
+        final BookingRequest finalRequest = request;
+        Long targetTenantId = request.getTenantId();
+        if (targetTenantId != null && tenantExecutionService != null) {
+            tenantExecutionService.executeInTenantContext(targetTenantId, () -> {
+                sendAlertForRequest(event, finalRequest);
+            });
+        } else {
+            sendAlertForRequest(event, finalRequest);
+        }
+    }
+
+    private void sendAlertForRequest(WhatsAppAdminAlertOutbox event, BookingRequest request) {
         String targetNumber = resolveAdminAlertNumber();
         boolean sent = whatsAppService.sendAdminBookingAlertSync(targetNumber, request);
         if (sent) {
@@ -152,10 +174,27 @@ public class WhatsAppAdminAlertOutboxService {
     private void sendDirectWithoutOutbox(Long bookingRequestId) {
         BookingRequest request = bookingRequestRepository.findById(bookingRequestId).orElse(null);
         if (request == null) {
+            Long tenantId = bookingRequestRepository.findTenantIdByBookingRequestId(bookingRequestId).orElse(null);
+            if (tenantId != null && tenantExecutionService != null) {
+                request = tenantExecutionService.executeInTenantContext(tenantId, () ->
+                        bookingRequestRepository.findById(bookingRequestId).orElse(null)
+                );
+            }
+        }
+        if (request == null) {
             log.warn("[WHATSAPP-ADMIN] No se pudo enviar alerta directa, reserva {} no encontrada", bookingRequestId);
             return;
         }
-        whatsAppService.sendAdminBookingAlertSync(resolveAdminAlertNumber(), request);
+
+        final BookingRequest finalRequest = request;
+        Long targetTenantId = request.getTenantId();
+        if (targetTenantId != null && tenantExecutionService != null) {
+            tenantExecutionService.executeInTenantContext(targetTenantId, () -> {
+                whatsAppService.sendAdminBookingAlertSync(resolveAdminAlertNumber(), finalRequest);
+            });
+        } else {
+            whatsAppService.sendAdminBookingAlertSync(resolveAdminAlertNumber(), finalRequest);
+        }
     }
 
     private boolean isAlertActive() {
