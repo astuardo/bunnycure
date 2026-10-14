@@ -83,6 +83,7 @@ public class SecurityConfig {
 			
 			// API REST endpoints protegidos por RBAC
 			auth.requestMatchers("/api/auth/**").authenticated();
+			auth.requestMatchers("/api/admin/tenants/**").hasAnyRole("SUPER_ADMIN", "ADMIN");
 			auth.requestMatchers("/api/users/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
 			auth.requestMatchers("/api/settings/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
 			auth.requestMatchers("/api/inventory/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
