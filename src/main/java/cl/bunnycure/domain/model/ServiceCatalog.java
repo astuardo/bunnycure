@@ -24,6 +24,10 @@ public class ServiceCatalog {
     @SequenceGenerator(name = "service_catalog_seq_generator", sequenceName = "service_catalog_seq", allocationSize = 1)
     private Long id;
 
+    @org.hibernate.annotations.TenantId
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     @Column(nullable = false, length = 100)
     private String name;
 

@@ -23,6 +23,10 @@ public class BookingRequest {
     @SequenceGenerator(name = "booking_requests_seq_generator", sequenceName = "booking_requests_seq", allocationSize = 1)
     private Long id;
 
+    @org.hibernate.annotations.TenantId
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     // ── Datos de la persona solicitante ──────────────────────
     @Column(nullable = false, length = 100)
     private String fullName;

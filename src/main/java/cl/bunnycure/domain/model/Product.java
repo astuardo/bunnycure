@@ -20,6 +20,10 @@ public class Product {
     @SequenceGenerator(name = "products_seq_generator", sequenceName = "products_seq", allocationSize = 1)
     private Long id;
 
+    @org.hibernate.annotations.TenantId
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     @Column(nullable = false, length = 200)
     private String name;
 

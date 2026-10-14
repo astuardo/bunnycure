@@ -11,6 +11,10 @@ import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    @Override
+    @Query("SELECT p FROM Product p WHERE p.id = :id")
+    Optional<Product> findById(@Param("id") Long id);
+
     Optional<Product> findByNameIgnoreCase(String name);
 
     @Query("select p from Product p where p.purchaseUrl is not null and trim(p.purchaseUrl) <> ''")

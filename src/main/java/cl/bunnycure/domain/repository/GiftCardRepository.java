@@ -12,6 +12,10 @@ import java.util.Optional;
 
 public interface GiftCardRepository extends JpaRepository<GiftCard, Long> {
 
+    @Override
+    @Query("SELECT gc FROM GiftCard gc WHERE gc.id = :id")
+    Optional<GiftCard> findById(@Param("id") Long id);
+
     Optional<GiftCard> findByCode(String code);
 
     @Query("""

@@ -14,6 +14,10 @@ import java.util.Optional;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
+    @Override
+    @Query("SELECT a FROM Appointment a WHERE a.id = :id")
+    Optional<Appointment> findById(@Param("id") Long id);
+
     @Query("""
                 SELECT COUNT(a) FROM Appointment a
                 LEFT JOIN a.services svc

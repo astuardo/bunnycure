@@ -24,6 +24,10 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     boolean existsByRut(String rut);
 
+    @Override
+    @Query("SELECT c FROM Customer c WHERE c.id = :id")
+    Optional<Customer> findById(@org.springframework.data.repository.query.Param("id") Long id);
+
     @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.appointments WHERE c.id = :id")
     Optional<Customer> findByIdWithAppointments(Long id);
 

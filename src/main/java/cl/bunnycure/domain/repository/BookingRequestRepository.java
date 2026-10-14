@@ -11,6 +11,10 @@ import java.util.List;
 
 public interface BookingRequestRepository extends JpaRepository<BookingRequest, Long> {
 
+    @Override
+    @Query("SELECT r FROM BookingRequest r WHERE r.id = :id")
+    java.util.Optional<BookingRequest> findById(@Param("id") Long id);
+
     // Pendientes ordenadas por fecha de solicitud (más antigua primero)
     List<BookingRequest> findByStatusOrderByCreatedAtAsc(BookingRequestStatus status);
 

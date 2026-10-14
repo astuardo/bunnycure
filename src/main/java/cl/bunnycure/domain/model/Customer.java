@@ -25,6 +25,10 @@ public class Customer {
     @SequenceGenerator(name = "customers_seq_generator", sequenceName = "customers_seq", allocationSize = 1)
     private Long id;
 
+    @org.hibernate.annotations.TenantId
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     @Column(name = "public_id", nullable = false, unique = true, length = 36)
     private String publicId;
 
