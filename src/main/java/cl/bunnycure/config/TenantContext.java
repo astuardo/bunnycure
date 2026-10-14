@@ -16,7 +16,7 @@ public class TenantContext {
         if (tenantId != null) {
             CURRENT_TENANT.set(tenantId);
         } else {
-            CURRENT_TENANT.set(DEFAULT_TENANT_ID);
+            CURRENT_TENANT.remove();
         }
     }
 
@@ -27,6 +27,10 @@ public class TenantContext {
 
     public static boolean hasExplicitTenant() {
         return CURRENT_TENANT.get() != null;
+    }
+
+    public static Long getExplicitTenantId() {
+        return CURRENT_TENANT.get();
     }
 
     public static void clear() {

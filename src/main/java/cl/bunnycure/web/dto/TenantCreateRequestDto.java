@@ -41,6 +41,11 @@ public class TenantCreateRequestDto {
     private String whatsappPhoneId;
     private String whatsappToken;
 
+    private String siiRut;
+    private String siiPassword;
+    private String siiToken;
+    private String siiActividadEconomica;
+
     // Datos opcionales para aprovisionamiento del administrador inicial
     private String initialAdminUsername;
     private String initialAdminPassword;

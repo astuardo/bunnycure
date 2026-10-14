@@ -26,6 +26,9 @@ public class TenantResponseDto {
     private boolean active;
     private String planTier;
     private String whatsappPhoneId;
+    private String siiRut;
+    private boolean siiConfigured;
+    private String siiActividadEconomica;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

@@ -59,8 +59,24 @@ public class Tenant {
     @Column(length = 100)
     private String whatsappPhoneId;
 
+    @Convert(converter = cl.bunnycure.config.EncryptedStringConverter.class)
     @Column(length = 500)
     private String whatsappToken;
+
+    // Credenciales de Facturación Electrónica SII (Chile)
+    @Column(length = 20)
+    private String siiRut;
+
+    @Convert(converter = cl.bunnycure.config.EncryptedStringConverter.class)
+    @Column(length = 500)
+    private String siiPassword;
+
+    @Convert(converter = cl.bunnycure.config.EncryptedStringConverter.class)
+    @Column(length = 500)
+    private String siiToken;
+
+    @Column(length = 120)
+    private String siiActividadEconomica;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

@@ -34,6 +34,25 @@ public class AppAsyncConfig implements AsyncConfigurer {
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
+
+        // Propagar TenantContext y SecurityContextHolder a los hilos secundarios
+        executor.setTaskDecorator(runnable -> {
+            Long capturedTenantId = TenantContext.getCurrentTenantId();
+            var securityContext = org.springframework.security.core.context.SecurityContextHolder.getContext();
+            return () -> {
+                try {
+                    TenantContext.setCurrentTenantId(capturedTenantId);
+                    if (securityContext != null) {
+                        org.springframework.security.core.context.SecurityContextHolder.setContext(securityContext);
+                    }
+                    runnable.run();
+                } finally {
+                    TenantContext.clear();
+                    org.springframework.security.core.context.SecurityContextHolder.clearContext();
+                }
+            };
+        });
+
         executor.initialize();
         return executor;
     }

@@ -33,7 +33,6 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class ApiGatewaySiiService {
 
     private final ApiGatewayConfig config;
@@ -42,6 +41,38 @@ public class ApiGatewaySiiService {
     private final CustomerRepository customerRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final cl.bunnycure.domain.repository.TenantRepository tenantRepository;
+    private final InvoiceOutboxService invoiceOutboxService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ApiGatewaySiiService(
+            ApiGatewayConfig config,
+            InvoiceLogRepository invoiceLogRepository,
+            AppointmentRepository appointmentRepository,
+            CustomerRepository customerRepository,
+            RestTemplate restTemplate,
+            ObjectMapper objectMapper,
+            cl.bunnycure.domain.repository.TenantRepository tenantRepository,
+            @org.springframework.context.annotation.Lazy InvoiceOutboxService invoiceOutboxService) {
+        this.config = config;
+        this.invoiceLogRepository = invoiceLogRepository;
+        this.appointmentRepository = appointmentRepository;
+        this.customerRepository = customerRepository;
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+        this.tenantRepository = tenantRepository;
+        this.invoiceOutboxService = invoiceOutboxService;
+    }
+
+    public ApiGatewaySiiService(
+            ApiGatewayConfig config,
+            InvoiceLogRepository invoiceLogRepository,
+            AppointmentRepository appointmentRepository,
+            CustomerRepository customerRepository,
+            RestTemplate restTemplate,
+            ObjectMapper objectMapper) {
+        this(config, invoiceLogRepository, appointmentRepository, customerRepository, restTemplate, objectMapper, null, null);
+    }
 
     private static final String EMITIR_BHE_ENDPOINT = "/api/v2/sii/bhe/emitidas/emitir";
     private static final String EMAIL_BHE_ENDPOINT = "/api/v2/sii/bhe/emitidas/email/";
@@ -76,11 +107,30 @@ public class ApiGatewaySiiService {
     @Async
     public void generateInvoiceAsync(Appointment appointment, Customer customer, BigDecimal amount) {
         try {
-            generateInvoice(appointment, customer, amount);
+            if (invoiceOutboxService != null) {
+                invoiceOutboxService.enqueueInvoice(appointment, customer, amount);
+                log.info("[INVOICE-ASYNC] Boleta encolada en Outbox para cita {}", appointment != null ? appointment.getId() : "null");
+            } else {
+                generateInvoice(appointment, customer, amount);
+            }
         } catch (Exception e) {
             log.error("[INVOICE-ASYNC-ERROR] Error en emisión asíncrona de BHE para cita {}: {}",
                     appointment != null ? appointment.getId() : "null", e.getMessage(), e);
         }
+    }
+
+    public boolean isSiiConfiguredForCurrentTenant() {
+        Long currentTenantId = cl.bunnycure.config.TenantContext.getCurrentTenantId();
+        if (tenantRepository != null && currentTenantId != null) {
+            Optional<cl.bunnycure.domain.model.Tenant> tenantOpt = tenantRepository.findById(currentTenantId);
+            if (tenantOpt.isPresent()) {
+                cl.bunnycure.domain.model.Tenant t = tenantOpt.get();
+                if (t.getSiiRut() != null && !t.getSiiRut().isBlank() && t.getSiiPassword() != null && !t.getSiiPassword().isBlank()) {
+                    return true;
+                }
+            }
+        }
+        return config.isConfigured();
     }
 
     /**
@@ -100,7 +150,7 @@ public class ApiGatewaySiiService {
         }
 
         // Si no está habilitado o configurado, modo dry-run (no bloquea flujo de cita)
-        if (!config.isConfigured()) {
+        if (!isSiiConfiguredForCurrentTenant()) {
             try {
                 Map<String, Object> requestBody = buildEmitirPayload(appointment, customer, amount);
                 String payloadJson = objectMapper.writeValueAsString(requestBody);
@@ -979,20 +1029,49 @@ public class ApiGatewaySiiService {
     }
 
     private Map<String, Object> buildAuthCredentials() {
+        Long currentTenantId = cl.bunnycure.config.TenantContext.getCurrentTenantId();
+        String siiRut = config.getSiiRut();
+        String siiPassword = config.getSiiPassword();
+
+        if (tenantRepository != null && currentTenantId != null) {
+            Optional<cl.bunnycure.domain.model.Tenant> tenantOpt = tenantRepository.findById(currentTenantId);
+            if (tenantOpt.isPresent()) {
+                cl.bunnycure.domain.model.Tenant t = tenantOpt.get();
+                if (t.getSiiRut() != null && !t.getSiiRut().isBlank() && t.getSiiPassword() != null && !t.getSiiPassword().isBlank()) {
+                    siiRut = t.getSiiRut();
+                    siiPassword = t.getSiiPassword();
+                    log.debug("[SII-AUTH] Utilizando credenciales específicas del salón '{}' (ID={}) para emisión BHE", t.getName(), t.getId());
+                }
+            }
+        }
+
         Map<String, Object> auth = new HashMap<>();
         Map<String, String> pass = new HashMap<>();
-        pass.put("rut", sanitizeRut(config.getSiiRut()));
-        pass.put("clave", config.getSiiPassword() != null ? config.getSiiPassword() : "");
+        pass.put("rut", sanitizeRut(siiRut));
+        pass.put("clave", siiPassword != null ? siiPassword : "");
         auth.put("pass", pass);
         return auth;
     }
 
     private HttpHeaders buildAuthHeaders() {
+        Long currentTenantId = cl.bunnycure.config.TenantContext.getCurrentTenantId();
+        String token = config.getToken();
+
+        if (tenantRepository != null && currentTenantId != null) {
+            Optional<cl.bunnycure.domain.model.Tenant> tenantOpt = tenantRepository.findById(currentTenantId);
+            if (tenantOpt.isPresent()) {
+                cl.bunnycure.domain.model.Tenant t = tenantOpt.get();
+                if (t.getSiiToken() != null && !t.getSiiToken().isBlank()) {
+                    token = t.getSiiToken();
+                }
+            }
+        }
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-        if (config.getToken() != null && !config.getToken().isBlank()) {
-            String token = config.getToken().trim();
+        if (token != null && !token.isBlank()) {
+            token = token.trim();
             if (token.startsWith("Token ") || token.startsWith("Bearer ")) {
                 headers.set("Authorization", token);
             } else {

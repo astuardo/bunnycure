@@ -29,5 +29,9 @@ public class TenantUpdateRequestDto {
     private String planTier;
     private String whatsappPhoneId;
     private String whatsappToken;
+    private String siiRut;
+    private String siiPassword;
+    private String siiToken;
+    private String siiActividadEconomica;
     private Boolean active;
 }

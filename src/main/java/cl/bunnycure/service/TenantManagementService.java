@@ -89,6 +89,10 @@ public class TenantManagementService {
                 .planTier(dto.getPlanTier() != null && !dto.getPlanTier().isBlank() ? dto.getPlanTier().toUpperCase() : "STANDARD")
                 .whatsappPhoneId(dto.getWhatsappPhoneId())
                 .whatsappToken(dto.getWhatsappToken())
+                .siiRut(dto.getSiiRut())
+                .siiPassword(dto.getSiiPassword())
+                .siiToken(dto.getSiiToken())
+                .siiActividadEconomica(dto.getSiiActividadEconomica())
                 .active(true)
                 .build();
 
@@ -137,6 +141,18 @@ public class TenantManagementService {
         tenant.setWhatsappPhoneId(dto.getWhatsappPhoneId());
         if (dto.getWhatsappToken() != null && !dto.getWhatsappToken().isBlank()) {
             tenant.setWhatsappToken(dto.getWhatsappToken());
+        }
+        if (dto.getSiiRut() != null) {
+            tenant.setSiiRut(dto.getSiiRut().trim());
+        }
+        if (dto.getSiiPassword() != null && !dto.getSiiPassword().isBlank()) {
+            tenant.setSiiPassword(dto.getSiiPassword());
+        }
+        if (dto.getSiiToken() != null && !dto.getSiiToken().isBlank()) {
+            tenant.setSiiToken(dto.getSiiToken().trim());
+        }
+        if (dto.getSiiActividadEconomica() != null) {
+            tenant.setSiiActividadEconomica(dto.getSiiActividadEconomica().trim());
         }
 
         Tenant updated = tenantRepository.save(tenant);
@@ -228,6 +244,9 @@ public class TenantManagementService {
                 .active(tenant.isActive())
                 .planTier(tenant.getPlanTier())
                 .whatsappPhoneId(tenant.getWhatsappPhoneId())
+                .siiRut(tenant.getSiiRut())
+                .siiConfigured(tenant.getSiiRut() != null && !tenant.getSiiRut().isBlank() && tenant.getSiiPassword() != null && !tenant.getSiiPassword().isBlank())
+                .siiActividadEconomica(tenant.getSiiActividadEconomica())
                 .createdAt(tenant.getCreatedAt())
                 .updatedAt(tenant.getUpdatedAt())
                 .userCount(userCount)

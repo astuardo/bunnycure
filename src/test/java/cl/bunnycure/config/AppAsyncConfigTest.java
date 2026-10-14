@@ -43,5 +43,24 @@ class AppAsyncConfigTest {
         );
     }
 
+    @Test
+    void getAsyncExecutor_PropagatesTenantContextToAsyncThread() throws Exception {
+        Executor executor = config.getAsyncExecutor();
+        ThreadPoolTaskExecutor pool = (ThreadPoolTaskExecutor) executor;
+
+        TenantContext.setCurrentTenantId(99L);
+
+        java.util.concurrent.CompletableFuture<Long> future = new java.util.concurrent.CompletableFuture<>();
+        pool.execute(() -> {
+            future.complete(TenantContext.getCurrentTenantId());
+        });
+
+        Long executedTenantId = future.get(5, java.util.concurrent.TimeUnit.SECONDS);
+        assertEquals(99L, executedTenantId, "El TenantContext debe ser propagado al hilo asíncrono");
+
+        TenantContext.clear();
+        pool.shutdown();
+    }
+
     void dummyMethod() {}
 }
