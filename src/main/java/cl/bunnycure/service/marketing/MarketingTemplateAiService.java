@@ -38,8 +38,8 @@ public class MarketingTemplateAiService {
     private final MarketingTemplateRepository templateRepository;
     private final WhatsAppService whatsAppService;
     private final MarketingTemplateCatalog templateCatalog;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RestTemplate restTemplate = createFastRestTemplate();
+    private ObjectMapper objectMapper = new ObjectMapper();
+    private RestTemplate restTemplate = createFastRestTemplate();
 
     private static RestTemplate createFastRestTemplate() {
         org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();

@@ -22,5 +22,9 @@ public class LoginRequest {
     /**
      * Indica si se debe recordar la sesión (opcional).
      */
-    private Boolean rememberMe = false;
+    private Boolean rememberMe;
+
+    public Boolean getRememberMe() {
+        return Boolean.TRUE.equals(this.rememberMe);
+    }
 }

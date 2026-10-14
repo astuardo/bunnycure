@@ -333,7 +333,7 @@ public class WebPushNotificationService {
             }
         }
         
-        java.text.NumberFormat clpFormat = java.text.NumberFormat.getCurrencyInstance(new java.util.Locale("es", "CL"));
+        java.text.NumberFormat clpFormat = java.text.NumberFormat.getCurrencyInstance(java.util.Locale.of("es", "CL"));
         String totalPriceStr = clpFormat.format(total);
 
         // Fetch templates

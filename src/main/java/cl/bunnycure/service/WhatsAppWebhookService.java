@@ -42,10 +42,10 @@ public class WhatsAppWebhookService {
     private static final long ALERT_THROTTLE_MILLIS = 5 * 60 * 1000L;
     private static final Pattern APPOINTMENT_ID_PATTERN = Pattern.compile("(?:^|[:#_\\-])(\\d+)$");
 
-    private final Map<String, Long> processedEventIds = new ConcurrentHashMap<>();
-    private final Map<String, Long> lastAlertByKey = new ConcurrentHashMap<>();
-    private final Map<String, Long> operationalEventCounters = new ConcurrentHashMap<>();
-    private final AtomicLong dedupeChecksCounter = new AtomicLong(0);
+    private Map<String, Long> processedEventIds = new ConcurrentHashMap<>();
+    private Map<String, Long> lastAlertByKey = new ConcurrentHashMap<>();
+    private Map<String, Long> operationalEventCounters = new ConcurrentHashMap<>();
+    private AtomicLong dedupeChecksCounter = new AtomicLong(0);
     private final AppointmentRepository appointmentRepository;
     private final WebhookOperationalEventRepository webhookOperationalEventRepository;
     private final WebhookProcessedEventRepository webhookProcessedEventRepository;

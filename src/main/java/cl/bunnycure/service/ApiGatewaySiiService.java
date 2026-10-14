@@ -52,7 +52,7 @@ public class ApiGatewaySiiService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     // Caché en memoria para evitar consumo excesivo de créditos de API
-    private final Map<String, CachedSiiList> siiListCache = new ConcurrentHashMap<>();
+    private Map<String, CachedSiiList> siiListCache = new ConcurrentHashMap<>();
     private static final long CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutos
 
     private static class CachedSiiList {

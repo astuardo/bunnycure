@@ -256,7 +256,7 @@ public class AppSettingsService {
     public Locale getAppJavaLocale() {
         String configured = getAppLocale();
         if (configured == null || configured.isBlank()) {
-            return new Locale("es", "CL");
+            return Locale.of("es", "CL");
         }
 
         String normalized = configured.trim().replace('-', '_');
@@ -265,7 +265,7 @@ public class AppSettingsService {
             if (normalized.contains("_")) {
                 String[] parts = normalized.split("_", 3);
                 if (parts.length >= 2 && !parts[0].isBlank() && !parts[1].isBlank()) {
-                    return new Locale(parts[0].toLowerCase(Locale.ROOT), parts[1].toUpperCase(Locale.ROOT));
+                    return Locale.of(parts[0].toLowerCase(Locale.ROOT), parts[1].toUpperCase(Locale.ROOT));
                 }
             }
 
@@ -277,7 +277,7 @@ public class AppSettingsService {
             // Keep fallback below when locale format is invalid.
         }
 
-        return new Locale("es", "CL");
+        return Locale.of("es", "CL");
     }
 
     /** Moneda del negocio (ej: "CLP"). Default: "CLP" */

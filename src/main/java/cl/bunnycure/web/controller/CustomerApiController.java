@@ -213,7 +213,7 @@ public class CustomerApiController {
         return ResponseEntity.noContent().build();
     }
 
-    private final java.util.concurrent.ConcurrentHashMap<String, java.util.List<Long>> lookupRateLimitMap = new java.util.concurrent.ConcurrentHashMap<>();
+    private java.util.concurrent.ConcurrentHashMap<String, java.util.List<Long>> lookupRateLimitMap = new java.util.concurrent.ConcurrentHashMap<>();
     private static final int MAX_LOOKUPS_PER_MINUTE = 15;
     private static final long LOOKUP_WINDOW_MILLIS = 60_000L;
 

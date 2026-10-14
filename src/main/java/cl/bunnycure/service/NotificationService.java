@@ -247,17 +247,18 @@ public class NotificationService {
         }
 
         Long bookingRequestId = request.getId();
+        WhatsAppAdminAlertOutboxService outboxService = this.whatsAppAdminAlertOutboxService;
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    whatsAppAdminAlertOutboxService.enqueueAndTryDispatch(bookingRequestId);
+                    outboxService.enqueueAndTryDispatch(bookingRequestId);
                 }
             });
             return;
         }
 
-        whatsAppAdminAlertOutboxService.enqueueAndTryDispatch(bookingRequestId);
+        outboxService.enqueueAndTryDispatch(bookingRequestId);
     }
 
     /**
@@ -495,7 +496,7 @@ public class NotificationService {
             return appSettingsService.getAppJavaLocale();
         } catch (Exception ex) {
             log.warn("[MAIL] No se pudo resolver app.locale, usando fallback es_CL", ex);
-            return new Locale("es", "CL");
+            return Locale.of("es", "CL");
         }
     }
 

@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
@@ -433,7 +434,7 @@ public class GoogleWalletService {
                 ? "https://walletobjects.googleapis.com/walletobjects/v1/genericObject/"
                 : "https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/";
         String encodedObjectId = URLEncoder.encode(objectId, StandardCharsets.UTF_8);
-        URL url = new URL(endpoint + encodedObjectId + "/addMessage");
+        URL url = URI.create(endpoint + encodedObjectId + "/addMessage").toURL();
 
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");

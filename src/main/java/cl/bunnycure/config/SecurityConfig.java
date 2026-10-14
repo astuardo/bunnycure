@@ -11,7 +11,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -163,39 +163,40 @@ public class SecurityConfig {
 	}
 
 	private RequestMatcher[] csrfIgnoredMatchers(boolean isLocal) {
+		var pathMatcher = PathPatternRequestMatcher.withDefaults();
 		if (isLocal) {
 			return new RequestMatcher[] {
 					request -> isBearerRequest(request),
-					new AntPathRequestMatcher("/h2-console/**"),
-					new AntPathRequestMatcher("/reservar/**"),
-					new AntPathRequestMatcher("/api/auth/login"),
-					new AntPathRequestMatcher("/api/auth/logout"),
-					new AntPathRequestMatcher("/api/auth/refresh"),
-					new AntPathRequestMatcher("/api/customers/lookup"),
-					new AntPathRequestMatcher("/api/public/**"),
-					new AntPathRequestMatcher("/api/webhooks/**"),
-					new AntPathRequestMatcher("/api/webhook/**"),
-					new AntPathRequestMatcher("/api/push-subscriptions/**"),
-					new AntPathRequestMatcher("/login"),
-					new AntPathRequestMatcher("/forgot-password"),
-					new AntPathRequestMatcher("/reset-password")
+					pathMatcher.matcher("/h2-console/**"),
+					pathMatcher.matcher("/reservar/**"),
+					pathMatcher.matcher("/api/auth/login"),
+					pathMatcher.matcher("/api/auth/logout"),
+					pathMatcher.matcher("/api/auth/refresh"),
+					pathMatcher.matcher("/api/customers/lookup"),
+					pathMatcher.matcher("/api/public/**"),
+					pathMatcher.matcher("/api/webhooks/**"),
+					pathMatcher.matcher("/api/webhook/**"),
+					pathMatcher.matcher("/api/push-subscriptions/**"),
+					pathMatcher.matcher("/login"),
+					pathMatcher.matcher("/forgot-password"),
+					pathMatcher.matcher("/reset-password")
 			};
 		}
 
 		return new RequestMatcher[] {
 				request -> isBearerRequest(request),
-				new AntPathRequestMatcher("/reservar/**"),
-				new AntPathRequestMatcher("/api/auth/login"),
-				new AntPathRequestMatcher("/api/auth/logout"),
-				new AntPathRequestMatcher("/api/auth/refresh"),
-				new AntPathRequestMatcher("/api/customers/lookup"),
-				new AntPathRequestMatcher("/api/public/**"),
-				new AntPathRequestMatcher("/api/webhooks/**"),
-				new AntPathRequestMatcher("/api/webhook/**"),
-				new AntPathRequestMatcher("/api/push-subscriptions/**"),
-				new AntPathRequestMatcher("/login"),
-				new AntPathRequestMatcher("/forgot-password"),
-				new AntPathRequestMatcher("/reset-password")
+				pathMatcher.matcher("/reservar/**"),
+				pathMatcher.matcher("/api/auth/login"),
+				pathMatcher.matcher("/api/auth/logout"),
+				pathMatcher.matcher("/api/auth/refresh"),
+				pathMatcher.matcher("/api/customers/lookup"),
+				pathMatcher.matcher("/api/public/**"),
+				pathMatcher.matcher("/api/webhooks/**"),
+				pathMatcher.matcher("/api/webhook/**"),
+				pathMatcher.matcher("/api/push-subscriptions/**"),
+				pathMatcher.matcher("/login"),
+				pathMatcher.matcher("/forgot-password"),
+				pathMatcher.matcher("/reset-password")
 		};
 	}
 
