@@ -19,7 +19,7 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
     
-    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:4173,http://localhost:3000,https://bunnycure-frontend.vercel.app}")
+    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:4173,http://localhost:3000,https://bunnycure-frontend.vercel.app,https://bunnycure.cl,https://app.bunnycure.cl,https://admin.bunnycure.cl,https://reservar.bunnycure.cl}")
     private String allowedOriginsConfig;
     
     @Value("${cors.allowed-origin-patterns:https://*.vercel.app,https://*.bunnycure.cl}")
@@ -28,10 +28,10 @@ public class CorsConfig {
     @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD}")
     private String allowedMethodsConfig;
     
-    @Value("${cors.allowed-headers:Authorization,Content-Type,Accept,Origin,X-XSRF-TOKEN,X-CSRF-TOKEN,X-Requested-With,Baggage,Sentry-Trace}")
+    @Value("${cors.allowed-headers:Authorization,Content-Type,Accept,Origin,X-XSRF-TOKEN,X-CSRF-TOKEN,X-Requested-With,Baggage,Sentry-Trace,X-Tenant-ID,X-Tenant-Id,x-tenant-id,X-Tenant-Slug,x-tenant-slug,X-Salon-ID,X-Salon-Id,x-salon-id,X-Salon-Slug,x-salon-slug,X-Salon-Domain,x-salon-domain,*}")
     private String allowedHeadersConfig;
     
-    @Value("${cors.exposed-headers:Authorization,Location,Content-Disposition,Set-Cookie,X-XSRF-TOKEN,X-Deprecation-Notice}")
+    @Value("${cors.exposed-headers:Authorization,Location,Content-Disposition,Set-Cookie,X-XSRF-TOKEN,X-Deprecation-Notice,X-Tenant-ID,X-Tenant-Slug,X-Salon-ID,X-Salon-Slug}")
     private String exposedHeadersConfig;
     
     @Value("${cors.allow-credentials:true}")
@@ -79,7 +79,11 @@ public class CorsConfig {
         
         // Headers permitidos
         List<String> headers = parseCsvList(allowedHeadersConfig);
-        configuration.setAllowedHeaders(headers);
+        if (headers.contains("*") || headers.isEmpty()) {
+            configuration.addAllowedHeader("*");
+        } else {
+            configuration.setAllowedHeaders(headers);
+        }
         
         // Headers expuestos en la respuesta
         if (!exposedHeadersConfig.isEmpty()) {

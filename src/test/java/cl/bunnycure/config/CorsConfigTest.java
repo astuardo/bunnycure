@@ -9,6 +9,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import java.util.List;
 
 @DisplayName("CorsConfig: Configuración y evaluación de orígenes")
 class CorsConfigTest {
@@ -57,5 +58,28 @@ class CorsConfigTest {
         assertThat(config.getAllowedMethods()).contains("GET", "POST", "PUT", "DELETE", "OPTIONS");
         assertThat(config.getAllowedOriginPatterns()).contains("https://*.vercel.app", "https://*.bunnycure.cl");
         assertThat(config.getExposedHeaders()).contains("Location", "X-Deprecation-Notice");
+    }
+
+    @Test
+    @DisplayName("Debe permitir headers personalizados de multi-tenancy (x-tenant-slug, x-tenant-id)")
+    void corsConfigurationSource_ShouldAllowTenantHeaders() {
+        CorsConfig customConfig = new CorsConfig();
+        ReflectionTestUtils.setField(customConfig, "allowedOriginsConfig", "https://app.bunnycure.cl");
+        ReflectionTestUtils.setField(customConfig, "allowedOriginPatternsConfig", "https://*.bunnycure.cl");
+        ReflectionTestUtils.setField(customConfig, "allowedMethodsConfig", "GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD");
+        ReflectionTestUtils.setField(customConfig, "allowedHeadersConfig", "Authorization,Content-Type,Accept,Origin,X-Tenant-Slug,x-tenant-slug,X-Tenant-ID,x-tenant-id,*");
+        ReflectionTestUtils.setField(customConfig, "exposedHeadersConfig", "Authorization,Location,X-Tenant-ID,X-Tenant-Slug");
+        ReflectionTestUtils.setField(customConfig, "allowCredentials", true);
+        ReflectionTestUtils.setField(customConfig, "maxAge", 3600L);
+
+        CorsConfigurationSource source = customConfig.corsConfigurationSource();
+        MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/api/auth/login");
+        request.addHeader("Origin", "https://app.bunnycure.cl");
+        request.addHeader("Access-Control-Request-Method", "POST");
+        request.addHeader("Access-Control-Request-Headers", "x-tenant-slug,x-tenant-id,authorization");
+        CorsConfiguration config = source.getCorsConfiguration(request);
+
+        assertThat(config).isNotNull();
+        assertThat(config.checkHeaders(List.of("x-tenant-slug", "x-tenant-id", "authorization"))).isNotNull();
     }
 }
