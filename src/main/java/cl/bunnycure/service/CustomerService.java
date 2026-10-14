@@ -28,22 +28,32 @@ public class CustomerService {
     private final GoogleWalletService googleWalletService;
     private final LoyaltyRewardService loyaltyRewardService;
     private final PwaRedirectService pwaRedirectService;
+    private final cl.bunnycure.domain.repository.TenantRepository tenantRepository;
 
     @Autowired
     public CustomerService(CustomerRepository customerRepository,
                            GoogleWalletService googleWalletService,
                            LoyaltyRewardService loyaltyRewardService,
-                           PwaRedirectService pwaRedirectService) {
+                           PwaRedirectService pwaRedirectService,
+                           @Autowired(required = false) cl.bunnycure.domain.repository.TenantRepository tenantRepository) {
         this.customerRepository = customerRepository;
         this.googleWalletService = googleWalletService;
         this.loyaltyRewardService = loyaltyRewardService;
         this.pwaRedirectService = pwaRedirectService;
+        this.tenantRepository = tenantRepository;
+    }
+
+    public CustomerService(CustomerRepository customerRepository,
+                           GoogleWalletService googleWalletService,
+                           LoyaltyRewardService loyaltyRewardService,
+                           PwaRedirectService pwaRedirectService) {
+        this(customerRepository, googleWalletService, loyaltyRewardService, pwaRedirectService, null);
     }
 
     public CustomerService(CustomerRepository customerRepository,
                            GoogleWalletService googleWalletService,
                            LoyaltyRewardService loyaltyRewardService) {
-        this(customerRepository, googleWalletService, loyaltyRewardService, null);
+        this(customerRepository, googleWalletService, loyaltyRewardService, null, null);
     }
 
     public List<Customer> findAll() {
@@ -78,7 +88,7 @@ public class CustomerService {
 
     public Customer findByPublicId(String publicId) {
         var customerOpt = customerRepository.findByPublicId(publicId);
-        if (customerOpt.isEmpty()) {
+        if (customerOpt.isEmpty() && isPublicOrAnonymous()) {
             customerRepository.findTenantIdByPublicId(publicId).ifPresent(cl.bunnycure.config.TenantContext::setCurrentTenantId);
             customerOpt = customerRepository.findByPublicId(publicId);
         }
@@ -103,7 +113,7 @@ public class CustomerService {
 
     public Customer findByPublicIdWithAppointments(String publicId) {
         var customerOpt = customerRepository.findByPublicIdWithAppointments(publicId);
-        if (customerOpt.isEmpty()) {
+        if (customerOpt.isEmpty() && isPublicOrAnonymous()) {
             customerRepository.findTenantIdByPublicId(publicId).ifPresent(cl.bunnycure.config.TenantContext::setCurrentTenantId);
             customerOpt = customerRepository.findByPublicIdWithAppointments(publicId);
         }
@@ -124,6 +134,11 @@ public class CustomerService {
             customer = customerRepository.save(customer);
         }
         return customer;
+    }
+
+    private boolean isPublicOrAnonymous() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return auth == null || !auth.isAuthenticated() || auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken;
     }
 
     public List<CustomerSummary> findAllSummary() {
@@ -480,11 +495,40 @@ public class CustomerService {
         int stampsRemaining = Math.max(0, maxStamps - clampedStamps);
         int progressPercent = (clampedStamps * 100) / maxStamps;
 
+        String salonName = "BunnyCure";
+        String salonInstagram = "@bunnycure.cl";
+        String salonWhatsapp = "+56927978078";
+        String tenantSlug = "bunnycure";
+        String logoUrl = null;
+        String primaryColor = "#d48b70";
+
+        if (tenantRepository != null && customer.getTenantId() != null) {
+            var tenantOpt = tenantRepository.findById(customer.getTenantId());
+            if (tenantOpt.isPresent()) {
+                var tenant = tenantOpt.get();
+                if (tenant.getName() != null && !tenant.getName().isBlank()) {
+                    salonName = tenant.getName();
+                }
+                if (tenant.getPhone() != null && !tenant.getPhone().isBlank()) {
+                    salonWhatsapp = tenant.getPhone();
+                }
+                if (tenant.getSlug() != null && !tenant.getSlug().isBlank()) {
+                    tenantSlug = tenant.getSlug();
+                }
+                if (tenant.getLogoUrl() != null && !tenant.getLogoUrl().isBlank()) {
+                    logoUrl = tenant.getLogoUrl();
+                }
+                if (tenant.getPrimaryColor() != null && !tenant.getPrimaryColor().isBlank()) {
+                    primaryColor = tenant.getPrimaryColor();
+                }
+            }
+        }
+
         int rewardIndex = customer.getCurrentRewardIndex() != null ? customer.getCurrentRewardIndex() : 0;
         var reward = loyaltyRewardService.getRewardAt(rewardIndex);
         String rewardName = (reward != null && reward.getName() != null && !reward.getName().isBlank())
                 ? reward.getName()
-                : "Premio Especial BunnyCure";
+                : "Premio Especial " + salonName;
 
         boolean rewardAvailable = clampedStamps >= maxStamps;
         String statusMessage = rewardAvailable
@@ -518,9 +562,12 @@ public class CustomerService {
                 .rewardStatusMessage(statusMessage)
                 .qrValue(qrValue)
                 .googleWalletUrl(googleWalletUrl)
-                .salonName("BunnyCure")
-                .salonInstagram("@bunnycure.cl")
-                .salonWhatsapp("+56927978078")
+                .salonName(salonName)
+                .salonInstagram(salonInstagram)
+                .salonWhatsapp(salonWhatsapp)
+                .tenantSlug(tenantSlug)
+                .logoUrl(logoUrl)
+                .primaryColor(primaryColor)
                 .build();
     }
 

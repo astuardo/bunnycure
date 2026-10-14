@@ -34,4 +34,7 @@ public class LoyaltyCardPublicDto implements Serializable {
     private String salonName;
     private String salonInstagram;
     private String salonWhatsapp;
+    private String tenantSlug;
+    private String logoUrl;
+    private String primaryColor;
 }
