@@ -59,7 +59,7 @@ public class CorsConfig {
                 } else {
                     origins.add(origin);
                 }
-            } else {
+            } else if (origin.startsWith("http://") || origin.startsWith("https://")) {
                 origins.add(origin);
             }
         }
@@ -78,7 +78,18 @@ public class CorsConfig {
         configuration.setAllowedMethods(methods);
         
         // Headers permitidos
-        List<String> headers = parseCsvList(allowedHeadersConfig);
+        List<String> headers = new ArrayList<>(parseCsvList(allowedHeadersConfig));
+        List<String> mandatoryHeaders = List.of(
+            "x-tenant-slug", "x-tenant-id", "x-salon-slug", "x-salon-id", "x-salon-domain",
+            "X-Tenant-Slug", "X-Tenant-ID", "X-Salon-Slug", "X-Salon-ID", "X-Salon-Domain",
+            "Authorization", "Content-Type", "Accept", "Origin"
+        );
+        for (String mh : mandatoryHeaders) {
+            if (!headers.contains(mh)) {
+                headers.add(mh);
+            }
+        }
+
         if (headers.contains("*") || headers.isEmpty()) {
             configuration.addAllowedHeader("*");
         } else {
