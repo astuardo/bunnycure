@@ -14,8 +14,8 @@ public class HttpClientConfig {
     @Bean(name = "apiGatewayRestTemplate")
     public RestTemplate apiGatewayRestTemplate(RestTemplateBuilder builder) {
         return builder
-                .setConnectTimeout(Duration.ofSeconds(20))
-                .setReadTimeout(Duration.ofSeconds(90))
+                .connectTimeout(Duration.ofSeconds(20))
+                .readTimeout(Duration.ofSeconds(90))
                 .build();
     }
 
@@ -23,8 +23,8 @@ public class HttpClientConfig {
     @Primary
     public RestTemplate generalRestTemplate(RestTemplateBuilder builder) {
         return builder
-                .setConnectTimeout(Duration.ofSeconds(20))
-                .setReadTimeout(Duration.ofSeconds(90))
+                .connectTimeout(Duration.ofSeconds(20))
+                .readTimeout(Duration.ofSeconds(90))
                 .build();
     }
 }

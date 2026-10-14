@@ -55,6 +55,7 @@ class WhatsAppAdminAlertOutboxServiceTest {
     private WhatsAppAdminAlertOutboxService service;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
         service = new WhatsAppAdminAlertOutboxService(
                 outboxRepository,

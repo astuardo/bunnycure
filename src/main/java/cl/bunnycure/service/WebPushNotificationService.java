@@ -252,6 +252,11 @@ public class WebPushNotificationService {
             subscription.setLastFailureReason(ex.getClass().getSimpleName() + ": " + ex.getMessage());
             subscriptionRepository.save(subscription);
             log.warn("[WEB-PUSH] Error enviando push para endpoint {}: {}", subscription.getEndpoint(), ex.getMessage());
+        } catch (Exception ex) {
+            subscription.setLastFailureAt(LocalDateTime.now());
+            subscription.setLastFailureReason(ex.getClass().getSimpleName() + ": " + ex.getMessage());
+            subscriptionRepository.save(subscription);
+            log.warn("[WEB-PUSH] Error inesperado enviando push para endpoint {}: {}", subscription.getEndpoint(), ex.getMessage());
         }
     }
 

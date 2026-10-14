@@ -12,7 +12,7 @@ import cl.bunnycure.web.dto.ServiceCatalogDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
@@ -26,16 +26,16 @@ import static org.mockito.Mockito.*;
 @ActiveProfiles("test")
 class CacheConfigTest {
 
-    @MockBean
+    @MockitoBean
     private AppSettingsRepository repository;
 
-    @MockBean
+    @MockitoBean
     private ServiceCatalogRepository serviceCatalogRepository;
 
-    @MockBean
+    @MockitoBean
     private AppointmentRepository appointmentRepository;
 
-    @MockBean
+    @MockitoBean
     private BookingRequestRepository bookingRequestRepository;
 
     @Autowired

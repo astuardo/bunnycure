@@ -2,8 +2,6 @@ package cl.bunnycure.service;
 
 import cl.bunnycure.config.TenantContext;
 import cl.bunnycure.config.TestMailConfiguration;
-import cl.bunnycure.domain.enums.BookingRequestStatus;
-import cl.bunnycure.domain.model.BookingRequest;
 import cl.bunnycure.domain.model.Customer;
 import cl.bunnycure.domain.model.Product;
 import cl.bunnycure.domain.model.ServiceCatalog;
@@ -22,7 +20,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,9 +44,6 @@ class TenantStrictIsolationIntegrationTest {
 
     @Autowired
     private cl.bunnycure.domain.repository.MarketingTemplateRepository marketingTemplateRepository;
-
-    @Autowired
-    private cl.bunnycure.domain.repository.NotificationLogRepository notificationLogRepository;
 
     @Autowired
     private CustomerService customerService;
