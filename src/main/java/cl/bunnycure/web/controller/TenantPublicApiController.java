@@ -69,9 +69,15 @@ public class TenantPublicApiController {
                 ? tenant.getName()
                 : (appSettingsService != null ? appSettingsService.getAppName() : "BunnyCure");
 
-        String phone = (tenant.getPhone() != null && !tenant.getPhone().isBlank())
-                ? tenant.getPhone()
-                : (appSettingsService != null ? appSettingsService.getAppPhoneDisplay() : "+56 9 8887 3031");
+        String configuredPhone = appSettingsService != null ? appSettingsService.getAppPhoneDisplay() : null;
+        String phone;
+        if (configuredPhone != null && !configuredPhone.isBlank()) {
+            phone = configuredPhone;
+        } else if (tenant.getPhone() != null && !tenant.getPhone().isBlank() && !"+56983692046".equals(tenant.getPhone().replaceAll("\\s+", ""))) {
+            phone = tenant.getPhone();
+        } else {
+            phone = "+56 9 6449 9995";
+        }
 
         String email = (tenant.getEmail() != null && !tenant.getEmail().isBlank())
                 ? tenant.getEmail()
@@ -79,9 +85,15 @@ public class TenantPublicApiController {
 
         String slogan = appSettingsService != null ? appSettingsService.getAppSlogan() : "Arte en tus manos ✨";
         String secondaryColor = appSettingsService != null ? appSettingsService.getAppSecondaryColor() : "#6B4C38";
-        String whatsappNumber = (tenant.getPhone() != null && !tenant.getPhone().isBlank())
-                ? tenant.getPhone()
-                : (appSettingsService != null ? appSettingsService.getWhatsappNumber() : "56988873031");
+        String configuredWa = appSettingsService != null ? appSettingsService.getWhatsappNumber() : null;
+        String whatsappNumber;
+        if (configuredWa != null && !configuredWa.isBlank()) {
+            whatsappNumber = configuredWa;
+        } else if (tenant.getPhone() != null && !tenant.getPhone().isBlank() && !"+56983692046".equals(tenant.getPhone().replaceAll("\\s+", ""))) {
+            whatsappNumber = tenant.getPhone();
+        } else {
+            whatsappNumber = "56964499995";
+        }
         String instagramHandle = appSettingsService != null ? appSettingsService.getAppInstagramHandle() : "@bunny.cure";
         boolean bookingEnabled = appSettingsService == null || appSettingsService.isBookingEnabled();
         String morningBlock = appSettingsService != null ? appSettingsService.getMorningBlock() : "09:00 – 13:00";
