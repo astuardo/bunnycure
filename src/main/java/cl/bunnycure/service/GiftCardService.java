@@ -552,8 +552,12 @@ public class GiftCardService {
     }
 
     private GiftCard findByCodeWithDetails(String code) {
-        return giftCardRepository.findByCodeWithDetails(code)
-                .orElseThrow(() -> new ResourceNotFoundException("GiftCard no encontrada"));
+        var gcOpt = giftCardRepository.findByCodeWithDetails(code);
+        if (gcOpt.isEmpty()) {
+            giftCardRepository.findTenantIdByCode(code).ifPresent(cl.bunnycure.config.TenantContext::setCurrentTenantId);
+            gcOpt = giftCardRepository.findByCodeWithDetails(code);
+        }
+        return gcOpt.orElseThrow(() -> new ResourceNotFoundException("GiftCard no encontrada"));
     }
 
     private String generateCode(Long id) {

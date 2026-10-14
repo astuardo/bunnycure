@@ -18,6 +18,9 @@ public interface GiftCardRepository extends JpaRepository<GiftCard, Long> {
 
     Optional<GiftCard> findByCode(String code);
 
+    @Query(value = "SELECT gc.tenant_id FROM gift_cards gc WHERE gc.code = :code LIMIT 1", nativeQuery = true)
+    Optional<Long> findTenantIdByCode(@Param("code") String code);
+
     @Query("""
         SELECT DISTINCT gc FROM GiftCard gc
         LEFT JOIN FETCH gc.items items

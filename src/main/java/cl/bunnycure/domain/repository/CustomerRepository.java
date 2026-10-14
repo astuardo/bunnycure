@@ -24,6 +24,9 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     boolean existsByRut(String rut);
 
+    @org.springframework.data.jpa.repository.Query(value = "SELECT c.tenant_id FROM customers c WHERE c.public_id = :publicId LIMIT 1", nativeQuery = true)
+    Optional<Long> findTenantIdByPublicId(@org.springframework.data.repository.query.Param("publicId") String publicId);
+
     @Override
     @Query("SELECT c FROM Customer c WHERE c.id = :id")
     Optional<Customer> findById(@org.springframework.data.repository.query.Param("id") Long id);

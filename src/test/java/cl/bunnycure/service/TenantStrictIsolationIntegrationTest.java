@@ -46,6 +46,15 @@ class TenantStrictIsolationIntegrationTest {
     private BookingRequestRepository bookingRequestRepository;
 
     @Autowired
+    private cl.bunnycure.domain.repository.MarketingTemplateRepository marketingTemplateRepository;
+
+    @Autowired
+    private cl.bunnycure.domain.repository.NotificationLogRepository notificationLogRepository;
+
+    @Autowired
+    private CustomerService customerService;
+
+    @Autowired
     private TransactionTemplate transactionTemplate;
 
     @Autowired
@@ -235,5 +244,92 @@ class TenantStrictIsolationIntegrationTest {
             assertTrue(leak.isEmpty(), "Tenant 1 no puede ver ni modificar insumos de Tenant 2");
             return null;
         });
+    }
+
+    @Test
+    @DisplayName("Aislamiento Estricto de Campañas de Marketing: Salones pueden tener plantillas con el mismo nombre sin colisión")
+    void strictIsolation_MarketingTemplates() {
+        // Tenant 1 crea plantilla "PROMO_VERANO"
+        TenantContext.setCurrentTenantId(1L);
+        Long t1Id = transactionTemplate.execute(status -> {
+            var t1 = cl.bunnycure.domain.model.MarketingTemplateEntity.builder()
+                    .name("PROMO_VERANO")
+                    .displayName("Promo Verano Bunny")
+                    .bodyText("Descuentos de verano en BunnyCure")
+                    .build();
+            return marketingTemplateRepository.save(t1).getId();
+        });
+
+        // Tenant 2 crea plantilla con EL MISMO NOMBRE "PROMO_VERANO" (permitido en SaaS multi-tenant)
+        TenantContext.setCurrentTenantId(2L);
+        Long t2Id = transactionTemplate.execute(status -> {
+            var t2 = cl.bunnycure.domain.model.MarketingTemplateEntity.builder()
+                    .name("PROMO_VERANO")
+                    .displayName("Promo Verano Glamour")
+                    .bodyText("Descuentos de verano en Glamour Salon")
+                    .build();
+            return marketingTemplateRepository.save(t2).getId();
+        });
+
+        // Verificación desde Tenant 1
+        TenantContext.setCurrentTenantId(1L);
+        transactionTemplate.execute(status -> {
+            entityManager.clear();
+            var opt = marketingTemplateRepository.findByName("PROMO_VERANO");
+            assertTrue(opt.isPresent());
+            assertEquals("Promo Verano Bunny", opt.get().getDisplayName());
+
+            var found = marketingTemplateRepository.findById(t2Id);
+            assertFalse(found.isPresent());
+            return null;
+        });
+
+        // Verificación desde Tenant 2
+        TenantContext.setCurrentTenantId(2L);
+        transactionTemplate.execute(status -> {
+            entityManager.clear();
+            var opt = marketingTemplateRepository.findByName("PROMO_VERANO");
+            assertTrue(opt.isPresent());
+            assertEquals("Promo Verano Glamour", opt.get().getDisplayName());
+
+            assertFalse(marketingTemplateRepository.findById(t1Id).isPresent());
+            return null;
+        });
+
+        // Limpieza
+        TenantContext.setCurrentTenantId(1L);
+        transactionTemplate.execute(status -> { marketingTemplateRepository.deleteById(t1Id); return null; });
+        TenantContext.setCurrentTenantId(2L);
+        transactionTemplate.execute(status -> { marketingTemplateRepository.deleteById(t2Id); return null; });
+    }
+
+    @Test
+    @DisplayName("Resolución Pública Segura Cross-Tenant: Link público /mi-tarjeta/:publicId resuelve el tenant del cliente sin cruces")
+    void safeCrossTenantPublicLookup_CustomerPublicId() {
+        // Tenant 2 crea cliente
+        TenantContext.setCurrentTenantId(2L);
+        Customer c2 = transactionTemplate.execute(status -> {
+            Customer c = new Customer("Clienta VIP Glamour", "+56999887766", "vip@glamour.cl", "99.888.777-6");
+            c.assignPublicIdIfMissing();
+            return customerRepository.save(c);
+        });
+
+        String publicId = c2.getPublicId();
+        assertNotNull(publicId);
+
+        // Simulamos petición pública inicial sin tenant contextual (por defecto Tenant 1)
+        // Resolución pública previa del tenant mediante consulta nativa segura
+        customerRepository.findTenantIdByPublicId(publicId).ifPresent(TenantContext::setCurrentTenantId);
+
+        // CustomerService.findByPublicId ahora se ejecuta con el contexto del tenant del cliente
+        Customer resolved = customerService.findByPublicId(publicId);
+        assertNotNull(resolved);
+        assertEquals("Clienta VIP Glamour", resolved.getFullName());
+        assertEquals(2L, resolved.getTenantId());
+        assertEquals(2L, TenantContext.getCurrentTenantId());
+
+        // Limpieza
+        TenantContext.setCurrentTenantId(2L);
+        transactionTemplate.execute(status -> { customerRepository.deleteById(c2.getId()); return null; });
     }
 }

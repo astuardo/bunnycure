@@ -13,6 +13,10 @@ import java.util.Optional;
 
 @Repository
 public interface InvoiceLogRepository extends JpaRepository<InvoiceLog, Long> {
+    @Override
+    @Query("SELECT il FROM InvoiceLog il WHERE il.id = :id")
+    Optional<InvoiceLog> findById(@Param("id") Long id);
+
     Optional<InvoiceLog> findByAppointmentId(Long appointmentId);
     Optional<InvoiceLog> findByInvoiceNumber(String invoiceNumber);
     Optional<InvoiceLog> findBySiiCode(String siiCode);

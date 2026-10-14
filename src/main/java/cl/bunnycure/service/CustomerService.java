@@ -77,7 +77,13 @@ public class CustomerService {
     }
 
     public Customer findByPublicId(String publicId) {
-        Customer customer = customerRepository.findByPublicId(publicId)
+        var customerOpt = customerRepository.findByPublicId(publicId);
+        if (customerOpt.isEmpty()) {
+            customerRepository.findTenantIdByPublicId(publicId).ifPresent(cl.bunnycure.config.TenantContext::setCurrentTenantId);
+            customerOpt = customerRepository.findByPublicId(publicId);
+        }
+
+        Customer customer = customerOpt
                 .or(() -> {
                     try {
                         Long id = Long.parseLong(publicId);
@@ -96,7 +102,13 @@ public class CustomerService {
     }
 
     public Customer findByPublicIdWithAppointments(String publicId) {
-        Customer customer = customerRepository.findByPublicIdWithAppointments(publicId)
+        var customerOpt = customerRepository.findByPublicIdWithAppointments(publicId);
+        if (customerOpt.isEmpty()) {
+            customerRepository.findTenantIdByPublicId(publicId).ifPresent(cl.bunnycure.config.TenantContext::setCurrentTenantId);
+            customerOpt = customerRepository.findByPublicIdWithAppointments(publicId);
+        }
+
+        Customer customer = customerOpt
                 .or(() -> {
                     try {
                         Long id = Long.parseLong(publicId);

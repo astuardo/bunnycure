@@ -20,6 +20,10 @@ public class InventoryMovement {
     @SequenceGenerator(name = "inventory_movements_seq_generator", sequenceName = "inventory_movements_seq", allocationSize = 1)
     private Long id;
 
+    @org.hibernate.annotations.TenantId
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;

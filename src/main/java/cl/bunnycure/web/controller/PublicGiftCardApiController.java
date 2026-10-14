@@ -20,11 +20,13 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class PublicGiftCardApiController {
 
+    private final cl.bunnycure.domain.repository.GiftCardRepository giftCardRepository;
     private final GiftCardService giftCardService;
 
     @Operation(summary = "Obtener GiftCard por código (público)")
     @GetMapping("/{code}")
     public ResponseEntity<ApiResponse<GiftCardResponseDto>> getByCode(@PathVariable String code) {
+        giftCardRepository.findTenantIdByCode(code).ifPresent(cl.bunnycure.config.TenantContext::setCurrentTenantId);
         return ResponseEntity.ok(ApiResponse.success(giftCardService.getByCodePublic(code)));
     }
 
@@ -35,6 +37,7 @@ public class PublicGiftCardApiController {
             @Valid @RequestBody GiftCardRedeemRequestDto request,
             HttpServletRequest httpRequest
     ) {
+        giftCardRepository.findTenantIdByCode(code).ifPresent(cl.bunnycure.config.TenantContext::setCurrentTenantId);
         GiftCardResponseDto redeemed = giftCardService.redeemPublic(
                 code,
                 request,

@@ -85,10 +85,13 @@ public class AuthApiController {
             log.info("[AUTH-LOGIN] Usuario: {}", loginRequest.getUsername());
             
             // Resolver y fijar tenant del usuario antes de autenticar
-            Long userTenantId = userRepository.findTenantIdByUsername(loginRequest.getUsername())
-                    .orElse(TenantContext.DEFAULT_TENANT_ID);
-            TenantContext.setCurrentTenantId(userTenantId);
-            log.info("[AUTH-LOGIN] TenantContext asignado para login: ID={}", userTenantId);
+            Long currentTenantId = TenantContext.getCurrentTenantId();
+            if (currentTenantId == null || currentTenantId.equals(TenantContext.DEFAULT_TENANT_ID)) {
+                Long userTenantId = userRepository.findTenantIdByUsername(loginRequest.getUsername())
+                        .orElse(TenantContext.DEFAULT_TENANT_ID);
+                TenantContext.setCurrentTenantId(userTenantId);
+            }
+            log.info("[AUTH-LOGIN] TenantContext asignado para login: ID={}", TenantContext.getCurrentTenantId());
 
             // Crear token de autenticación
             UsernamePasswordAuthenticationToken authToken = 

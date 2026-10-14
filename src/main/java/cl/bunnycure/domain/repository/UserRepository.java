@@ -16,9 +16,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
 
     Optional<User> findByEmailIgnoreCase(String email);
+
+    Optional<User> findByUsernameAndTenantId(String username, Long tenantId);
+
+    Optional<User> findByEmailIgnoreCaseAndTenantId(String email, Long tenantId);
     
     boolean existsByUsername(String username);
 
-    @org.springframework.data.jpa.repository.Query(value = "SELECT u.tenant_id FROM users u WHERE u.username = :username", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = "SELECT u.tenant_id FROM users u WHERE u.username = :username LIMIT 1", nativeQuery = true)
     Optional<Long> findTenantIdByUsername(@org.springframework.data.repository.query.Param("username") String username);
 }

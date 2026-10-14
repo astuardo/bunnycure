@@ -8,7 +8,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "marketing_templates")
+@Table(name = "marketing_templates", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_marketing_templates_tenant_name", columnNames = {"tenant_id", "name"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,7 +22,11 @@ public class MarketingTemplateEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @org.hibernate.annotations.TenantId
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Column(name = "display_name", nullable = false, length = 150)

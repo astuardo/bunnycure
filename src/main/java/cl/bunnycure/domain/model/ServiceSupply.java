@@ -23,6 +23,10 @@ public class ServiceSupply {
     @SequenceGenerator(name = "service_supplies_seq_generator", sequenceName = "service_supplies_seq", allocationSize = 1)
     private Long id;
 
+    @org.hibernate.annotations.TenantId
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_id", nullable = false)
     private ServiceCatalog service;

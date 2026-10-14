@@ -19,6 +19,10 @@ public class NotificationLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @org.hibernate.annotations.TenantId
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "appointment_id")
     private Appointment appointment;

@@ -9,6 +9,10 @@ import java.util.Optional;
 
 @Repository
 public interface NotificationLogRepository extends JpaRepository<NotificationLog, Long> {
+    @Override
+    @org.springframework.data.jpa.repository.Query("SELECT n FROM NotificationLog n WHERE n.id = :id")
+    Optional<NotificationLog> findById(@org.springframework.data.repository.query.Param("id") Long id);
+
     List<NotificationLog> findByAppointmentId(Long appointmentId);
     List<NotificationLog> findByAppointmentIdOrderByCreatedAtDesc(Long appointmentId);
     List<NotificationLog> findByCustomerId(Long customerId);
