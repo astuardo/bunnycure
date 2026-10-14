@@ -49,6 +49,9 @@ class WhatsAppAdminAlertOutboxServiceTest {
     @Mock
     private TenantExecutionService tenantExecutionService;
 
+    @Mock
+    private cl.bunnycure.domain.repository.TenantRepository tenantRepository;
+
     private WhatsAppAdminAlertOutboxService service;
 
     @BeforeEach
@@ -60,6 +63,7 @@ class WhatsAppAdminAlertOutboxServiceTest {
                 appSettingsService,
                 tenantExecutionService
         );
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "tenantRepository", tenantRepository);
         lenient().doAnswer(inv -> {
             ((Runnable) inv.getArgument(1)).run();
             return null;
@@ -148,6 +152,40 @@ class WhatsAppAdminAlertOutboxServiceTest {
 
         verify(outboxRepository, never()).save(any(WhatsAppAdminAlertOutbox.class));
         verify(whatsAppService, never()).sendAdminBookingAlertSync(any(), any(BookingRequest.class));
+    }
+
+    @Test
+    void dispatchDueAlerts_WhenTenantHasCustomPhone_SendsAlertToTenantPhone() {
+        Long bookingId = 405L;
+        Long salonTenantId = 2L;
+
+        WhatsAppAdminAlertOutbox pending = WhatsAppAdminAlertOutbox.builder()
+                .id(22L)
+                .bookingRequestId(bookingId)
+                .status(OutboxStatus.PENDING)
+                .attemptCount(0)
+                .nextAttemptAt(LocalDateTime.now())
+                .build();
+
+        BookingRequest request = buildBookingRequest(bookingId);
+        request.setTenantId(salonTenantId);
+
+        cl.bunnycure.domain.model.Tenant salonTenant = cl.bunnycure.domain.model.Tenant.builder()
+                .id(salonTenantId)
+                .name("Salón Bella")
+                .slug("bella")
+                .phone("+56999887766")
+                .build();
+
+        when(outboxRepository.findByStatusInAndNextAttemptAtLessThanEqualOrderByCreatedAtAsc(anyCollection(), any(LocalDateTime.class), any(Pageable.class)))
+                .thenReturn(List.of(pending));
+        when(bookingRequestRepository.findById(bookingId)).thenReturn(Optional.of(request));
+        when(tenantRepository.findById(salonTenantId)).thenReturn(Optional.of(salonTenant));
+        when(whatsAppService.sendAdminBookingAlertSync("+56999887766", request)).thenReturn(true);
+
+        service.dispatchDueAlerts();
+
+        verify(whatsAppService).sendAdminBookingAlertSync("+56999887766", request);
     }
 
     private BookingRequest buildBookingRequest(Long bookingId) {

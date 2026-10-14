@@ -140,8 +140,11 @@ public class WhatsAppAdminAlertOutboxService {
         }
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private cl.bunnycure.domain.repository.TenantRepository tenantRepository;
+
     private void sendAlertForRequest(WhatsAppAdminAlertOutbox event, BookingRequest request) {
-        String targetNumber = resolveAdminAlertNumber();
+        String targetNumber = resolveAdminAlertNumber(request != null ? request.getTenantId() : null);
         boolean sent = whatsAppService.sendAdminBookingAlertSync(targetNumber, request);
         if (sent) {
             event.setStatus(OutboxStatus.SENT);
@@ -190,10 +193,10 @@ public class WhatsAppAdminAlertOutboxService {
         Long targetTenantId = request.getTenantId();
         if (targetTenantId != null && tenantExecutionService != null) {
             tenantExecutionService.executeInTenantContext(targetTenantId, () -> {
-                whatsAppService.sendAdminBookingAlertSync(resolveAdminAlertNumber(), finalRequest);
+                whatsAppService.sendAdminBookingAlertSync(resolveAdminAlertNumber(targetTenantId), finalRequest);
             });
         } else {
-            whatsAppService.sendAdminBookingAlertSync(resolveAdminAlertNumber(), finalRequest);
+            whatsAppService.sendAdminBookingAlertSync(resolveAdminAlertNumber(targetTenantId), finalRequest);
         }
     }
 
@@ -201,7 +204,7 @@ public class WhatsAppAdminAlertOutboxService {
         if (!appSettingsService.isWhatsappAdminAlertEnabled(adminAlertEnabled)) {
             return false;
         }
-        String resolved = resolveAdminAlertNumber();
+        String resolved = resolveAdminAlertNumber(null);
         if (resolved == null || resolved.isBlank()) {
             log.warn("[WHATSAPP-ADMIN] Numero admin-alert no configurado");
             return false;
@@ -209,7 +212,20 @@ public class WhatsAppAdminAlertOutboxService {
         return true;
     }
 
-    private String resolveAdminAlertNumber() {
+    private String resolveAdminAlertNumber(Long tenantId) {
+        if (tenantId != null && tenantRepository != null) {
+            try {
+                String tenantPhone = tenantRepository.findById(tenantId)
+                        .map(cl.bunnycure.domain.model.Tenant::getPhone)
+                        .filter(p -> p != null && !p.isBlank())
+                        .orElse(null);
+                if (tenantPhone != null) {
+                    return tenantPhone;
+                }
+            } catch (Exception ex) {
+                log.warn("[WHATSAPP-ADMIN] No se pudo resolver teléfono para tenant {}: {}", tenantId, ex.getMessage());
+            }
+        }
         return appSettingsService.getAdminAlertWhatsappNumber(adminAlertNumberFallback);
     }
 

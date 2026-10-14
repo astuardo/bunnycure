@@ -228,11 +228,7 @@ public class CustomerService {
                         customer.getId(),
                         customer.getFullName(),
                         customer.getPhone(),
-                        customer.getEmail(),
-                        customer.getGender(),
-                        customer.getBirthDate(),
-                        customer.getEmergencyPhone(),
-                        customer.getHealthNotes()
+                        customer.getEmail()
                 ))
                 .orElseGet(CustomerLookupResponseDto::new);
     }

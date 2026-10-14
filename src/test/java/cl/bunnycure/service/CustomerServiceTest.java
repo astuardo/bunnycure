@@ -244,4 +244,36 @@ class CustomerServiceTest {
         assertTrue(card.getRewardStatusMessage().contains("3"));
         assertTrue(card.getPhone().contains("••••"));
     }
+
+    @Test
+    void findByPhoneForLookup_WhenCustomerExists_ReturnsSanitizedDataWithoutSensitiveHealthNotes() {
+        Customer customer = new Customer();
+        customer.setId(5L);
+        customer.setFullName("Camila Henríquez");
+        customer.setPhone("+56998877665");
+        customer.setEmail("camila@test.cl");
+        customer.setHealthNotes("Alergia severa al látex y monómeros");
+        customer.setEmergencyPhone("+56911112222");
+
+        when(customerRepository.findByPhone("+56998877665")).thenReturn(Optional.of(customer));
+
+        cl.bunnycure.web.dto.CustomerLookupResponseDto response = customerService.findByPhoneForLookup("+56998877665");
+
+        assertNotNull(response);
+        assertTrue(response.isFound());
+        assertEquals(5L, response.getId());
+        assertEquals("Camila Henríquez", response.getFullName());
+        assertEquals("+56998877665", response.getPhone());
+        assertEquals("camila@test.cl", response.getEmail());
+    }
+
+    @Test
+    void findByPhoneForLookup_WhenCustomerNotFound_ReturnsFoundFalse() {
+        when(customerRepository.findByPhone("+56900000000")).thenReturn(Optional.empty());
+
+        cl.bunnycure.web.dto.CustomerLookupResponseDto response = customerService.findByPhoneForLookup("+56900000000");
+
+        assertNotNull(response);
+        assertFalse(response.isFound());
+    }
 }

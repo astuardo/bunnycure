@@ -52,7 +52,11 @@ public class TenantContextFilter extends OncePerRequestFilter {
         }
         if (tenantIdHeader != null && !tenantIdHeader.isBlank()) {
             try {
-                return Long.parseLong(tenantIdHeader.trim());
+                Long candidateId = Long.parseLong(tenantIdHeader.trim());
+                if (tenantRepository.existsById(candidateId)) {
+                    return candidateId;
+                }
+                log.warn("[TENANT-FILTER] Cabecera tenant ID {} no existe en la base de datos", candidateId);
             } catch (NumberFormatException ignored) {
                 log.debug("[TENANT-FILTER] Cabecera tenant ID inválida: {}", tenantIdHeader);
             }
@@ -68,6 +72,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
             if (tenantOpt.isPresent()) {
                 return tenantOpt.get().getId();
             }
+            log.warn("[TENANT-FILTER] Cabecera tenant slug '{}' no encontrada en la base de datos", salonSlug);
         }
 
         // 3. Cabecera de dominio personalizado: X-Salon-Domain o X-Tenant-Domain

@@ -213,13 +213,16 @@ public class CustomerApiController {
         return ResponseEntity.noContent().build();
     }
 
+    private final java.util.concurrent.ConcurrentHashMap<String, java.util.List<Long>> lookupRateLimitMap = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int MAX_LOOKUPS_PER_MINUTE = 15;
+    private static final long LOOKUP_WINDOW_MILLIS = 60_000L;
+
     @Operation(
             summary = "Buscar cliente por teléfono",
             description = """
                     Busca un cliente existente por su número de teléfono.
                     Utilizado por el portal público de reservas para auto-completar datos.
-                    
-                    Retorna los datos del cliente si existe, o un objeto vacío si no.
+                    Protegido con Rate Limiting por IP para prevenir recolección masiva de datos.
                     """)
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -229,14 +232,53 @@ public class CustomerApiController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = CustomerLookupResponseDto.class)
                     )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "429",
+                    description = "Demasiadas peticiones desde la misma dirección IP"
             )
     })
     @PostMapping("/lookup")
     public ResponseEntity<CustomerLookupResponseDto> lookup(
             @Parameter(description = "Número de teléfono en formato +56XXXXXXXXX", required = true)
-            @RequestParam String phone) {
+            @RequestParam String phone,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+
+        String clientIp = extractClientIp(httpRequest);
+        long now = System.currentTimeMillis();
+
+        if (lookupRateLimitMap.size() > 500) {
+            lookupRateLimitMap.entrySet().removeIf(e -> e.getValue().isEmpty() || now - e.getValue().get(e.getValue().size() - 1) > LOOKUP_WINDOW_MILLIS);
+        }
+
+        final boolean[] exceeded = {false};
+        lookupRateLimitMap.compute(clientIp, (ip, list) -> {
+            if (list == null) list = new java.util.ArrayList<>();
+            list.removeIf(t -> now - t > LOOKUP_WINDOW_MILLIS);
+            if (list.size() >= MAX_LOOKUPS_PER_MINUTE) {
+                exceeded[0] = true;
+            } else {
+                list.add(now);
+            }
+            return list;
+        });
+
+        if (exceeded[0]) {
+            log.warn("[SECURITY-RATE-LIMIT] Bloqueando exceso de consultas /api/customers/lookup desde IP: {}", clientIp);
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+        }
+
         CustomerLookupResponseDto response = customerService.findByPhoneForLookup(phone);
         return ResponseEntity.ok(response);
+    }
+
+    private String extractClientIp(jakarta.servlet.http.HttpServletRequest request) {
+        if (request == null) return "unknown";
+        String xf = request.getHeader("X-Forwarded-For");
+        if (xf != null && !xf.isBlank()) {
+            return xf.split(",")[0].trim();
+        }
+        return request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
     }
 
     @Operation(summary = "Ajustar sellos de fidelización", description = "Incrementa o decrementa los sellos de un cliente manualmente.")

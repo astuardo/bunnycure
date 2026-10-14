@@ -56,8 +56,36 @@ public class WhatsAppService {
     @Autowired(required = false)
     private ApplicationEventPublisher eventPublisher;
 
+    @Autowired(required = false)
+    private cl.bunnycure.domain.repository.TenantRepository tenantRepository;
+
     @Value("${bunnycure.whatsapp.admin-alert.enabled:true}")
     private boolean adminAlertEnabledFallback;
+
+    public String resolveSalonName(Long tenantId) {
+        if (tenantId != null && tenantRepository != null) {
+            try {
+                String name = tenantRepository.findById(tenantId)
+                        .map(cl.bunnycure.domain.model.Tenant::getName)
+                        .filter(n -> !n.isBlank())
+                        .orElse(null);
+                if (name != null) return name;
+            } catch (Exception ex) {
+                log.debug("[WHATSAPP] Error al obtener nombre de tenant {}: {}", tenantId, ex.getMessage());
+            }
+        }
+        try {
+            Long current = cl.bunnycure.config.TenantContext.getCurrentTenantId();
+            if (current != null && tenantRepository != null) {
+                String currentName = tenantRepository.findById(current)
+                        .map(cl.bunnycure.domain.model.Tenant::getName)
+                        .filter(n -> !n.isBlank())
+                        .orElse(null);
+                if (currentName != null) return currentName;
+            }
+        } catch (Exception ignored) {}
+        return config.getBusinessName() != null && !config.getBusinessName().isBlank() ? config.getBusinessName() : "BunnyCure";
+    }
 
     public Optional<MediaDownloadResult> downloadImageByMediaId(String mediaId) {
         if (mediaId == null || mediaId.isBlank()) {
@@ -850,14 +878,16 @@ public class WhatsAppService {
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
                             resolveAppLocale()));
 
+            String salonName = resolveSalonName(appointment.getTenantId());
             String message = String.format(
-                    "💅 *Tu cita está confirmada - BunnyCure*\n\n" +
+                    "💅 *Tu cita está confirmada - %s*\n\n" +
                     "Hola %s,\n\n" +
                     "Tu cita ha sido confirmada para el *%s*.\n\n" +
                     "📋 *Servicio:* %s\n" +
                     "⏱️ *Duración:* %d minutos\n\n" +
                     "⚠️ *Tolerancia:* Se esperará un máximo de 15 minutos o la cita se dará por cancelada.\n\n" +
-                    "Nos vemos pronto! 🐇✨",
+                    "Te esperamos! ✨",
+                    salonName,
                     appointment.getCustomer().getFullName(),
                     fechaFormateada,
                     appointment.getService().getName(),
@@ -888,12 +918,14 @@ public class WhatsAppService {
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
                             resolveAppLocale()));
 
+            String salonName = resolveSalonName(appointment.getTenantId());
             String message = String.format(
-                    "❌ *Cita cancelada - BunnyCure*\n\n" +
+                    "❌ *Cita cancelada - %s*\n\n" +
                     "Hola %s,\n\n" +
                     "Tu cita del *%s* ha sido cancelada.\n\n" +
-                    "Si deseas agendar una nueva cita, visita nuestra web.\n\n" +
-                    "Saludos! 🐇",
+                    "Si deseas agendar una nueva cita, te invitamos a visitar nuestra web.\n\n" +
+                    "Saludos cordiales.",
+                    salonName,
                     appointment.getCustomer().getFullName(),
                     fechaFormateada
             );
@@ -922,14 +954,16 @@ public class WhatsAppService {
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
                             resolveAppLocale()));
 
+            String salonName = resolveSalonName(appointment.getTenantId());
             String message = String.format(
-                    "⏰ *Recordatorio de cita - BunnyCure*\n\n" +
+                    "⏰ *Recordatorio de cita - %s*\n\n" +
                     "Hola %s,\n\n" +
                     "Te recordamos tu cita para el *%s*.\n\n" +
                     "📋 *Servicio:* %s\n" +
                     "⏱️ *Duración:* %d minutos\n\n" +
                     "⚠️ *Tolerancia:* Se esperará un máximo de 15 minutos o la cita se dará por cancelada.\n\n" +
-                    "Te esperamos! 🐇✨",
+                    "Te esperamos! ✨",
+                    salonName,
                     appointment.getCustomer().getFullName(),
                     fechaFormateada,
                     appointment.getService().getName(),
@@ -959,13 +993,15 @@ public class WhatsAppService {
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
                             resolveAppLocale()));
 
+            String salonName = resolveSalonName(request.getTenantId());
             String message = String.format(
-                    "🐇 *Recibimos tu solicitud - BunnyCure*\n\n" +
+                    "✨ *Recibimos tu solicitud - %s*\n\n" +
                     "Hola %s,\n\n" +
                     "Hemos recibido tu solicitud de reserva para el *%s* en el bloque *%s*.\n\n" +
                     "📋 *Servicio:* %s\n\n" +
                     "Estamos revisando la disponibilidad y te contactaremos pronto.\n\n" +
-                    "Gracias por tu preferencia! 🐇✨",
+                    "Gracias por tu preferencia! ✨",
+                    salonName,
                     request.getFullName(),
                     fechaFormateada,
                     request.getPreferredBlock(),
@@ -995,12 +1031,14 @@ public class WhatsAppService {
                     .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
                             resolveAppLocale()));
 
+            String salonName = resolveSalonName(request.getTenantId());
             String message = String.format(
-                    "❌ *Solicitud no disponible - BunnyCure*\n\n" +
+                    "❌ *Solicitud no disponible - %s*\n\n" +
                     "Hola %s,\n\n" +
                     "Lamentamos informarte que no tenemos disponibilidad para el *%s* en el bloque *%s*.\n\n" +
                     "Te invitamos a intentar con otra fecha en nuestra web.\n\n" +
-                    "Saludos! 🐇",
+                    "Saludos cordiales.",
+                    salonName,
                     request.getFullName(),
                     fechaFormateada,
                     request.getPreferredBlock()
@@ -1683,9 +1721,10 @@ public class WhatsAppService {
                 ? request.getNotes().trim()
                 : "-";
         String reviewLink = buildAdminReviewLink(request.getId());
+        String salonName = resolveSalonName(request.getTenantId());
 
         return String.format(
-                "NUEVA SOLICITUD - BunnyCure\n\n" +
+                "NUEVA SOLICITUD - %s\n\n" +
                         "%s solicitó una hora.\n" +
                         "Revisa disponibilidad en Solicitudes y confirma/reagenda.\n\n" +
                         "ID solicitud: %s\n" +
@@ -1697,6 +1736,7 @@ public class WhatsAppService {
                         "Bloque: %s\n" +
                         "Notas: %s\n\n" +
                         "Revisar ahora: %s",
+                salonName,
                 safeValue(request.getFullName()),
                 request.getId(),
                 safeValue(request.getFullName()),
