@@ -25,12 +25,13 @@ import java.util.Optional;
 public class TenantPublicApiController {
 
     private final TenantRepository tenantRepository;
+    private final cl.bunnycure.service.AppSettingsService appSettingsService;
 
     @Operation(
             summary = "Obtener información pública del salón (Branding)",
             description = "Resuelve y retorna los datos de marca, colores y contacto del salón según el dominio actual o slug."
     )
-    @GetMapping("/tenant-info")
+    @GetMapping({"/tenant-info", "/tenant-config"})
     public ResponseEntity<ApiResponse<TenantInfoDto>> getTenantInfo(
             @RequestParam(required = false) String domain,
             @RequestParam(required = false) String slug
@@ -56,16 +57,55 @@ public class TenantPublicApiController {
             return ResponseEntity.notFound().build();
         }
 
+        String primaryColor = (tenant.getPrimaryColor() != null && !tenant.getPrimaryColor().isBlank())
+                ? tenant.getPrimaryColor()
+                : (appSettingsService != null ? appSettingsService.getAppPrimaryColor() : "#d48b70");
+
+        String logoUrl = (tenant.getLogoUrl() != null && !tenant.getLogoUrl().isBlank())
+                ? tenant.getLogoUrl()
+                : (appSettingsService != null ? appSettingsService.getAppLogoUrl() : "/images/logo.png");
+
+        String name = (tenant.getName() != null && !tenant.getName().isBlank())
+                ? tenant.getName()
+                : (appSettingsService != null ? appSettingsService.getAppName() : "BunnyCure");
+
+        String phone = (tenant.getPhone() != null && !tenant.getPhone().isBlank())
+                ? tenant.getPhone()
+                : (appSettingsService != null ? appSettingsService.getAppPhoneDisplay() : "+56 9 8887 3031");
+
+        String email = (tenant.getEmail() != null && !tenant.getEmail().isBlank())
+                ? tenant.getEmail()
+                : (appSettingsService != null ? appSettingsService.getAppEmail() : "contacto@bunnycure.cl");
+
+        String slogan = appSettingsService != null ? appSettingsService.getAppSlogan() : "Arte en tus manos ✨";
+        String secondaryColor = appSettingsService != null ? appSettingsService.getAppSecondaryColor() : "#6B4C38";
+        String whatsappNumber = (tenant.getPhone() != null && !tenant.getPhone().isBlank())
+                ? tenant.getPhone()
+                : (appSettingsService != null ? appSettingsService.getWhatsappNumber() : "56988873031");
+        String instagramHandle = appSettingsService != null ? appSettingsService.getAppInstagramHandle() : "@bunny.cure";
+        boolean bookingEnabled = appSettingsService == null || appSettingsService.isBookingEnabled();
+        String morningBlock = appSettingsService != null ? appSettingsService.getMorningBlock() : "09:00 – 13:00";
+        String afternoonBlock = appSettingsService != null ? appSettingsService.getAfternoonBlock() : "15:00 – 18:00";
+        String nightBlock = appSettingsService != null ? appSettingsService.getNightBlock() : "19:00 – 22:00";
+
         TenantInfoDto dto = TenantInfoDto.builder()
                 .id(tenant.getId())
-                .name(tenant.getName())
+                .name(name)
                 .slug(tenant.getSlug())
                 .customDomain(tenant.getCustomDomain())
-                .phone(tenant.getPhone())
-                .email(tenant.getEmail())
+                .phone(phone)
+                .email(email)
                 .address(tenant.getAddress())
-                .logoUrl(tenant.getLogoUrl())
-                .primaryColor(tenant.getPrimaryColor())
+                .logoUrl(logoUrl)
+                .primaryColor(primaryColor)
+                .secondaryColor(secondaryColor)
+                .slogan(slogan)
+                .whatsappNumber(whatsappNumber)
+                .instagramHandle(instagramHandle)
+                .bookingEnabled(bookingEnabled)
+                .morningBlock(morningBlock)
+                .afternoonBlock(afternoonBlock)
+                .nightBlock(nightBlock)
                 .active(tenant.isActive())
                 .planTier(tenant.getPlanTier())
                 .build();

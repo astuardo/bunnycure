@@ -31,6 +31,9 @@ class TenantResolutionTest {
     private TenantRepository tenantRepository;
 
     @Mock
+    private AppSettingsService appSettingsService;
+
+    @Mock
     private FilterChain filterChain;
 
     private TenantContextFilter tenantContextFilter;
@@ -39,7 +42,7 @@ class TenantResolutionTest {
     @BeforeEach
     void setUp() {
         tenantContextFilter = new TenantContextFilter(tenantRepository);
-        tenantPublicApiController = new TenantPublicApiController(tenantRepository);
+        tenantPublicApiController = new TenantPublicApiController(tenantRepository, appSettingsService);
     }
 
     @AfterEach
@@ -138,5 +141,40 @@ class TenantResolutionTest {
         assertEquals("bunnycure", dto.getSlug());
         assertEquals("#d48b70", dto.getPrimaryColor());
         assertEquals("PRO", dto.getPlanTier());
+    }
+
+    @Test
+    void getTenantInfo_WithFallbacks_ReturnsEnrichedIdentity() {
+        // Arrange
+        Tenant minimalTenant = Tenant.builder()
+                .id(2L)
+                .name("Glamour Salon")
+                .slug("glamour")
+                .primaryColor(null)
+                .active(true)
+                .build();
+
+        when(tenantRepository.findBySlugIgnoreCase("glamour"))
+                .thenReturn(Optional.of(minimalTenant));
+        when(appSettingsService.getAppPrimaryColor()).thenReturn("#C9897A");
+        when(appSettingsService.getAppSecondaryColor()).thenReturn("#6B4C38");
+        when(appSettingsService.getAppSlogan()).thenReturn("Arte en tus manos ✨");
+        when(appSettingsService.getMorningBlock()).thenReturn("09:00 – 13:00");
+        when(appSettingsService.isBookingEnabled()).thenReturn(true);
+
+        // Act
+        ResponseEntity<ApiResponse<TenantInfoDto>> response = tenantPublicApiController.getTenantInfo(null, "glamour");
+
+        // Assert
+        assertNotNull(response.getBody());
+        TenantInfoDto dto = response.getBody().getData();
+        assertEquals(2L, dto.getId());
+        assertEquals("Glamour Salon", dto.getName());
+        assertEquals("glamour", dto.getSlug());
+        assertEquals("#C9897A", dto.getPrimaryColor());
+        assertEquals("#6B4C38", dto.getSecondaryColor());
+        assertEquals("Arte en tus manos ✨", dto.getSlogan());
+        assertEquals("09:00 – 13:00", dto.getMorningBlock());
+        org.junit.jupiter.api.Assertions.assertTrue(dto.isBookingEnabled());
     }
 }

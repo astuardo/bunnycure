@@ -19,6 +19,14 @@ public class TenantInfoDto {
     private String address;
     private String logoUrl;
     private String primaryColor;
+    private String secondaryColor;
+    private String slogan;
+    private String whatsappNumber;
+    private String instagramHandle;
+    private boolean bookingEnabled;
+    private String morningBlock;
+    private String afternoonBlock;
+    private String nightBlock;
     private boolean active;
     private String planTier;
 }
