@@ -63,6 +63,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             log.debug("[JWT-FILTER] No Authorization header o no es Bearer");
             log.debug("[JWT-FILTER] Continuando con autenticación por sesión...");
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+            if (session != null && session.getAttribute("tenantId") instanceof Long sessionTenantId) {
+                TenantContext.setCurrentTenantId(sessionTenantId);
+                log.debug("[JWT-FILTER] TenantContext establecido desde Session: ID={}", sessionTenantId);
+            }
             filterChain.doFilter(request, response);
             return;
         }
@@ -70,6 +75,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Extraer el token JWT
         jwt = authHeader.substring(7);
         log.debug("[JWT-FILTER] Request: {} {}", method, requestUri);
+
+        // Extraer y establecer tenantId del token en TenantContext
+        Long tokenTenantId = jwtService.extractTenantId(jwt);
+        if (tokenTenantId != null) {
+            TenantContext.setCurrentTenantId(tokenTenantId);
+            log.debug("[JWT-FILTER] TenantContext establecido desde JWT: ID={}", tokenTenantId);
+        }
 
         try {
             // Extraer username del token

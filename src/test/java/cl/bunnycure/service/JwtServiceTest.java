@@ -64,4 +64,29 @@ class JwtServiceTest {
         String tokenType = jwtService.extractClaim(refreshToken, claims -> claims.get("tokenType", String.class));
         assertEquals("refresh", tokenType);
     }
+
+    @Test
+    void generateToken_WithTenantClaims_ShouldExtractTenantIdAndSlug() {
+        UserDetails userDetails = new User("camila", "password", Collections.emptyList());
+        java.util.Map<String, Object> extraClaims = java.util.Map.of(
+                "tenantId", 5L,
+                "tenantSlug", "salon-elegance"
+        );
+
+        String token = jwtService.generateToken(userDetails, extraClaims);
+        assertNotNull(token);
+
+        assertEquals(5L, jwtService.extractTenantId(token));
+        assertEquals("salon-elegance", jwtService.extractTenantSlug(token));
+        assertEquals("camila", jwtService.extractUsername(token));
+    }
+
+    @Test
+    void extractTenantId_WhenNoTenantInToken_ShouldReturnNull() {
+        UserDetails userDetails = new User("admin", "password", Collections.emptyList());
+        String token = jwtService.generateToken(userDetails);
+
+        assertNull(jwtService.extractTenantId(token));
+        assertNull(jwtService.extractTenantSlug(token));
+    }
 }

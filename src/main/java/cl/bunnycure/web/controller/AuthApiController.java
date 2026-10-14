@@ -1,6 +1,9 @@
 package cl.bunnycure.web.controller;
 
+import cl.bunnycure.config.TenantContext;
 import cl.bunnycure.domain.model.User;
+import cl.bunnycure.domain.repository.TenantRepository;
+import cl.bunnycure.domain.repository.UserRepository;
 import cl.bunnycure.service.JwtService;
 import cl.bunnycure.service.UserService;
 import cl.bunnycure.web.dto.ApiResponse;
@@ -54,6 +57,8 @@ public class AuthApiController {
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final TenantRepository tenantRepository;
+    private final UserRepository userRepository;
 
     @Operation(
             summary = "Login de usuario",
@@ -79,6 +84,12 @@ public class AuthApiController {
             log.info("[AUTH-LOGIN] ========== INICIO LOGIN ==========");
             log.info("[AUTH-LOGIN] Usuario: {}", loginRequest.getUsername());
             
+            // Resolver y fijar tenant del usuario antes de autenticar
+            Long userTenantId = userRepository.findTenantIdByUsername(loginRequest.getUsername())
+                    .orElse(TenantContext.DEFAULT_TENANT_ID);
+            TenantContext.setCurrentTenantId(userTenantId);
+            log.info("[AUTH-LOGIN] TenantContext asignado para login: ID={}", userTenantId);
+
             // Crear token de autenticación
             UsernamePasswordAuthenticationToken authToken = 
                 new UsernamePasswordAuthenticationToken(
@@ -113,11 +124,31 @@ public class AuthApiController {
             User user = userService.findByUsername(username);
             log.info("[AUTH-LOGIN] Usuario cargado: {} (role: {})", user.getUsername(), user.getRole());
             
-            // GENERAR JWT para clientes móviles
+            Long tenantId = user.getTenantId();
+            String tenantSlug = null;
+            if (tenantId != null) {
+                var tenantOpt = tenantRepository.findById(tenantId);
+                if (tenantOpt.isPresent()) {
+                    tenantSlug = tenantOpt.get().getSlug();
+                }
+            }
+
+            java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+            extraClaims.put("tenantId", tenantId);
+            if (tenantSlug != null) {
+                extraClaims.put("tenantSlug", tenantSlug);
+            }
+
+            // GENERAR JWT para clientes móviles con claims de tenant
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            String jwtToken = jwtService.generateToken(userDetails);
-            String refreshToken = jwtService.generateRefreshToken(userDetails, Boolean.TRUE.equals(loginRequest.getRememberMe()));
-            log.info("[AUTH-LOGIN] JWT generado correctamente");
+            String jwtToken = jwtService.generateToken(userDetails, extraClaims);
+            String refreshToken = jwtService.generateRefreshToken(userDetails, extraClaims, Boolean.TRUE.equals(loginRequest.getRememberMe()));
+            log.info("[AUTH-LOGIN] JWT generado correctamente con tenantId={} y tenantSlug={}", tenantId, tenantSlug);
+
+            session.setAttribute("tenantId", tenantId);
+            if (tenantSlug != null) {
+                session.setAttribute("tenantSlug", tenantSlug);
+            }
 
             ResponseCookie refreshCookie = buildRefreshCookie(refreshToken, Boolean.TRUE.equals(loginRequest.getRememberMe()));
             
@@ -128,6 +159,8 @@ public class AuthApiController {
                     .email(user.getEmail())
                     .role(user.getRole())
                     .enabled(user.isEnabled())
+                    .tenantId(tenantId)
+                    .tenantSlug(tenantSlug)
                     .build();
             
             // Verificar si requiere cambio de contraseña
@@ -250,10 +283,32 @@ public class AuthApiController {
         }
 
         String username = jwtService.extractUsername(refreshToken);
+        Long tenantId = jwtService.extractTenantId(refreshToken);
+        String tenantSlug = jwtService.extractTenantSlug(refreshToken);
+        if (tenantId != null) {
+            TenantContext.setCurrentTenantId(tenantId);
+        } else {
+            tenantId = userRepository.findTenantIdByUsername(username).orElse(TenantContext.DEFAULT_TENANT_ID);
+            TenantContext.setCurrentTenantId(tenantId);
+        }
+
+        if (tenantSlug == null && tenantId != null) {
+            var tenantOpt = tenantRepository.findById(tenantId);
+            if (tenantOpt.isPresent()) {
+                tenantSlug = tenantOpt.get().getSlug();
+            }
+        }
+
         UserDetails userDetails = (UserDetails) userService.loadUserByUsername(username);
-        String newAccessToken = jwtService.generateToken(userDetails);
+        java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+        extraClaims.put("tenantId", tenantId);
+        if (tenantSlug != null) {
+            extraClaims.put("tenantSlug", tenantSlug);
+        }
+
+        String newAccessToken = jwtService.generateToken(userDetails, extraClaims);
         boolean rememberMe = jwtService.isRememberMeRefreshToken(refreshToken);
-        String newRefreshToken = jwtService.generateRefreshToken(userDetails, rememberMe);
+        String newRefreshToken = jwtService.generateRefreshToken(userDetails, extraClaims, rememberMe);
         ResponseCookie refreshCookie = buildRefreshCookie(newRefreshToken, rememberMe);
 
         return ResponseEntity.ok()
@@ -291,6 +346,15 @@ public class AuthApiController {
         String username = authentication.getName();
         log.info("[AUTH-ME] ✓ Usuario autenticado: {}", username);
         User user = userService.findByUsername(username);
+
+        Long tenantId = user.getTenantId();
+        String tenantSlug = null;
+        if (tenantId != null) {
+            var tenantOpt = tenantRepository.findById(tenantId);
+            if (tenantOpt.isPresent()) {
+                tenantSlug = tenantOpt.get().getSlug();
+            }
+        }
         
         UserDto dto = UserDto.builder()
                 .id(user.getId())
@@ -299,9 +363,11 @@ public class AuthApiController {
                 .email(user.getEmail())
                 .role(user.getRole())
                 .enabled(user.isEnabled())
+                .tenantId(tenantId)
+                .tenantSlug(tenantSlug)
                 .build();
 
-        log.info("[AUTH-ME] ✓ Retornando datos del usuario: {}", username);
+        log.info("[AUTH-ME] ✓ Retornando datos del usuario: {} (tenantId={})", username, tenantId);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 

@@ -42,7 +42,17 @@ public class JwtService {
      * Genera un token JWT para un usuario.
      */
     public String generateToken(UserDetails userDetails) {
+        return generateToken(userDetails, null);
+    }
+
+    /**
+     * Genera un token JWT para un usuario incluyendo claims adicionales (ej: tenantId, tenantSlug).
+     */
+    public String generateToken(UserDetails userDetails, Map<String, Object> extraClaims) {
         Map<String, Object> claims = new HashMap<>();
+        if (extraClaims != null) {
+            claims.putAll(extraClaims);
+        }
         claims.put("tokenType", "access");
         return createToken(claims, userDetails.getUsername());
     }
@@ -60,7 +70,14 @@ public class JwtService {
     }
 
     public String generateRefreshToken(UserDetails userDetails, boolean rememberMe) {
+        return generateRefreshToken(userDetails, null, rememberMe);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails, Map<String, Object> extraClaims, boolean rememberMe) {
         Map<String, Object> claims = new HashMap<>();
+        if (extraClaims != null) {
+            claims.putAll(extraClaims);
+        }
         claims.put("tokenType", "refresh");
         claims.put("rememberMe", rememberMe);
         return createRefreshToken(claims, userDetails.getUsername());
@@ -119,6 +136,41 @@ public class JwtService {
      */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    /**
+     * Extrae el ID del salón / tenant del token si está presente.
+     */
+    public Long extractTenantId(String token) {
+        try {
+            Object val = extractClaim(token, claims -> {
+                Object t = claims.get("tenantId");
+                return t != null ? t : claims.get("tenant_id");
+            });
+            if (val instanceof Number num) {
+                return num.longValue();
+            } else if (val instanceof String str && !str.isBlank()) {
+                return Long.parseLong(str.trim());
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Extrae el slug del salón / tenant del token si está presente.
+     */
+    public String extractTenantSlug(String token) {
+        try {
+            Object val = extractClaim(token, claims -> {
+                Object s = claims.get("tenantSlug");
+                return s != null ? s : claims.get("tenant_slug");
+            });
+            return val != null ? val.toString() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
