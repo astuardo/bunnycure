@@ -305,7 +305,7 @@ public class NotificationService {
             whatsAppService.sendLoyaltyUpdateMessage(customer);
         }
         
-        // TODO: Enviar email si corresponde y se crea template HTML
+        // Nota: Envío de email para sellos pendiente de diseño de plantilla HTML específica.
     }
 
     // ── Helpers privados ─────────────────────────────────────────────────────
