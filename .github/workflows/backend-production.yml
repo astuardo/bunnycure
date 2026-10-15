@@ -1,0 +1,55 @@
+name: Backend Production - Build, Test & Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: backend-production-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 🧪 Run Tests & Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Grant execute permission for Maven Wrapper
+        run: chmod +x mvnw
+
+      - name: Run Unit Tests with Maven
+        run: ./mvnw clean test -B
+
+  deploy:
+    name: 🚀 Deploy to Heroku Production
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy to Heroku
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME || 'bunnycure' }}
+        run: |
+          echo "Deploying BunnyCure Backend to Heroku app: $HEROKU_APP_NAME..."
+          git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git HEAD:main --force
+          echo "### 🚀 Backend Producción Desplegado a Heroku!" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Name:** \`$HEROKU_APP_NAME\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** https://$HEROKU_APP_NAME.herokuapp.com" >> $GITHUB_STEP_SUMMARY
