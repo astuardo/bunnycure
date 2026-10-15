@@ -58,6 +58,10 @@ bin/
 .env.production
 .env.development
 .env.test
+google_client_secret*.json
+*.pem
+*.key
+
 
 # Archivos de configuración con credenciales
 **/application-local.properties

@@ -1,11 +1,15 @@
 package cl.bunnycure.config;
 
 import cl.bunnycure.domain.model.Tenant;
+import cl.bunnycure.domain.model.User;
 import cl.bunnycure.domain.repository.TenantRepository;
+import cl.bunnycure.domain.repository.UserRepository;
+import cl.bunnycure.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
@@ -17,8 +21,13 @@ import java.io.IOException;
 import java.util.Optional;
 
 /**
- * Filtro HTTP que intercepta las peticiones y resuelve el Tenant/Salón
- * a partir de la cabecera Host, X-Salon-Domain, X-Salon-Slug o parámetros.
+ * Filtro HTTP que intercepta las peticiones y resuelve el Tenant/Salón.
+ * Blindado contra ataques de suplantación de inquilinos (Tenant Impersonation).
+ *
+ * Para usuarios autenticados:
+ * Extrae el tenantId directamente del token JWT verificado y lo fuerza en el contexto.
+ * Si el cliente envía headers solicitando un tenant distinto y no es ROLE_SUPER_ADMIN,
+ * se rechaza la petición con HTTP 403 Forbidden.
  */
 @Slf4j
 @Component
@@ -27,6 +36,12 @@ import java.util.Optional;
 public class TenantContextFilter extends OncePerRequestFilter {
 
     private final TenantRepository tenantRepository;
+    private final JwtService jwtService;
+    private final UserRepository userRepository;
+
+    public TenantContextFilter(TenantRepository tenantRepository) {
+        this(tenantRepository, null, null);
+    }
 
     @Override
     protected void doFilterInternal(
@@ -36,16 +51,81 @@ public class TenantContextFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         try {
-            Long resolvedTenantId = resolveTenantId(request);
-            TenantContext.setCurrentTenantId(resolvedTenantId);
+            Long effectiveTenantId = resolveEffectiveTenantId(request, response);
+            if (effectiveTenantId == null) {
+                // Respuesta ya enviada (ej. 403 Forbidden por intento de acceso cruzado no autorizado)
+                return;
+            }
+            TenantContext.setCurrentTenantId(effectiveTenantId);
             filterChain.doFilter(request, response);
         } finally {
             TenantContext.clear();
         }
     }
 
-    private Long resolveTenantId(HttpServletRequest request) {
-        // 1. Cabecera numérica explícita: X-Tenant-ID o X-Salon-ID
+    private Long resolveEffectiveTenantId(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        final String authHeader = request.getHeader("Authorization");
+        final String jwt = (authHeader != null && authHeader.startsWith("Bearer ")) ? authHeader.substring(7) : null;
+
+        Long tokenTenantId = null;
+        String username = null;
+
+        if (jwt != null && jwtService != null) {
+            try {
+                if (jwtService.validateToken(jwt)) {
+                    tokenTenantId = jwtService.extractTenantId(jwt);
+                    username = jwtService.extractUsername(jwt);
+                }
+            } catch (Exception ex) {
+                log.debug("[TENANT-FILTER] Error al validar JWT en TenantContextFilter: {}", ex.getMessage());
+            }
+        }
+
+        // Si no hay JWT, verificar sesión HTTP como fallback
+        if (tokenTenantId == null) {
+            HttpSession session = request.getSession(false);
+            if (session != null && session.getAttribute("tenantId") instanceof Long sId) {
+                tokenTenantId = sId;
+            }
+        }
+
+        // Si el usuario está autenticado (vía JWT o sesión)
+        if (tokenTenantId != null) {
+            // Verificar si el cliente intentó enviar un tenant específico por headers o query
+            Long requestedTenantId = resolveRequestedTenantId(request);
+
+            if (requestedTenantId != null && !requestedTenantId.equals(tokenTenantId)) {
+                // Verificar si el usuario es SUPER_ADMIN
+                boolean isSuperAdmin = false;
+                if (username != null && userRepository != null) {
+                    Optional<User> userOpt = userRepository.findByUsername(username);
+                    isSuperAdmin = userOpt.map(u -> "SUPER_ADMIN".equalsIgnoreCase(u.getRole())).orElse(false);
+                }
+
+                if (!isSuperAdmin) {
+                    log.warn("[TENANT-SECURITY] Acceso denegado: Usuario '{}' (Tenant {}) intentó acceder a Tenant {} sin rol ROLE_SUPER_ADMIN",
+                            username, tokenTenantId, requestedTenantId);
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write("{\"success\":false,\"error\":{\"message\":\"Acceso denegado: No tiene permisos para acceder a otro salón.\",\"code\":\"FORBIDDEN\"}}");
+                    return null;
+                }
+
+                // Super admin autorizado a acceder al tenant solicitado
+                log.info("[TENANT-FILTER] SUPER_ADMIN '{}' accediendo al Tenant {}", username, requestedTenantId);
+                return requestedTenantId;
+            }
+
+            // Forzar el tenantId del token en el contexto
+            return tokenTenantId;
+        }
+
+        // Flujo público (sin usuario autenticado): resolver tenant por dominio, slug o fallback
+        return resolvePublicTenantId(request);
+    }
+
+    private Long resolveRequestedTenantId(HttpServletRequest request) {
         String tenantIdHeader = request.getHeader("X-Tenant-ID");
         if (tenantIdHeader == null || tenantIdHeader.isBlank()) {
             tenantIdHeader = request.getHeader("X-Salon-ID");
@@ -56,13 +136,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 if (tenantRepository.existsById(candidateId)) {
                     return candidateId;
                 }
-                log.warn("[TENANT-FILTER] Cabecera tenant ID {} no existe en la base de datos", candidateId);
-            } catch (NumberFormatException ignored) {
-                log.debug("[TENANT-FILTER] Cabecera tenant ID inválida: {}", tenantIdHeader);
-            }
+            } catch (NumberFormatException ignored) {}
         }
 
-        // 2. Cabecera explícita de Slug: X-Tenant-Slug o X-Salon-Slug
         String salonSlug = request.getHeader("X-Tenant-Slug");
         if (salonSlug == null || salonSlug.isBlank()) {
             salonSlug = request.getHeader("X-Salon-Slug");
@@ -72,10 +148,18 @@ public class TenantContextFilter extends OncePerRequestFilter {
             if (tenantOpt.isPresent()) {
                 return tenantOpt.get().getId();
             }
-            log.warn("[TENANT-FILTER] Cabecera tenant slug '{}' no encontrada en la base de datos", salonSlug);
         }
 
-        // 3. Cabecera de dominio personalizado: X-Salon-Domain o X-Tenant-Domain
+        return null;
+    }
+
+    private Long resolvePublicTenantId(HttpServletRequest request) {
+        Long requested = resolveRequestedTenantId(request);
+        if (requested != null) {
+            return requested;
+        }
+
+        // Dominio personalizado: X-Salon-Domain o X-Tenant-Domain
         String customDomain = request.getHeader("X-Salon-Domain");
         if (customDomain == null || customDomain.isBlank()) {
             customDomain = request.getHeader("X-Tenant-Domain");
@@ -87,21 +171,18 @@ public class TenantContextFilter extends OncePerRequestFilter {
             }
         }
 
-        // 4. Cabecera Host o X-Forwarded-Host (dominio completo o subdominio slug)
+        // Cabecera Host o X-Forwarded-Host
         String host = request.getHeader("X-Forwarded-Host");
         if (host == null || host.isBlank()) {
             host = request.getHeader("Host");
         }
-
         if (host != null && !host.isBlank()) {
             String cleanedHost = cleanDomain(host);
-            // 4a. Buscar por dominio personalizado completo (ej: saloncamila.cl)
             Optional<Tenant> tenantOpt = tenantRepository.findByCustomDomainIgnoreCase(cleanedHost);
             if (tenantOpt.isPresent()) {
                 return tenantOpt.get().getId();
             }
 
-            // 4b. Buscar por subdominio (ej: camila.bunnycure.cl -> slug 'camila')
             String subSlug = extractSubdomainSlug(cleanedHost);
             if (subSlug != null) {
                 Optional<Tenant> subTenantOpt = tenantRepository.findBySlugIgnoreCase(subSlug);
@@ -111,7 +192,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
             }
         }
 
-        // 5. Parámetro de URL: ?tenant=slug o ?salon=slug
+        // Parámetro de URL: ?tenant=slug o ?salon=slug
         String slugParam = request.getParameter("tenant");
         if (slugParam == null || slugParam.isBlank()) {
             slugParam = request.getParameter("salon");
@@ -142,7 +223,6 @@ public class TenantContextFilter extends OncePerRequestFilter {
     private String cleanDomain(String hostHeader) {
         if (hostHeader == null) return "";
         String host = hostHeader.trim().toLowerCase();
-        // Remover puerto si viene (ej: localhost:8080 o app.bunnycure.cl:443)
         int colonIdx = host.indexOf(':');
         if (colonIdx > 0) {
             host = host.substring(0, colonIdx);

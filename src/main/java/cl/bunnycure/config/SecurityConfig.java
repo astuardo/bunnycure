@@ -10,11 +10,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
-import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Arrays;
 
@@ -116,9 +112,9 @@ public class SecurityConfig {
 			auth.anyRequest().authenticated();
 		});
 
-		// ── Sesiones: crear solo cuando sea necesario ──────────────────────────
+		// ── Sesiones: Stateless para API REST desacoplada ──────────────────────
 		http.sessionManagement(session -> session
-				.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+				.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
 		);
 
 		// ── Exception Handling ────────────────────────────────────────────────
@@ -130,21 +126,17 @@ public class SecurityConfig {
 		// ── PWA Redirect Filter & JWT Filter ───────────────────────────────────
 		// Redirecciona vistas legadas del monolito a la PWA con 301
 		http.addFilterBefore(pwaRedirectFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
-		// Permite autenticación dual: JWT (móvil) + Session Cookie (desktop)
+		// Autenticación Stateless vía JWT Bearer
 		http.addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
-		// ── Headers según perfil ──────────────────────────────────────────────
-		http.csrf(csrf -> csrf
-				.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-				.ignoringRequestMatchers(csrfIgnoredMatchers(isLocal))
-		);
+		// ── CSRF: Desactivado para API REST Stateless ──────────────────────────
+		http.csrf(csrf -> csrf.disable());
 
 		if (isLocal) {
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.sameOrigin())
 			);
 		} else {
-			// CSRF activo para sesión; requests con JWT Bearer quedan exentas.
 			http.headers(headers -> headers
 					.frameOptions(frame -> frame.deny())
 					.httpStrictTransportSecurity(hsts -> hsts
@@ -160,48 +152,5 @@ public class SecurityConfig {
 	@Bean
 	public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
 		return authConfig.getAuthenticationManager();
-	}
-
-	private RequestMatcher[] csrfIgnoredMatchers(boolean isLocal) {
-		var pathMatcher = PathPatternRequestMatcher.withDefaults();
-		if (isLocal) {
-			return new RequestMatcher[] {
-					request -> isBearerRequest(request),
-					pathMatcher.matcher("/h2-console/**"),
-					pathMatcher.matcher("/reservar/**"),
-					pathMatcher.matcher("/api/auth/login"),
-					pathMatcher.matcher("/api/auth/logout"),
-					pathMatcher.matcher("/api/auth/refresh"),
-					pathMatcher.matcher("/api/customers/lookup"),
-					pathMatcher.matcher("/api/public/**"),
-					pathMatcher.matcher("/api/webhooks/**"),
-					pathMatcher.matcher("/api/webhook/**"),
-					pathMatcher.matcher("/api/push-subscriptions/**"),
-					pathMatcher.matcher("/login"),
-					pathMatcher.matcher("/forgot-password"),
-					pathMatcher.matcher("/reset-password")
-			};
-		}
-
-		return new RequestMatcher[] {
-				request -> isBearerRequest(request),
-				pathMatcher.matcher("/reservar/**"),
-				pathMatcher.matcher("/api/auth/login"),
-				pathMatcher.matcher("/api/auth/logout"),
-				pathMatcher.matcher("/api/auth/refresh"),
-				pathMatcher.matcher("/api/customers/lookup"),
-				pathMatcher.matcher("/api/public/**"),
-				pathMatcher.matcher("/api/webhooks/**"),
-				pathMatcher.matcher("/api/webhook/**"),
-				pathMatcher.matcher("/api/push-subscriptions/**"),
-				pathMatcher.matcher("/login"),
-				pathMatcher.matcher("/forgot-password"),
-				pathMatcher.matcher("/reset-password")
-		};
-	}
-
-	private boolean isBearerRequest(HttpServletRequest request) {
-		String authorization = request.getHeader("Authorization");
-		return authorization != null && authorization.startsWith("Bearer ");
 	}
 }

@@ -58,16 +58,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String username;
 
-        // Si no hay header Authorization o no es Bearer, continuar con el flujo normal
-        // (puede ser autenticación por cookie de sesión)
+        // Si no hay header Authorization o no es Bearer, continuar con el filter chain
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            log.debug("[JWT-FILTER] No Authorization header o no es Bearer");
-            log.debug("[JWT-FILTER] Continuando con autenticación por sesión...");
-            jakarta.servlet.http.HttpSession session = request.getSession(false);
-            if (session != null && session.getAttribute("tenantId") instanceof Long sessionTenantId) {
-                TenantContext.setCurrentTenantId(sessionTenantId);
-                log.debug("[JWT-FILTER] TenantContext establecido desde Session: ID={}", sessionTenantId);
-            }
             filterChain.doFilter(request, response);
             return;
         }
@@ -76,9 +68,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
         log.debug("[JWT-FILTER] Request: {} {}", method, requestUri);
 
-        // Extraer y establecer tenantId del token en TenantContext
+        // Si TenantContext aún no tiene un tenant establecido, establecer desde el JWT
         Long tokenTenantId = jwtService.extractTenantId(jwt);
-        if (tokenTenantId != null) {
+        if (tokenTenantId != null && TenantContext.getCurrentTenantId() == null) {
             TenantContext.setCurrentTenantId(tokenTenantId);
             log.debug("[JWT-FILTER] TenantContext establecido desde JWT: ID={}", tokenTenantId);
         }

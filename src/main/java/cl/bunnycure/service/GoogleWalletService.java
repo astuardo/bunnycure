@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -50,9 +50,6 @@ public class GoogleWalletService {
 
     @Value("${bunnycure.google.wallet.pass-type:loyalty}")
     private String passType;
-
-    @Value("${bunnycure.google.wallet.credentials-path:}")
-    private String credentialsPath;
 
     @Value("${GOOGLE_WALLET_CREDENTIALS:}")
     private String credentialsJson;
@@ -129,22 +126,19 @@ public class GoogleWalletService {
 
     private ServiceAccountCredentials getCredentials() throws Exception {
         java.util.List<String> scopes = Collections.singletonList("https://www.googleapis.com/auth/wallet_object.issuer");
-        if (credentialsJson != null && !credentialsJson.isBlank()) {
-            return (ServiceAccountCredentials) ServiceAccountCredentials.fromStream(
-                    new java.io.ByteArrayInputStream(credentialsJson.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
-                    .createScoped(scopes);
+        String envCredentials = System.getenv("GOOGLE_WALLET_CREDENTIALS");
+        if (envCredentials == null || envCredentials.isBlank()) {
+            envCredentials = credentialsJson;
         }
-        
-        if (credentialsPath != null && !credentialsPath.isBlank()) {
-            java.io.File credentialsFile = new java.io.File(credentialsPath);
-            if (credentialsFile.exists() && credentialsFile.isFile()) {
-                return (ServiceAccountCredentials) ServiceAccountCredentials.fromStream(new FileInputStream(credentialsFile))
-                        .createScoped(scopes);
-            }
+
+        if (envCredentials != null && !envCredentials.isBlank()) {
+            return (ServiceAccountCredentials) ServiceAccountCredentials.fromStream(
+                    new ByteArrayInputStream(envCredentials.getBytes(StandardCharsets.UTF_8)))
+                    .createScoped(scopes);
         }
 
         throw new IllegalStateException(
-                "Credenciales de Google Wallet no configuradas. Por favor defina la variable de entorno GOOGLE_WALLET_CREDENTIALS con el JSON de la cuenta de servicio o configure un archivo válido en GOOGLE_WALLET_CREDENTIALS_PATH.");
+                "Credenciales de Google Wallet no configuradas. Por favor defina la variable de entorno GOOGLE_WALLET_CREDENTIALS con el JSON de la cuenta de servicio.");
     }
     
     public void updateCustomerStamps(Customer customer) {
