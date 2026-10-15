@@ -38,7 +38,9 @@ public class PwaRedirectService {
     private static final Set<String> EXCLUDED_EXACT_PATHS = Set.of(
             "/favicon.ico",
             "/error",
-            "/swagger-ui.html"
+            "/swagger-ui.html",
+            "/manifest-card.json",
+            "/manifest.json"
     );
 
     public boolean isRedirectionEnabled() {
