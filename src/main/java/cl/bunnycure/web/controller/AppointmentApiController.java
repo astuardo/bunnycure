@@ -81,6 +81,9 @@ public class AppointmentApiController {
 
             @Parameter(description = "ID opcional de especialista")
             @RequestParam(required = false) Long specialistId,
+
+            @Parameter(description = "ID opcional de cliente para obtener todo su historial de citas")
+            @RequestParam(required = false) Long customerId,
             
             org.springframework.security.core.Authentication authentication) {
         
@@ -103,7 +106,23 @@ public class AppointmentApiController {
         
         List<Appointment> appointments;
         
-        if (status != null) {
+        if (customerId != null) {
+            appointments = appointmentService.findByCustomerId(customerId);
+            if (status != null) {
+                appointments = appointments.stream()
+                        .filter(a -> a.getStatus() == status)
+                        .toList();
+            }
+            if (startDate != null && endDate != null) {
+                appointments = appointments.stream()
+                        .filter(a -> !a.getAppointmentDate().isBefore(startDate) && !a.getAppointmentDate().isAfter(endDate))
+                        .toList();
+            } else if (startDate != null) {
+                appointments = appointments.stream()
+                        .filter(a -> !a.getAppointmentDate().isBefore(startDate))
+                        .toList();
+            }
+        } else if (status != null) {
             appointments = appointmentService.findByStatus(status);
         } else if (startDate != null && endDate != null) {
             appointments = appointmentService.findByDateRange(startDate, endDate);

@@ -185,6 +185,10 @@ public class AppointmentService {
         return appointmentRepository.findByDateRangeWithCustomer(start, end); // ← nombre actualizado
     }
 
+    public List<Appointment> findByCustomerId(Long customerId) {
+        return appointmentRepository.findByCustomerIdOrderByAppointmentDateDescAppointmentTimeDesc(customerId);
+    }
+
     public List<Appointment> findTodayAppointments() {
         return appointmentRepository.findByDateWithCustomer(LocalDate.now());
     }
