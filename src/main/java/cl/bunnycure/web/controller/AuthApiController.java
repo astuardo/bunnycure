@@ -205,18 +205,23 @@ public class AuthApiController {
             summary = "Obtener token CSRF",
             description = "Devuelve el token CSRF actual y fuerza la creación de la cookie XSRF-TOKEN para clientes web/PWA.")
     @GetMapping("/csrf")
-    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> csrf(CsrfToken csrfToken, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> csrf(
+            @org.springframework.lang.Nullable CsrfToken csrfToken,
+            HttpServletRequest request
+    ) {
+        String headerName = (csrfToken != null) ? csrfToken.getHeaderName() : "X-XSRF-TOKEN";
+        String parameterName = (csrfToken != null) ? csrfToken.getParameterName() : "_csrf";
+        String token = (csrfToken != null) ? csrfToken.getToken() : "stateless-jwt";
+
         java.util.Map<String, String> data = new java.util.HashMap<>();
-        data.put("headerName", csrfToken.getHeaderName());
-        data.put("parameterName", csrfToken.getParameterName());
-        data.put("token", csrfToken.getToken());
+        data.put("headerName", headerName);
+        data.put("parameterName", parameterName);
+        data.put("token", token);
 
         // Also set cookie explicitly with domain for cross-subdomain PWA use (e.g. app.bunnycure.cl)
         try {
             String domain = ".bunnycure.cl"; // Use root domain so cookie is available to subdomains
-            // Allow overriding via request host if needed
-            // Create cookie accessible to JS (httpOnly=false)
-            ResponseCookie cookie = ResponseCookie.from("XSRF-TOKEN", csrfToken.getToken())
+            ResponseCookie cookie = ResponseCookie.from("XSRF-TOKEN", token)
                     .httpOnly(false)
                     .secure(true)
                     .sameSite("None")
