@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -147,6 +149,11 @@ public class CustomerService {
                 .toList();
     }
 
+    public Page<CustomerSummary> findAllSummary(Pageable pageable) {
+        return customerRepository.findAllWithAppointmentCount(pageable)
+                .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]));
+    }
+
     public List<CustomerSummary> searchSummary(String query) {
         if (query == null || query.isBlank()) {
             return findAllSummary();
@@ -159,6 +166,14 @@ public class CustomerService {
                 .toList();
     }
 
+    public Page<CustomerSummary> searchSummary(String query, Pageable pageable) {
+        if (query == null || query.isBlank()) {
+            return findAllSummary(pageable);
+        }
+        return customerRepository.searchWithAppointmentCount(query.trim(), pageable)
+                .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]));
+    }
+
     public List<CustomerSummary> findSpecialistSummary(Long specialistId) {
         if (specialistId == null) {
             return findAllSummary();
@@ -167,6 +182,14 @@ public class CustomerService {
                 .stream()
                 .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]))
                 .toList();
+    }
+
+    public Page<CustomerSummary> findSpecialistSummary(Long specialistId, Pageable pageable) {
+        if (specialistId == null) {
+            return findAllSummary(pageable);
+        }
+        return customerRepository.findSpecialistCustomers(specialistId, pageable)
+                .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]));
     }
 
     public List<CustomerSummary> searchSpecialistSummary(Long specialistId, String query) {
@@ -182,6 +205,17 @@ public class CustomerService {
         return findSpecialistSummary(specialistId).stream()
                 .filter(summary -> matchesSearch(summary, normalizedQuery, cleanQuery))
                 .toList();
+    }
+
+    public Page<CustomerSummary> searchSpecialistSummary(Long specialistId, String query, Pageable pageable) {
+        if (specialistId == null) {
+            return searchSummary(query, pageable);
+        }
+        if (query == null || query.isBlank()) {
+            return findSpecialistSummary(specialistId, pageable);
+        }
+        return customerRepository.searchSpecialistCustomers(specialistId, query.trim(), pageable)
+                .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]));
     }
 
     private String normalizeForSearch(String input) {

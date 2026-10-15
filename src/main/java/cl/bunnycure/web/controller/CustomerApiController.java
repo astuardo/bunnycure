@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 
 /**
  * REST API Controller para gestión de clientes.
@@ -44,24 +47,21 @@ public class CustomerApiController {
     @Operation(
             summary = "Listar clientes",
             description = """
-                    Obtiene lista de todos los clientes o filtra por búsqueda de texto y especialista.
+                    Obtiene lista paginada de clientes o filtra por búsqueda de texto y especialista.
                     """)
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "Lista de clientes obtenida exitosamente",
-                    content = @Content(
-                            mediaType = "application/json",
-                            array = @ArraySchema(schema = @Schema(implementation = CustomerSummary.class))
-                    )
+                    description = "Lista paginada de clientes obtenida exitosamente"
             )
     })
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CustomerSummary>>> list(
+    public ResponseEntity<ApiResponse<Page<CustomerSummary>>> list(
             @Parameter(description = "Texto de búsqueda en nombre, teléfono o RUT del cliente")
             @RequestParam(required = false) String search,
             @Parameter(description = "ID opcional de especialista para filtrar clientas")
             @RequestParam(required = false) Long specialistId,
+            @PageableDefault(size = 50, sort = "fullName") Pageable pageable,
             org.springframework.security.core.Authentication authentication) {
 
         Long effectiveSpecialistId = specialistId;
@@ -81,13 +81,13 @@ public class CustomerApiController {
             }
         }
 
-        List<CustomerSummary> summaries;
+        Page<CustomerSummary> summaries;
         if (effectiveSpecialistId != null) {
-            summaries = customerService.searchSpecialistSummary(effectiveSpecialistId, search);
+            summaries = customerService.searchSpecialistSummary(effectiveSpecialistId, search, pageable);
         } else if (search != null && !search.isBlank()) {
-            summaries = customerService.searchSummary(search);
+            summaries = customerService.searchSummary(search, pageable);
         } else {
-            summaries = customerService.findAllSummary();
+            summaries = customerService.findAllSummary(pageable);
         }
 
         return ResponseEntity.ok(ApiResponse.success(summaries));

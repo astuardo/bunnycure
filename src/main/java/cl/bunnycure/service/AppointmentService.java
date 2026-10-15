@@ -11,6 +11,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -180,6 +182,16 @@ public class AppointmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con ID: " + id));
     }
 
+
+    public Page<Appointment> findPaged(
+            Long customerId,
+            AppointmentStatus status,
+            Long specialistId,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable) {
+        return appointmentRepository.findPaged(customerId, status, specialistId, startDate, endDate, pageable);
+    }
 
     public List<Appointment> findByDateRange(LocalDate start, LocalDate end) {
         return appointmentRepository.findByDateRangeWithCustomer(start, end); // ← nombre actualizado

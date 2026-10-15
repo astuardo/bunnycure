@@ -23,6 +23,7 @@ import cl.bunnycure.domain.event.WhatsAppFailedMessageEvent;
 import cl.bunnycure.domain.model.WhatsAppSendResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -39,7 +40,6 @@ import java.util.Optional;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class WhatsAppService {
 
     private static final String WHATSAPP_API_URL = "https://graph.facebook.com/v22.0";
@@ -52,6 +52,8 @@ public class WhatsAppService {
     private final ObjectMapper objectMapper;
     private final WhatsAppHandoffService whatsAppHandoffService;
     private final LoyaltyRewardService loyaltyRewardService;
+    private final WhatsAppMessageBuilderService messageBuilder;
+    private final WhatsAppAdminAlertDispatcher adminAlertDispatcher;
 
     @Autowired(required = false)
     private ApplicationEventPublisher eventPublisher;
@@ -61,6 +63,43 @@ public class WhatsAppService {
 
     @Value("${bunnycure.whatsapp.admin-alert.enabled:true}")
     private boolean adminAlertEnabledFallback;
+
+    @Autowired
+    public WhatsAppService(
+            WhatsAppConfig config,
+            RestTemplate restTemplate,
+            AppSettingsService appSettingsService,
+            CalendarService calendarService,
+            NotificationLogService notificationLogService,
+            ObjectMapper objectMapper,
+            WhatsAppHandoffService whatsAppHandoffService,
+            LoyaltyRewardService loyaltyRewardService,
+            WhatsAppMessageBuilderService messageBuilder,
+            @Lazy WhatsAppAdminAlertDispatcher adminAlertDispatcher) {
+        this.config = config;
+        this.restTemplate = restTemplate;
+        this.appSettingsService = appSettingsService;
+        this.calendarService = calendarService;
+        this.notificationLogService = notificationLogService;
+        this.objectMapper = objectMapper;
+        this.whatsAppHandoffService = whatsAppHandoffService;
+        this.loyaltyRewardService = loyaltyRewardService;
+        this.messageBuilder = messageBuilder != null ? messageBuilder : new WhatsAppMessageBuilderService(appSettingsService);
+        this.adminAlertDispatcher = adminAlertDispatcher != null ? adminAlertDispatcher : new WhatsAppAdminAlertDispatcher(
+                this, this.messageBuilder, config, appSettingsService, calendarService, whatsAppHandoffService);
+    }
+
+    public WhatsAppService(
+            WhatsAppConfig config,
+            RestTemplate restTemplate,
+            AppSettingsService appSettingsService,
+            CalendarService calendarService,
+            NotificationLogService notificationLogService,
+            ObjectMapper objectMapper,
+            WhatsAppHandoffService whatsAppHandoffService,
+            LoyaltyRewardService loyaltyRewardService) {
+        this(config, restTemplate, appSettingsService, calendarService, notificationLogService, objectMapper, whatsAppHandoffService, loyaltyRewardService, null, null);
+    }
 
     public String resolveSalonName(Long tenantId) {
         if (tenantId != null && tenantRepository != null) {
@@ -874,26 +913,8 @@ public class WhatsAppService {
                 return;
             }
 
-            String fechaFormateada = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime())
-                    .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
-                            resolveAppLocale()));
-
             String salonName = resolveSalonName(appointment.getTenantId());
-            String message = String.format(
-                    "💅 *Tu cita está confirmada - %s*\n\n" +
-                    "Hola %s,\n\n" +
-                    "Tu cita ha sido confirmada para el *%s*.\n\n" +
-                    "📋 *Servicio:* %s\n" +
-                    "⏱️ *Duración:* %d minutos\n\n" +
-                    "⚠️ *Tolerancia:* Se esperará un máximo de 15 minutos o la cita se dará por cancelada.\n\n" +
-                    "Te esperamos! ✨",
-                    salonName,
-                    appointment.getCustomer().getFullName(),
-                    fechaFormateada,
-                    appointment.getService().getName(),
-                    appointment.getService().getDurationMinutes()
-            );
-
+            String message = messageBuilder.buildAppointmentConfirmationText(appointment, salonName);
             sendTextMessage(phone, message);
 
         } catch (Exception e) {
@@ -914,22 +935,8 @@ public class WhatsAppService {
                 return;
             }
 
-            String fechaFormateada = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime())
-                    .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
-                            resolveAppLocale()));
-
             String salonName = resolveSalonName(appointment.getTenantId());
-            String message = String.format(
-                    "❌ *Cita cancelada - %s*\n\n" +
-                    "Hola %s,\n\n" +
-                    "Tu cita del *%s* ha sido cancelada.\n\n" +
-                    "Si deseas agendar una nueva cita, te invitamos a visitar nuestra web.\n\n" +
-                    "Saludos cordiales.",
-                    salonName,
-                    appointment.getCustomer().getFullName(),
-                    fechaFormateada
-            );
-
+            String message = messageBuilder.buildAppointmentCancellationText(appointment, salonName);
             sendTextMessage(phone, message);
 
         } catch (Exception e) {
@@ -950,26 +957,8 @@ public class WhatsAppService {
                 return;
             }
 
-            String fechaFormateada = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime())
-                    .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
-                            resolveAppLocale()));
-
             String salonName = resolveSalonName(appointment.getTenantId());
-            String message = String.format(
-                    "⏰ *Recordatorio de cita - %s*\n\n" +
-                    "Hola %s,\n\n" +
-                    "Te recordamos tu cita para el *%s*.\n\n" +
-                    "📋 *Servicio:* %s\n" +
-                    "⏱️ *Duración:* %d minutos\n\n" +
-                    "⚠️ *Tolerancia:* Se esperará un máximo de 15 minutos o la cita se dará por cancelada.\n\n" +
-                    "Te esperamos! ✨",
-                    salonName,
-                    appointment.getCustomer().getFullName(),
-                    fechaFormateada,
-                    appointment.getService().getName(),
-                    appointment.getService().getDurationMinutes()
-            );
-
+            String message = messageBuilder.buildAppointmentReminderText(appointment, salonName);
             sendTextMessage(phone, message);
 
         } catch (Exception e) {
@@ -989,25 +978,8 @@ public class WhatsAppService {
                 return;
             }
 
-            String fechaFormateada = request.getPreferredDate()
-                    .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
-                            resolveAppLocale()));
-
             String salonName = resolveSalonName(request.getTenantId());
-            String message = String.format(
-                    "✨ *Recibimos tu solicitud - %s*\n\n" +
-                    "Hola %s,\n\n" +
-                    "Hemos recibido tu solicitud de reserva para el *%s* en el bloque *%s*.\n\n" +
-                    "📋 *Servicio:* %s\n\n" +
-                    "Estamos revisando la disponibilidad y te contactaremos pronto.\n\n" +
-                    "Gracias por tu preferencia! ✨",
-                    salonName,
-                    request.getFullName(),
-                    fechaFormateada,
-                    request.getPreferredBlock(),
-                    request.getService().getName()
-            );
-
+            String message = messageBuilder.buildBookingRequestReceivedText(request, salonName);
             sendTextMessage(phone, message);
 
         } catch (Exception e) {
@@ -1027,23 +999,8 @@ public class WhatsAppService {
                 return;
             }
 
-            String fechaFormateada = request.getPreferredDate()
-                    .format(DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM 'de' yyyy",
-                            resolveAppLocale()));
-
             String salonName = resolveSalonName(request.getTenantId());
-            String message = String.format(
-                    "❌ *Solicitud no disponible - %s*\n\n" +
-                    "Hola %s,\n\n" +
-                    "Lamentamos informarte que no tenemos disponibilidad para el *%s* en el bloque *%s*.\n\n" +
-                    "Te invitamos a intentar con otra fecha en nuestra web.\n\n" +
-                    "Saludos cordiales.",
-                    salonName,
-                    request.getFullName(),
-                    fechaFormateada,
-                    request.getPreferredBlock()
-            );
-
+            String message = messageBuilder.buildBookingRequestRejectedText(request, salonName);
             sendTextMessage(phone, message);
 
         } catch (Exception e) {
@@ -1113,55 +1070,14 @@ public class WhatsAppService {
 
             String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
             String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
+            String lang = languageCode != null && !languageCode.isBlank() ? languageCode : config.getCitaConfirmadaLanguageCode();
 
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("messaging_product", "whatsapp");
-            payload.put("to", normalizedPhone);
-            payload.put("type", "template");
-
-            Map<String, Object> template = new HashMap<>();
-            template.put("name", templateName);
-
-            Map<String, String> language = new HashMap<>();
-            language.put("code", languageCode != null && !languageCode.isBlank() ? languageCode : config.getCitaConfirmadaLanguageCode());
-            template.put("language", language);
-
-            List<Map<String, Object>> components = new ArrayList<>();
-
-            if (headerParam != null && !headerParam.isBlank()) {
-                Map<String, Object> header = new HashMap<>();
-                header.put("type", "header");
-
-                List<Map<String, String>> headerParameters = new ArrayList<>();
-                Map<String, String> p = new HashMap<>();
-                p.put("type", "text");
-                p.put("text", headerParam);
-                headerParameters.add(p);
-
-                header.put("parameters", headerParameters);
-                components.add(header);
-            }
-
-            if (bodyParams != null && !bodyParams.isEmpty()) {
-                Map<String, Object> body = new HashMap<>();
-                body.put("type", "body");
-
-                List<Map<String, String>> parameters = new ArrayList<>();
-                for (String value : bodyParams) {
-                    Map<String, String> p = new HashMap<>();
-                    p.put("type", "text");
-                    p.put("text", value != null ? value : "");
-                    parameters.add(p);
-                }
-                body.put("parameters", parameters);
-                components.add(body);
-            }
-
-            if (!components.isEmpty()) {
-                template.put("components", components);
-            }
-
-            payload.put("template", template);
+            Map<String, Object> payload = messageBuilder.buildTemplatePayload(
+                    normalizedPhone,
+                    templateName,
+                    lang,
+                    headerParam,
+                    bodyParams);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -1243,56 +1159,7 @@ public class WhatsAppService {
     }
 
     public boolean sendAdminBookingAlertSync(String toPhoneNumber, BookingRequest request) {
-        if (request == null) {
-            return false;
-        }
-
-        String fecha = request.getPreferredDate() != null
-                ? request.getPreferredDate().format(shortDateFormatter())
-                : "-";
-        String servicio = request.getService() != null && request.getService().getName() != null
-                ? request.getService().getName()
-                : "-";
-        String cliente = request.getFullName() != null && !request.getFullName().isBlank()
-                ? request.getFullName().trim()
-                : "-";
-        String bloque = request.getPreferredBlock() != null && !request.getPreferredBlock().isBlank()
-                ? request.getPreferredBlock().trim()
-                : "-";
-
-        String adminTemplate = config.getAdminBookingAlertTemplateName();
-        if (config.isUseTemplateForAdminAlert() && adminTemplate != null && !adminTemplate.isBlank()) {
-            boolean templateSent = sendTemplateSync(
-                    toPhoneNumber,
-                    adminTemplate,
-                    resolveAdminAlertLanguageCode(),
-                    cliente,
-                    Arrays.asList(servicio, fecha, bloque)
-            );
-            if (templateSent) {
-                log.info("[WHATSAPP-ADMIN] ✅ Alerta enviada por template a {}", normalizePhoneNumber(toPhoneNumber));
-                return true;
-            }
-            log.warn("[WHATSAPP-ADMIN] ⚠️ Fallo envío por template admin, se intentará texto personalizado");
-        }
-
-        boolean textSent = sendTextMessageSync(toPhoneNumber, buildAdminAlertText(request));
-        if (textSent) {
-            return true;
-        }
-
-        if (config.isUseTemplateForBookingRequest()) {
-            log.warn("[WHATSAPP-ADMIN] ⚠️ Fallo texto personalizado, se intentará template de respaldo '{}'", config.getAgendaEnRevisionTemplateName());
-            return sendTemplateSync(
-                    toPhoneNumber,
-                    config.getAgendaEnRevisionTemplateName(),
-                    config.getCitaConfirmadaLanguageCode(),
-                    cliente,
-                    Arrays.asList(servicio, fecha, bloque)
-            );
-        }
-
-        return false;
+        return adminAlertDispatcher.sendAdminBookingAlertSync(toPhoneNumber, request);
     }
 
     @Async
@@ -1310,18 +1177,6 @@ public class WhatsAppService {
         }
 
         var customer = appointment.getCustomer();
-        String fecha = appointment.getAppointmentDate().format(shortDateFormatter());
-        if (dateChanged) {
-            fecha = fecha + " (Modificación)";
-        }
-        String hora = appointment.getAppointmentTime().format(DateTimeFormatter.ofPattern("HH:mm"));
-        if (timeChanged) {
-            hora = hora + " (Modificación)";
-        }
-        String servicio = appointment.getService().getName();
-        String cliente = customer.getFullName();
-
-        // Calcular info de fidelización para el parámetro {{5}} del template de Facebook
         int stamps = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
         int rewardIndex = customer.getCurrentRewardIndex() != null ? customer.getCurrentRewardIndex() : 0;
         var reward = loyaltyRewardService.getRewardAt(rewardIndex);
@@ -1334,12 +1189,15 @@ public class WhatsAppService {
             loyaltyInfo = String.format("Llevas %d/10 marcas para ganarte el premio: %s 🐇", stamps, rewardName);
         }
 
+        WhatsAppMessageBuilderService.TemplateParameters params =
+                messageBuilder.buildCitaConfirmadaParams(appointment, dateChanged, timeChanged, loyaltyInfo);
+
         sendTemplateSync(
                 phone,
                 config.getCitaConfirmadaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                cliente,
-                Arrays.asList(servicio, fecha, hora, loyaltyInfo),
+                params.headerParam(),
+                params.bodyParams(),
                 appointment
         );
     }
@@ -1363,19 +1221,15 @@ public class WhatsAppService {
             return;
         }
 
-        String fecha = appointment.getAppointmentDate()
-                .format(shortDateFormatter());
-        String hora = appointment.getAppointmentTime()
-                .format(DateTimeFormatter.ofPattern("HH:mm"));
-        String servicio = appointment.getService().getName();
-        String cliente = appointment.getCustomer().getFullName();
+        WhatsAppMessageBuilderService.TemplateParameters params =
+                messageBuilder.buildRecordatorioParams(appointment);
 
         sendTemplateSync(
                 phone,
                 config.getRecordatorioCitaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                cliente,
-                Arrays.asList(servicio, fecha, hora),
+                params.headerParam(),
+                params.bodyParams(),
                 appointment
         );
     }
@@ -1398,74 +1252,29 @@ public class WhatsAppService {
             return;
         }
 
-        String fecha = appointment.getAppointmentDate()
-                .format(shortDateFormatter());
-        String hora = appointment.getAppointmentTime()
-                .format(DateTimeFormatter.ofPattern("HH:mm"));
-        String servicio = appointment.getService() != null ? appointment.getService().getName() : "Servicio";
-        String cliente = appointment.getCustomer().getFullName();
         String motivo = resolveCancellationReason(appointment);
 
         log.info("[WHATSAPP] Enviando plantilla cancelacion_cita para cita {} con motivo: '{}'",
                 appointment.getId(), motivo);
 
+        WhatsAppMessageBuilderService.TemplateParameters params =
+                messageBuilder.buildCancelacionParams(appointment, motivo);
+
         sendTemplateSync(
                 phone,
                 config.getCancelacionCitaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                cliente,
-                Arrays.asList(servicio, fecha, hora, motivo),
+                params.headerParam(),
+                params.bodyParams(),
                 appointment
         );
     }
 
     /**
      * Resuelve el motivo y origen de la cancelación a partir de las observaciones de la cita.
-     * Soporta formato estructurado 'Cancelado por: ...' y 'Motivo: ...'.
      */
     public String resolveCancellationReason(Appointment appointment) {
-        if (appointment == null) {
-            return "No especificado";
-        }
-        String obs = appointment.getObservations();
-        if (obs == null || obs.isBlank()) {
-            return "No especificado";
-        }
-
-        java.util.regex.Matcher motivoMatcher = java.util.regex.Pattern
-                .compile("Motivo:\\s*(.+?)(\\n|$)", java.util.regex.Pattern.CASE_INSENSITIVE)
-                .matcher(obs);
-        String reason = null;
-        if (motivoMatcher.find()) {
-            reason = motivoMatcher.group(1).trim();
-        }
-
-        java.util.regex.Matcher origenMatcher = java.util.regex.Pattern
-                .compile("Cancelado por:\\s*(.+?)(\\n|$)", java.util.regex.Pattern.CASE_INSENSITIVE)
-                .matcher(obs);
-        String origen = null;
-        if (origenMatcher.find()) {
-            origen = origenMatcher.group(1).trim();
-        }
-
-        String result;
-        if (reason != null && !reason.isBlank()) {
-            if (origen != null && !origen.isBlank()) {
-                result = String.format("%s: %s", origen, reason);
-            } else {
-                result = reason;
-            }
-        } else if (origen != null && !origen.isBlank()) {
-            result = String.format("Cancelado por %s", origen);
-        } else {
-            String firstLine = obs.split("\\n")[0].trim();
-            result = firstLine.isBlank() ? "No especificado" : firstLine;
-        }
-
-        if (result.length() > 80) {
-            return result.substring(0, 77) + "...";
-        }
-        return result;
+        return messageBuilder.resolveCancellationReason(appointment);
     }
 
     /**
@@ -1512,53 +1321,10 @@ public class WhatsAppService {
 
     /**
      * Envía notificación al admin cuando se crea una cita desde el dashboard.
-     * Template: confirmacion_hora
-     * HEADER {{1}}=nombre_dueña, BODY {{1}}=cliente, {{2}}=servicio, {{3}}=fecha, {{4}}=hora, {{5}}=whatsapp_url, {{6}}=calendar_url
      */
     @Async
     public void sendAdminAppointmentCreatedAlert(Appointment appointment) {
-        if (!appSettingsService.isWhatsappAdminAlertEnabled(adminAlertEnabledFallback)) {
-            log.info("[WHATSAPP-SKIP] Alertas WhatsApp admin deshabilitadas por configuración");
-            return;
-        }
-
-        if (!config.isUseTemplateForAdminAppointmentAlert()) {
-            log.info("[WHATSAPP-SKIP] Template de alerta admin para cita creada está deshabilitado");
-            return;
-        }
-
-        String adminPhone = appSettingsService.getAdminAlertWhatsappNumber(null);
-        if (adminPhone == null || adminPhone.isBlank()) {
-            log.warn("[WHATSAPP-SKIP] Número de teléfono del admin no está configurado para alertas de citas");
-            return;
-        }
-
-        String fecha = appointment.getAppointmentDate()
-                .format(shortDateFormatter());
-        String hora = appointment.getAppointmentTime()
-                .format(DateTimeFormatter.ofPattern("HH:mm"));
-        String servicio = appointment.getService().getName();
-        String cliente = appointment.getCustomer().getFullName();
-        
-        // Generar URLs para los botones/links
-        String whatsappUrl = whatsAppHandoffService.generateWhatsAppUrl(appointment.getCustomer().getPhone());
-        String calendarUrl = calendarService.generateGoogleCalendarUrl(appointment);
-        
-        // El nombre de la dueña puede venir de configuración o usar un valor por defecto
-        String nombreDuena = appSettingsService.get("app.owner.name", "Dueña");
-
-        sendTemplate(
-                adminPhone,
-                config.getAdminAppointmentAlertTemplateName(),
-                config.getCitaConfirmadaLanguageCode(),
-                nombreDuena,  // HEADER {{1}}
-                Arrays.asList(cliente, servicio, fecha, hora, whatsappUrl, calendarUrl)  // BODY {{1}}, {{2}}, {{3}}, {{4}}, {{5}}, {{6}}
-        );
-        
-        log.info("[WHATSAPP-ADMIN] ✅ Alerta de cita creada enviada a admin {} con links: WA={}, Cal={}", 
-                normalizePhoneNumber(adminPhone), 
-                whatsappUrl != null && !whatsappUrl.isEmpty() ? "OK" : "N/A",
-                calendarUrl != null && !calendarUrl.isEmpty() ? "OK" : "N/A");
+        adminAlertDispatcher.sendAdminAppointmentCreatedAlert(appointment);
     }
 
     /**
@@ -1578,18 +1344,15 @@ public class WhatsAppService {
             return;
         }
 
-        String fecha = request.getPreferredDate()
-                .format(shortDateFormatter());
-        String servicio = request.getService().getName();
-        String cliente = request.getFullName();
-        String bloque = request.getPreferredBlock();
+        WhatsAppMessageBuilderService.TemplateParameters params =
+                messageBuilder.buildAgendaEnRevisionParams(request);
 
         sendTemplate(
                 phone,
                 config.getAgendaEnRevisionTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                cliente,
-                Arrays.asList(servicio, fecha, bloque)
+                params.headerParam(),
+                params.bodyParams()
         );
     }
 
@@ -1610,18 +1373,15 @@ public class WhatsAppService {
             return;
         }
 
-        String fecha = request.getPreferredDate()
-                .format(shortDateFormatter());
-        String servicio = request.getService().getName();
-        String cliente = request.getFullName();
-        String bloque = request.getPreferredBlock();
+        WhatsAppMessageBuilderService.TemplateParameters params =
+                messageBuilder.buildSolicitudRechazadaParams(request);
 
         sendTemplate(
                 phone,
                 config.getSolicitudRechazadaTemplateName(),
                 config.getCitaConfirmadaLanguageCode(),
-                cliente,
-                Arrays.asList(servicio, fecha, bloque)
+                params.headerParam(),
+                params.bodyParams()
         );
     }
 
@@ -1635,38 +1395,9 @@ public class WhatsAppService {
                 return;
             }
 
-            int stamps = customer.getLoyaltyStamps() != null ? customer.getLoyaltyStamps() : 0;
             int rewardIndex = customer.getCurrentRewardIndex() != null ? customer.getCurrentRewardIndex() : 0;
-            int maxStamps = 10;
-            
             var reward = loyaltyRewardService.getRewardAt(rewardIndex);
-            String rewardName = (reward != null) ? reward.getName() : "un premio especial";
-
-            String message;
-            if (stamps == 0 && customer.getTotalCompletedVisits() > 0) {
-                // Acaba de completar el servicio #11 y ganó el premio
-                message = String.format(
-                        "🎉 *¡Felicidades %s!* 🎉\n\n" +
-                        "Hoy has canjeado tu premio: *%s*.\n" +
-                        "Tu tarjeta se ha reiniciado. ¡Sigue visitándonos para tu próximo regalo! 🐇✨",
-                        customer.getFirstName(), rewardName
-                );
-            } else if (stamps >= maxStamps) {
-                message = String.format(
-                        "🎉 *¡Felicidades %s!* 🎉\n\n" +
-                        "Has completado tus 10 sellos.\n" +
-                        "*¡Tu próxima cita es la del premio: %s!* 🎁✨\n" +
-                        "Te esperamos para consentirte.",
-                        customer.getFirstName(), rewardName
-                );
-            } else {
-                message = String.format(
-                        "💖 *¡Gracias por tu visita!* 💖\n\n" +
-                        "Acabas de ganar un nuevo sello.\n\n" +
-                        "Llevas *%d/%d* sellos para tu premio: *%s*. 🐇✨",
-                        stamps, maxStamps, rewardName
-                );
-            }
+            String message = messageBuilder.buildLoyaltyUpdateText(customer, reward);
 
             sendTextMessage(phone, message);
 

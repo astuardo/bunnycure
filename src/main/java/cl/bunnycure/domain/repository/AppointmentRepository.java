@@ -2,6 +2,8 @@ package cl.bunnycure.domain.repository;
 
 import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +15,34 @@ import java.util.List;
 import java.util.Optional;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
+
+    @Query(value = """
+            SELECT a FROM Appointment a
+            JOIN FETCH a.customer c
+            JOIN FETCH a.service s
+            LEFT JOIN FETCH a.specialist sp
+            WHERE (:customerId IS NULL OR a.customer.id = :customerId)
+              AND (:status IS NULL OR a.status = :status)
+              AND (:specialistId IS NULL OR a.specialist.id = :specialistId)
+              AND (:startDate IS NULL OR a.appointmentDate >= :startDate)
+              AND (:endDate IS NULL OR a.appointmentDate <= :endDate)
+            """,
+            countQuery = """
+            SELECT COUNT(a) FROM Appointment a
+            WHERE (:customerId IS NULL OR a.customer.id = :customerId)
+              AND (:status IS NULL OR a.status = :status)
+              AND (:specialistId IS NULL OR a.specialist.id = :specialistId)
+              AND (:startDate IS NULL OR a.appointmentDate >= :startDate)
+              AND (:endDate IS NULL OR a.appointmentDate <= :endDate)
+            """)
+    Page<Appointment> findPaged(
+            @Param("customerId") Long customerId,
+            @Param("status") AppointmentStatus status,
+            @Param("specialistId") Long specialistId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            Pageable pageable);
+
 
     @Override
     @Query("SELECT a FROM Appointment a WHERE a.id = :id")

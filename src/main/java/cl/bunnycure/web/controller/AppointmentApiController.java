@@ -19,6 +19,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,21 +59,16 @@ public class AppointmentApiController {
     @Operation(
             summary = "Listar citas",
             description = """
-                    Obtiene lista de citas filtradas por rango de fechas, estado o especialista.
-                    Si no se especifican fechas, retorna las citas del rango por defecto.
+                    Obtiene lista paginada de citas filtradas por rango de fechas, estado, especialista o cliente.
                     """)
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "Lista de citas obtenida exitosamente",
-                    content = @Content(
-                            mediaType = "application/json",
-                            array = @ArraySchema(schema = @Schema(implementation = AppointmentResponseDto.class))
-                    )
+                    description = "Página de citas obtenida exitosamente"
             )
     })
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AppointmentResponseDto>>> list(
+    public ResponseEntity<ApiResponse<Page<AppointmentResponseDto>>> list(
             @Parameter(description = "Fecha de inicio (formato: yyyy-MM-dd)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             
@@ -84,6 +83,10 @@ public class AppointmentApiController {
 
             @Parameter(description = "ID opcional de cliente para obtener todo su historial de citas")
             @RequestParam(required = false) Long customerId,
+
+            @ParameterObject
+            @PageableDefault(size = 50, sort = {"appointmentDate", "appointmentTime"}, direction = org.springframework.data.domain.Sort.Direction.DESC)
+            Pageable pageable,
             
             org.springframework.security.core.Authentication authentication) {
         
@@ -104,45 +107,23 @@ public class AppointmentApiController {
             }
         }
         
-        List<Appointment> appointments;
-        
-        if (customerId != null) {
-            appointments = appointmentService.findByCustomerId(customerId);
-            if (status != null) {
-                appointments = appointments.stream()
-                        .filter(a -> a.getStatus() == status)
-                        .toList();
-            }
-            if (startDate != null && endDate != null) {
-                appointments = appointments.stream()
-                        .filter(a -> !a.getAppointmentDate().isBefore(startDate) && !a.getAppointmentDate().isAfter(endDate))
-                        .toList();
-            } else if (startDate != null) {
-                appointments = appointments.stream()
-                        .filter(a -> !a.getAppointmentDate().isBefore(startDate))
-                        .toList();
-            }
-        } else if (status != null) {
-            appointments = appointmentService.findByStatus(status);
-        } else if (startDate != null && endDate != null) {
-            appointments = appointmentService.findByDateRange(startDate, endDate);
-        } else if (startDate != null) {
-            appointments = appointmentService.findByDateRange(startDate, startDate);
-        } else {
-            // Por defecto, retornar últimos 3 meses + próximos 3 meses para el calendario
-            LocalDate defaultStart = LocalDate.now().minusMonths(3);
-            LocalDate defaultEnd = LocalDate.now().plusMonths(3);
-            log.debug("[API] No date filters provided, using default range: {} to {}", defaultStart, defaultEnd);
-            appointments = appointmentService.findByDateRange(defaultStart, defaultEnd);
+        LocalDate effectiveStart = startDate;
+        LocalDate effectiveEnd = endDate;
+        if (startDate != null && endDate == null) {
+            effectiveEnd = startDate;
         }
-        
-        final Long filterSpecialistId = effectiveSpecialistId;
-        List<AppointmentResponseDto> dtos = appointments.stream()
-                .filter(a -> filterSpecialistId == null || (a.getSpecialist() != null && filterSpecialistId.equals(a.getSpecialist().getId())))
-                .map(this::toResponseDto)
-                .collect(Collectors.toList());
-        
-        log.debug("[API] Returning {} appointments", dtos.size());
+
+        Page<Appointment> page = appointmentService.findPaged(
+                customerId,
+                status,
+                effectiveSpecialistId,
+                effectiveStart,
+                effectiveEnd,
+                pageable);
+
+        Page<AppointmentResponseDto> dtos = page.map(this::toResponseDto);
+        log.debug("[API] Returning page {} of {} appointments (total: {})",
+                dtos.getNumber(), dtos.getNumberOfElements(), dtos.getTotalElements());
         return ResponseEntity.ok(ApiResponse.success(dtos));
     }
 
