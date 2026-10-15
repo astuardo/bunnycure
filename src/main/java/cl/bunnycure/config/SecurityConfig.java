@@ -67,6 +67,9 @@ public class SecurityConfig {
 			auth.requestMatchers("/api/public/**").permitAll();
 			auth.requestMatchers("/w/**", "/tarjeta/**", "/pass/**", "/mi-tarjeta/**", "/manifest-card.json", "/manifest.json").permitAll();
 			
+			// Monitoreo de salud y telemetría de infraestructura (Actuator)
+			auth.requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll();
+			
 			// API pública: servicios (para portal de reservas)
 			auth.requestMatchers(HttpMethod.GET, "/api/services").permitAll();
 			

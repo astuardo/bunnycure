@@ -32,6 +32,7 @@ public class PwaRedirectService {
             "/swagger-ui/",
             "/v3/api-docs",
             "/.well-known/",
+            "/actuator/",
             "/h2-console"
     );
 
