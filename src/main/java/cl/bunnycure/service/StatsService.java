@@ -4,6 +4,7 @@ import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.ServiceCatalog;
 import cl.bunnycure.domain.repository.AppointmentRepository;
+import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.web.dto.DashboardStatsDto;
 import cl.bunnycure.web.dto.SpecialistStatsDto;
 import cl.bunnycure.web.dto.TodayOperationalStatsDto;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 public class StatsService {
 
     private final AppointmentRepository appointmentRepository;
+    private final CustomerRepository customerRepository;
     private final AppSettingsService appSettingsService;
 
     @Transactional(readOnly = true)
@@ -100,6 +102,8 @@ public class StatsService {
                         .thenComparing(DashboardStatsDto.CustomerStatDto::getTotalSpent))
                 .orElse(null);
 
+        long totalCustomers = customerRepository.count();
+
         return DashboardStatsDto.builder()
                 .totalRevenueMonth(projectedRevenue)
                 .completedRevenueMonth(completedRevenue)
@@ -107,6 +111,7 @@ public class StatsService {
                 .totalAppointmentsMonth((long) activeAppointments.size())
                 .completedAppointmentsMonth(completedCount)
                 .pendingOrConfirmedAppointmentsMonth(pendingOrConfirmedCount)
+                .totalCustomers(totalCustomers)
                 .topServices(topServices)
                 .topCustomer(topCustomer)
                 .build();

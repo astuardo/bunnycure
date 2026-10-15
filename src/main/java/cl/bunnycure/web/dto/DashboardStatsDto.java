@@ -18,6 +18,7 @@ public class DashboardStatsDto {
     private Long totalAppointmentsMonth;           // Total de citas activas del mes
     private Long completedAppointmentsMonth;       // Citas completadas en el mes
     private Long pendingOrConfirmedAppointmentsMonth; // Citas por atender en el mes
+    private Long totalCustomers;                   // Total de clientas registradas
     private List<ServiceStatDto> topServices;
     private CustomerStatDto topCustomer;
 
