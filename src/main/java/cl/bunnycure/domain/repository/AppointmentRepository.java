@@ -12,36 +12,10 @@ import java.util.Collection;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import java.util.Optional;
 
-public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
-
-    @Query(value = """
-            SELECT a FROM Appointment a
-            JOIN FETCH a.customer c
-            JOIN FETCH a.service s
-            LEFT JOIN FETCH a.specialist sp
-            WHERE (:customerId IS NULL OR a.customer.id = :customerId)
-              AND (:status IS NULL OR a.status = :status)
-              AND (:specialistId IS NULL OR a.specialist.id = :specialistId)
-              AND (:startDate IS NULL OR a.appointmentDate >= :startDate)
-              AND (:endDate IS NULL OR a.appointmentDate <= :endDate)
-            """,
-            countQuery = """
-            SELECT COUNT(a) FROM Appointment a
-            WHERE (:customerId IS NULL OR a.customer.id = :customerId)
-              AND (:status IS NULL OR a.status = :status)
-              AND (:specialistId IS NULL OR a.specialist.id = :specialistId)
-              AND (:startDate IS NULL OR a.appointmentDate >= :startDate)
-              AND (:endDate IS NULL OR a.appointmentDate <= :endDate)
-            """)
-    Page<Appointment> findPaged(
-            @Param("customerId") Long customerId,
-            @Param("status") AppointmentStatus status,
-            @Param("specialistId") Long specialistId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
-            Pageable pageable);
+public interface AppointmentRepository extends JpaRepository<Appointment, Long>, JpaSpecificationExecutor<Appointment> {
 
 
     @Override

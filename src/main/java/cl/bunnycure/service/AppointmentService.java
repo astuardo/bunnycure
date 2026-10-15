@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import cl.bunnycure.domain.repository.AppointmentSpecifications;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -190,7 +192,8 @@ public class AppointmentService {
             LocalDate startDate,
             LocalDate endDate,
             Pageable pageable) {
-        Page<Appointment> page = appointmentRepository.findPaged(customerId, status, specialistId, startDate, endDate, pageable);
+        Specification<Appointment> spec = AppointmentSpecifications.filter(customerId, status, specialistId, startDate, endDate);
+        Page<Appointment> page = appointmentRepository.findAll(spec, pageable);
         page.getContent().forEach(a -> {
             try {
                 if (a.getServices() != null) {
