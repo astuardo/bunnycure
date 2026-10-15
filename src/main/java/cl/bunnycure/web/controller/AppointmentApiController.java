@@ -518,23 +518,30 @@ public class AppointmentApiController {
      * Convierte una entidad Appointment a AppointmentResponseDto.
      */
     private AppointmentResponseDto toResponseDto(Appointment appointment) {
-        List<ServiceSummaryDto> selectedServices = appointment.getServices() != null && !appointment.getServices().isEmpty()
-                ? appointment.getServices().stream().map(service -> ServiceSummaryDto.builder()
+        List<ServiceSummaryDto> selectedServices = List.of();
+        try {
+            if (appointment.getServices() != null && !appointment.getServices().isEmpty()) {
+                selectedServices = appointment.getServices().stream().map(service -> ServiceSummaryDto.builder()
                         .id(service.getId())
                         .name(service.getName())
                         .durationMinutes(service.getDurationMinutes())
                         .price(service.getPrice())
                         .active(service.isActive())
-                        .build()).toList()
-                : (appointment.getService() != null
-                    ? List.of(ServiceSummaryDto.builder()
-                            .id(appointment.getService().getId())
-                            .name(appointment.getService().getName())
-                            .durationMinutes(appointment.getService().getDurationMinutes())
-                            .price(appointment.getService().getPrice())
-                            .active(appointment.getService().isActive())
-                            .build())
-                    : List.of());
+                        .build()).toList();
+            }
+        } catch (Exception e) {
+            log.debug("[API] Lazy services collection not accessible for appointment {}: {}", appointment.getId(), e.getMessage());
+        }
+
+        if (selectedServices.isEmpty() && appointment.getService() != null) {
+            selectedServices = List.of(ServiceSummaryDto.builder()
+                    .id(appointment.getService().getId())
+                    .name(appointment.getService().getName())
+                    .durationMinutes(appointment.getService().getDurationMinutes())
+                    .price(appointment.getService().getPrice())
+                    .active(appointment.getService().isActive())
+                    .build());
+        }
 
         BigDecimal totalPrice = selectedServices.stream()
                 .map(ServiceSummaryDto::getPrice)

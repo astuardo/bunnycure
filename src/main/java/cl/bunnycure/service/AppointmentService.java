@@ -190,7 +190,17 @@ public class AppointmentService {
             LocalDate startDate,
             LocalDate endDate,
             Pageable pageable) {
-        return appointmentRepository.findPaged(customerId, status, specialistId, startDate, endDate, pageable);
+        Page<Appointment> page = appointmentRepository.findPaged(customerId, status, specialistId, startDate, endDate, pageable);
+        page.getContent().forEach(a -> {
+            try {
+                if (a.getServices() != null) {
+                    org.hibernate.Hibernate.initialize(a.getServices());
+                }
+            } catch (Exception e) {
+                log.debug("[APPOINTMENT-SERVICE] Could not initialize services for appointment {}: {}", a.getId(), e.getMessage());
+            }
+        });
+        return page;
     }
 
     public List<Appointment> findByDateRange(LocalDate start, LocalDate end) {
