@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import io.sentry.Sentry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -134,6 +135,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleServiceException(
             ServiceException ex, WebRequest request) {
         logger.error("Service error: {}", ex.getMessage(), ex);
+        Sentry.captureException(ex);
         
         ErrorResponse error = new ErrorResponse(ex.getMessage(), ex.getErrorCode());
         return ResponseEntity
@@ -145,6 +147,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleGenericException(
             Exception ex, WebRequest request) {
         logger.error("Unexpected error: {}", ex.getMessage(), ex);
+        Sentry.captureException(ex);
         
         ErrorResponse error = new ErrorResponse(
                 "An unexpected error occurred", 
