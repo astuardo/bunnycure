@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -32,12 +33,18 @@ import java.util.Optional;
 @Slf4j
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 5)
-@RequiredArgsConstructor
 public class TenantContextFilter extends OncePerRequestFilter {
 
     private final TenantRepository tenantRepository;
     private final JwtService jwtService;
     private final UserRepository userRepository;
+
+    @Autowired
+    public TenantContextFilter(TenantRepository tenantRepository, JwtService jwtService, UserRepository userRepository) {
+        this.tenantRepository = tenantRepository;
+        this.jwtService = jwtService;
+        this.userRepository = userRepository;
+    }
 
     public TenantContextFilter(TenantRepository tenantRepository) {
         this(tenantRepository, null, null);
