@@ -24,18 +24,21 @@ public class SecurityConfig {
 	private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 	private final PwaRedirectFilter pwaRedirectFilter;
+	private final PlatformAccess platformAccess;
 
 	public SecurityConfig(
 			Environment env,
 			CorsConfigurationSource corsConfigurationSource,
 			RestAuthenticationEntryPoint restAuthenticationEntryPoint,
 			JwtAuthenticationFilter jwtAuthenticationFilter,
-			PwaRedirectFilter pwaRedirectFilter) {
+			PwaRedirectFilter pwaRedirectFilter,
+			PlatformAccess platformAccess) {
 		this.env = env;
 		this.corsConfigurationSource = corsConfigurationSource;
 		this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
 		this.pwaRedirectFilter = pwaRedirectFilter;
+		this.platformAccess = platformAccess;
 	}
 
 	@Bean
@@ -85,7 +88,11 @@ public class SecurityConfig {
 			
 			// API REST endpoints protegidos por RBAC
 			auth.requestMatchers("/api/auth/**").authenticated();
-			auth.requestMatchers("/api/admin/tenants/**").hasAnyRole("SUPER_ADMIN", "ADMIN");
+			// Consola de plataforma: SUPER_ADMIN o ADMIN del salón raíz. El rol ADMIN por sí solo no basta
+			// (lo tienen las administradoras de todos los salones). Se evalúa antes de leer el cuerpo.
+			auth.requestMatchers("/api/admin/tenants/**").access((authentication, context) ->
+					new org.springframework.security.authorization.AuthorizationDecision(
+							platformAccess.isPlatformAdmin(authentication.get())));
 			auth.requestMatchers("/api/users/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
 			auth.requestMatchers("/api/settings/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
 			auth.requestMatchers("/api/inventory/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");

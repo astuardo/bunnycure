@@ -92,6 +92,19 @@ class PostgresMigrationIntegrationTest {
                 "SELECT COUNT(*) FROM app_settings WHERE setting_key = ?", Integer.class, key)).isEqualTo(2);
     }
 
+    @Test
+    @DisplayName("tenants.id: un salón nuevo recibe un id libre (V58 insertó id=1 sin avanzar la identidad)")
+    void creatingTenantDoesNotCollideWithSeededTenant() {
+        Long newId = jdbcTemplate.queryForObject(
+                "INSERT INTO tenants (name, slug, active, plan_tier) VALUES ('Salón Nuevo', 'salon-nuevo-pg', TRUE, 'STANDARD') RETURNING id",
+                Long.class);
+        try {
+            assertThat(newId).isGreaterThan(1L);
+        } finally {
+            jdbcTemplate.update("DELETE FROM tenants WHERE id = ?", newId);
+        }
+    }
+
     private <T> T inTenant(Long tenantId, Supplier<T> action) {
         Long previous = TenantContext.getExplicitTenantId();
         try {

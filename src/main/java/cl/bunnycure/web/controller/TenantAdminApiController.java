@@ -20,6 +20,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/admin/tenants")
+@org.springframework.security.access.prepost.PreAuthorize("@platformAccess.isPlatformAdmin(authentication)")
 @RequiredArgsConstructor
 @Tag(name = "Admin Tenants", description = "API de administración y aprovisionamiento SaaS Multi-Salón")
 public class TenantAdminApiController {
