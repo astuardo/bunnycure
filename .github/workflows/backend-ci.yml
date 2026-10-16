@@ -34,6 +34,16 @@ jobs:
       - name: Run Unit Tests with Maven
         run: ./mvnw clean test -B
 
+      - name: Publish test summary
+        if: always()
+        run: |
+          total=$(cat target/surefire-reports/*.txt 2>/dev/null | grep "Tests run" | awk -F'[ ,]+' '{r+=$3;f+=$5;e+=$7;s+=$9} END {print "run="r" fail="f" err="e" skip="s}')
+          pg=$(grep -h "Tests run" target/surefire-reports/*PostgresMigrationIntegrationTest.txt 2>/dev/null | sed 's/, Time elapsed.*//')
+          echo "::notice title=Backend tests::${total:-no reports}"
+          echo "::notice title=PostgreSQL migrations::${pg:-NOT RUN}"
+          echo "### 🧪 Backend tests: ${total:-no reports}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- PostgreSQL migrations: ${pg:-NOT RUN}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build Executable JAR Package
         run: ./mvnw package -DskipTests -B
 
