@@ -42,7 +42,6 @@ public class WhatsAppService {
 
     private final WhatsAppConfig config;
     private final RestTemplate restTemplate;
-    private final AppSettingsService appSettingsService;
     private final NotificationLogService notificationLogService;
     private final ObjectMapper objectMapper;
     private final LoyaltyRewardService loyaltyRewardService;
@@ -72,7 +71,6 @@ public class WhatsAppService {
             @Lazy WhatsAppAdminAlertDispatcher adminAlertDispatcher) {
         this.config = config;
         this.restTemplate = restTemplate;
-        this.appSettingsService = appSettingsService;
         this.notificationLogService = notificationLogService;
         this.objectMapper = objectMapper;
         this.loyaltyRewardService = loyaltyRewardService;
