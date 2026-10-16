@@ -60,7 +60,10 @@ public class TenantManagementService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional
+    /**
+     * Sin @Transactional a propósito: la administradora inicial se guarda en la transacción
+     * propia del salón nuevo (ver provisionInitialAdmin). Si ese paso falla, se elimina el salón.
+     */
     public TenantResponseDto createTenant(TenantCreateRequestDto dto) {
         String slug = dto.getSlug().trim().toLowerCase();
 
@@ -100,7 +103,13 @@ public class TenantManagementService {
         log.info("[TENANT-MGMT] Nuevo salón registrado: '{}' (ID={}, slug={})", savedTenant.getName(), savedTenant.getId(), savedTenant.getSlug());
 
         // Aprovisionamiento inicial del administrador del salón
-        provisionInitialAdmin(savedTenant, dto);
+        try {
+            provisionInitialAdmin(savedTenant, dto);
+        } catch (RuntimeException e) {
+            log.error("[TENANT-MGMT] Falló el aprovisionamiento del salón ID={}; se revierte: {}", savedTenant.getId(), e.getMessage());
+            tenantRepository.deleteById(savedTenant.getId());
+            throw e;
+        }
 
         return mapToResponseDto(savedTenant);
     }
@@ -189,7 +198,9 @@ public class TenantManagementService {
                 ? dto.getInitialAdminEmail().trim()
                 : (tenant.getEmail() != null ? tenant.getEmail().trim() : "admin@" + tenant.getSlug() + ".cl");
 
-        tenantExecutionService.executeInTenantContext(tenant.getId(), () -> {
+        // Transacción propia del salón nuevo: la sesión del llamador pertenece al salón raíz
+        // y Hibernate rechazaría guardar una User de otro salón en ella.
+        tenantExecutionService.executeInTenantTransaction(tenant.getId(), () -> {
             User adminUser = User.builder()
                     .tenantId(tenant.getId())
                     .username(adminUsername)
@@ -203,6 +214,7 @@ public class TenantManagementService {
 
             userRepository.save(adminUser);
             log.info("[TENANT-MGMT] Administrador inicial aprovisionado para salón ID={}: username='{}'", tenant.getId(), adminUsername);
+            return null;
         });
     }
 

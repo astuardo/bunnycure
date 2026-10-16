@@ -56,6 +56,53 @@ public class Tenant {
     @Builder.Default
     private String planTier = "STANDARD";
 
+    // ── Suscripción (ver SubscriptionService) ─────────────────────────────
+    @Enumerated(EnumType.STRING)
+    @Column(name = "subscription_status", nullable = false, length = 30)
+    @Builder.Default
+    private cl.bunnycure.domain.enums.SubscriptionStatus subscriptionStatus = cl.bunnycure.domain.enums.SubscriptionStatus.ACTIVE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "billing_cycle", nullable = false, length = 20)
+    @Builder.Default
+    private cl.bunnycure.domain.enums.BillingCycle billingCycle = cl.bunnycure.domain.enums.BillingCycle.MONTHLY;
+
+    @Column(name = "trial_ends_on")
+    private java.time.LocalDate trialEndsOn;
+
+    /** Último día pagado. null = sin vencimiento (salones existentes / cortesía). */
+    @Column(name = "current_period_end")
+    private java.time.LocalDate currentPeriodEnd;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_provider", nullable = false, length = 30)
+    @Builder.Default
+    private cl.bunnycure.domain.enums.PaymentProvider paymentProvider = cl.bunnycure.domain.enums.PaymentProvider.MANUAL;
+
+    /** Id de la suscripción en la pasarela (p.ej. preapproval de Mercado Pago). */
+    @Column(name = "external_subscription_id", length = 120)
+    private String externalSubscriptionId;
+
+    @Column(name = "suspended_at")
+    private LocalDateTime suspendedAt;
+
+    /** Último aviso de cobro enviado (evita correos duplicados del job diario). */
+    @Column(name = "last_billing_notice", length = 60)
+    private String lastBillingNotice;
+
+    @Column(name = "terms_version", length = 20)
+    private String termsVersion;
+
+    @Column(name = "terms_accepted_at")
+    private LocalDateTime termsAcceptedAt;
+
+    @Column(name = "terms_accepted_ip", length = 64)
+    private String termsAcceptedIp;
+
+    public cl.bunnycure.domain.enums.SubscriptionPlan getSubscriptionPlan() {
+        return cl.bunnycure.domain.enums.SubscriptionPlan.fromString(planTier);
+    }
+
     @Column(length = 100)
     private String whatsappPhoneId;
 

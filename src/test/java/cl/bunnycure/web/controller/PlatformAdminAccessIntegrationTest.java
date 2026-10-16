@@ -81,6 +81,32 @@ class PlatformAdminAccessIntegrationTest {
                 .andExpect(status().isOk());
     }
 
+    @Autowired private cl.bunnycure.domain.repository.UserRepository userRepository;
+
+    @Test
+    @DisplayName("Crear un salón desde la consola: el salón y su administradora inicial quedan en el salón nuevo")
+    void createTenant_ProvisionsAdminInNewTenant() throws Exception {
+        String slug = "consola-nuevo-" + System.nanoTime();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/admin/tenants")
+                        .with(user("owner").roles("SALON_ADMIN", "ADMIN")).header("X-Tenant-ID", 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Salón Consola\",\"slug\":\"" + slug + "\",\"email\":\"" + slug + "@x.cl\",\"planTier\":\"PRO\"}"))
+                .andExpect(status().is2xxSuccessful());
+
+        Tenant created = tenantRepository.findBySlugIgnoreCase(slug).orElseThrow();
+        try {
+            cl.bunnycure.config.TenantContext.setCurrentTenantId(created.getId());
+            org.assertj.core.api.Assertions.assertThat(userRepository.findAll())
+                    .as("la administradora inicial debe pertenecer al salón nuevo")
+                    .isNotEmpty()
+                    .allMatch(u -> created.getId().equals(u.getTenantId()));
+            userRepository.deleteAll(userRepository.findAll());
+        } finally {
+            cl.bunnycure.config.TenantContext.clear();
+            tenantRepository.delete(created);
+        }
+    }
+
     @Test
     @DisplayName("RECEPTIONIST del salón raíz: no accede (403)")
     void receptionistOfRootSalon_IsForbidden() throws Exception {

@@ -23,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/giftcards")
 @RequiredArgsConstructor
+@cl.bunnycure.config.RequiresPlanFeature(cl.bunnycure.domain.enums.PlanFeature.GIFT_CARDS)
 public class GiftCardApiController {
 
     private final GiftCardService giftCardService;

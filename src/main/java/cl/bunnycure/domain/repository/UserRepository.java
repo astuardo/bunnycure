@@ -25,4 +25,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @org.springframework.data.jpa.repository.Query(value = "SELECT u.tenant_id FROM users u WHERE u.username = :username LIMIT 1", nativeQuery = true)
     Optional<Long> findTenantIdByUsername(@org.springframework.data.repository.query.Param("username") String username);
+
+    /**
+     * Unicidad global para el registro autoservicio: el login sin ?salon resuelve el salón
+     * por username en toda la plataforma (findTenantIdByUsername), así que no debe repetirse.
+     */
+    @org.springframework.data.jpa.repository.Query(value = "SELECT COUNT(*) > 0 FROM users u WHERE LOWER(u.username) = LOWER(:username) OR LOWER(u.email) = LOWER(:username)", nativeQuery = true)
+    boolean existsByUsernameOrEmailGlobally(@org.springframework.data.repository.query.Param("username") String username);
+
+    /** Puestos ocupados por plan: especialistas y recepcionistas habilitadas del salón actual. */
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(u) FROM User u WHERE u.enabled = true AND UPPER(u.role) IN ('SPECIALIST', 'STAFF', 'RECEPTIONIST')")
+    long countEnabledStaffSeats();
 }

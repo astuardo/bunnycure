@@ -18,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/whatsapp/messages")
 @RequiredArgsConstructor
+@cl.bunnycure.config.RequiresPlanFeature(cl.bunnycure.domain.enums.PlanFeature.WHATSAPP_AUTOMATION)
 public class IncomingWhatsAppMessageController {
 
     private final IncomingWhatsAppMessageService messageService;

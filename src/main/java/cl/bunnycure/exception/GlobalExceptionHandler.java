@@ -71,6 +71,17 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(error));
     }
 
+    @ExceptionHandler(PlanRestrictionException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePlanRestriction(
+            PlanRestrictionException ex, WebRequest request) {
+        logger.info("Plan restriction [{}]: {}", ex.getErrorCode(), ex.getMessage());
+
+        ErrorResponse error = new ErrorResponse(ex.getMessage(), ex.getErrorCode(), ex.getDetails());
+        return ResponseEntity
+                .status(HttpStatus.PAYMENT_REQUIRED)
+                .body(ApiResponse.error(error));
+    }
+
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(
             org.springframework.security.access.AccessDeniedException ex, WebRequest request) {

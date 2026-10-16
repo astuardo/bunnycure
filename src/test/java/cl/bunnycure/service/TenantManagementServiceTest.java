@@ -115,12 +115,11 @@ class TenantManagementServiceTest {
             return t;
         });
 
-        // Simular ejecución con executeInTenantContext
+        // Simular ejecución con executeInTenantTransaction (transacción propia del salón nuevo)
         doAnswer(invocation -> {
-            Runnable action = invocation.getArgument(1);
-            action.run();
-            return null;
-        }).when(tenantExecutionService).executeInTenantContext(eq(10L), any(Runnable.class));
+            java.util.function.Supplier<?> action = invocation.getArgument(1);
+            return action.get();
+        }).when(tenantExecutionService).executeInTenantTransaction(eq(10L), any());
 
         when(passwordEncoder.encode("SuperPass123!")).thenReturn("hashed_password");
         when(entityManager.createNativeQuery(anyString())).thenReturn(nativeQuery);

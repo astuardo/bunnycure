@@ -19,9 +19,33 @@ public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     
+    private cl.bunnycure.service.billing.PlanAccessService planAccessService;
+
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPlanAccessService(cl.bunnycure.service.billing.PlanAccessService planAccessService) {
+        this.planAccessService = planAccessService;
+    }
+
+    /** Especialistas y recepcionistas ocupan puestos del plan; las administradoras no. */
+    private static boolean occupiesStaffSeat(String role, boolean enabled) {
+        if (!enabled || role == null) {
+            return false;
+        }
+        cl.bunnycure.domain.enums.Role r = cl.bunnycure.domain.enums.Role.fromString(role);
+        return r == cl.bunnycure.domain.enums.Role.SPECIALIST
+                || r == cl.bunnycure.domain.enums.Role.STAFF
+                || r == cl.bunnycure.domain.enums.Role.RECEPTIONIST;
+    }
+
+    private void assertSeatForNewStaff() {
+        if (planAccessService != null) {
+            planAccessService.assertStaffSeatAvailable();
+        }
     }
 
     @Override
@@ -74,6 +98,10 @@ public class UserService implements UserDetailsService {
                 ? cl.bunnycure.domain.enums.Role.fromString(role).name() 
                 : "SPECIALIST";
 
+        if (occupiesStaffSeat(assignedRole, true)) {
+            assertSeatForNewStaff();
+        }
+
         User user = User.builder()
                 .username(username)
                 .password(passwordEncoder.encode(password))
@@ -97,6 +125,15 @@ public class UserService implements UserDetailsService {
     @Transactional
     public User updateUser(Long id, String fullName, String email, String role, Boolean enabled) {
         User user = findById(id);
+
+        String resultingRole = role != null && !role.isBlank()
+                ? cl.bunnycure.domain.enums.Role.fromString(role).name()
+                : user.getRole();
+        boolean resultingEnabled = enabled != null ? enabled : user.isEnabled();
+        if (!occupiesStaffSeat(user.getRole(), user.isEnabled()) && occupiesStaffSeat(resultingRole, resultingEnabled)) {
+            assertSeatForNewStaff();
+        }
+
         if (fullName != null) {
             user.setFullName(fullName);
         }

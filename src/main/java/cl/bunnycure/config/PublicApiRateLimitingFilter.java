@@ -37,6 +37,10 @@ public class PublicApiRateLimitingFilter extends OncePerRequestFilter {
     @Value("${bunnycure.ratelimit.login.max-per-minute:10}")
     private int maxLoginPerMinute;
 
+    /** Registro autoservicio (alta, reenvío y verificación): crea salones y envía correos. */
+    @Value("${bunnycure.ratelimit.signup.max-per-minute:5}")
+    private int maxSignupPerMinute;
+
     private static class RequestTracker {
         final AtomicInteger count = new AtomicInteger(0);
         volatile long windowStart = System.currentTimeMillis();
@@ -57,6 +61,7 @@ public class PublicApiRateLimitingFilter extends OncePerRequestFilter {
 
     private final Map<String, RequestTracker> lookupTrackers = new ConcurrentHashMap<>();
     private final Map<String, RequestTracker> loginTrackers = new ConcurrentHashMap<>();
+    private final Map<String, RequestTracker> signupTrackers = new ConcurrentHashMap<>();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -83,6 +88,13 @@ public class PublicApiRateLimitingFilter extends OncePerRequestFilter {
             if (!tracker.allow(maxLoginPerMinute)) {
                 log.warn("[RATE-LIMIT] Bloqueada petición excedida a login desde IP: {}", clientIp);
                 sendTooManyRequestsResponse(response, "Demasiados intentos de inicio de sesión. Por seguridad, espera un minuto.");
+                return;
+            }
+        } else if (path.startsWith("/api/public/signup") && "POST".equalsIgnoreCase(request.getMethod())) {
+            RequestTracker tracker = signupTrackers.computeIfAbsent(clientIp, k -> new RequestTracker());
+            if (!tracker.allow(maxSignupPerMinute)) {
+                log.warn("[RATE-LIMIT] Bloqueada petición excedida a registro desde IP: {}", clientIp);
+                sendTooManyRequestsResponse(response, "Demasiados intentos de registro. Espera un minuto e inténtalo de nuevo.");
                 return;
             }
         }

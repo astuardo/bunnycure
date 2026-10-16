@@ -22,6 +22,32 @@ public class TenantExecutionService {
 
     private final TenantRepository tenantRepository;
 
+    private org.springframework.transaction.support.TransactionTemplate requiresNewTransaction;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setTransactionManager(org.springframework.transaction.PlatformTransactionManager transactionManager) {
+        this.requiresNewTransaction = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        this.requiresNewTransaction.setPropagationBehavior(
+                org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    /**
+     * Como {@link #executeInTenantContext(Long, Supplier)}, pero en una transacción NUEVA.
+     *
+     * Hibernate fija el salón de una sesión al abrirla: si el llamador ya tiene una transacción
+     * (o una sesión abierta por Open-Session-In-View) del salón A, cambiar TenantContext a B no
+     * cambia esa sesión y las entidades con @TenantId se guardarían/leerían como del salón A
+     * (Hibernate lo rechaza con "assigned tenant id differs from current tenant id").
+     * REQUIRES_NEW suspende la sesión del llamador y abre una propia ligada al salón B.
+     * Usar siempre que se lea o escriba una entidad con @TenantId de OTRO salón.
+     */
+    public <T> T executeInTenantTransaction(Long tenantId, Supplier<T> supplier) {
+        if (requiresNewTransaction == null) {
+            return executeInTenantContext(tenantId, supplier);
+        }
+        return executeInTenantContext(tenantId, () -> requiresNewTransaction.execute(status -> supplier.get()));
+    }
+
     /**
      * Ejecuta una tarea para cada salón activo registrado en la plataforma.
      * En cada iteración establece TenantContext con el ID del salón y al terminar restaura el contexto previo.

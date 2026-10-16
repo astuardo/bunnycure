@@ -14,6 +14,8 @@ public class ErrorResponse {
     private String message;
     private String errorCode;
     private List<FieldError> fieldErrors;
+    /** Datos adicionales para el cliente (p.ej. plan requerido en errores 402). */
+    private java.util.Map<String, Object> details;
     
     public ErrorResponse(String message, String errorCode) {
         this.message = message;
@@ -26,6 +28,16 @@ public class ErrorResponse {
         this.fieldErrors = fieldErrors;
     }
     
+    public ErrorResponse(String message, String errorCode, java.util.Map<String, Object> details) {
+        this.message = message;
+        this.errorCode = errorCode;
+        this.details = details;
+    }
+
+    public java.util.Map<String, Object> getDetails() {
+        return details;
+    }
+
     public void addFieldError(String field, String message) {
         if (fieldErrors == null) {
             fieldErrors = new ArrayList<>();

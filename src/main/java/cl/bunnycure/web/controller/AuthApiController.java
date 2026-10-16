@@ -104,6 +104,16 @@ public class AuthApiController {
             log.info("[AUTH-LOGIN] Autenticando con AuthenticationManager...");
             Authentication authentication = authenticationManager.authenticate(authToken);
             log.info("[AUTH-LOGIN] ✓ Autenticación exitosa");
+
+            // Registro autoservicio: el salón no opera hasta que la administradora verifica su email
+            boolean pendingVerification = tenantRepository.findById(TenantContext.getCurrentTenantId())
+                    .map(t -> t.getSubscriptionStatus() == cl.bunnycure.domain.enums.SubscriptionStatus.PENDING_VERIFICATION)
+                    .orElse(false);
+            if (pendingVerification) {
+                log.info("[AUTH-LOGIN] Login bloqueado: email del salón aún no verificado");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Confirma tu email para activar tu salón. Revisa tu bandeja de entrada.", "EMAIL_NOT_VERIFIED"));
+            }
             
             // Establecer contexto de seguridad
             SecurityContext securityContext = SecurityContextHolder.createEmptyContext();

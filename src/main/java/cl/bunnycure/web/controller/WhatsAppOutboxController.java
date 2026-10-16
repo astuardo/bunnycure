@@ -19,6 +19,7 @@ import java.util.Map;
 @RequestMapping("/api/whatsapp/outbox")
 @RequiredArgsConstructor
 @Tag(name = "WhatsApp Outbox", description = "Gestión de cola de reintentos y mensajes fallidos de WhatsApp")
+@cl.bunnycure.config.RequiresPlanFeature(cl.bunnycure.domain.enums.PlanFeature.WHATSAPP_AUTOMATION)
 public class WhatsAppOutboxController {
 
     private final WhatsAppOutboxService outboxService;

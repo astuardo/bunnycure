@@ -54,6 +54,23 @@ public class WhatsAppService {
     @Autowired(required = false)
     private cl.bunnycure.domain.repository.TenantRepository tenantRepository;
 
+    @Autowired(required = false)
+    private cl.bunnycure.service.billing.PlanAccessService planAccessService;
+
+    /** Envío omitido porque el plan del salón no incluye WhatsApp (no va a la cola de reintentos). */
+    static final String PLAN_BLOCKED_ERROR = "WhatsApp no incluido en el plan del salón";
+
+    private boolean whatsappBlockedByPlan() {
+        if (planAccessService == null) {
+            return false;
+        }
+        boolean blocked = !planAccessService.currentTenantHas(cl.bunnycure.domain.enums.PlanFeature.WHATSAPP_AUTOMATION);
+        if (blocked) {
+            log.info("[WHATSAPP-SKIP] El plan del salón {} no incluye WhatsApp: envío omitido", cl.bunnycure.config.TenantContext.getCurrentTenantId());
+        }
+        return blocked;
+    }
+
     @Value("${bunnycure.whatsapp.admin-alert.enabled:true}")
     private boolean adminAlertEnabledFallback;
 
@@ -395,6 +412,9 @@ public class WhatsAppService {
         if (messageId == null || messageId.isBlank()) {
             return false;
         }
+        if (whatsappBlockedByPlan()) {
+            return false;
+        }
         if (config.getToken() == null || config.getToken().isBlank() || config.getPhoneId() == null || config.getPhoneId().isBlank()) {
             return false;
         }
@@ -595,6 +615,9 @@ public class WhatsAppService {
      * Envía un documento (PDF, etc.) vía WhatsApp.
      */
     public boolean sendDocumentMessage(String toPhoneNumber, String documentUrl, String filename, String caption) {
+        if (whatsappBlockedByPlan()) {
+            return false;
+        }
         if (config.getToken() == null || config.getToken().isBlank() || config.getPhoneId() == null || config.getPhoneId().isBlank()) {
             return false;
         }
@@ -636,6 +659,9 @@ public class WhatsAppService {
      * Envía una imagen vía WhatsApp.
      */
     public boolean sendImageMessage(String toPhoneNumber, String imageUrl, String caption) {
+        if (whatsappBlockedByPlan()) {
+            return false;
+        }
         if (config.getToken() == null || config.getToken().isBlank() || config.getPhoneId() == null || config.getPhoneId().isBlank()) {
             return false;
         }
@@ -674,6 +700,9 @@ public class WhatsAppService {
      * Envía un mensaje interactivo con botones de respuesta rápida (hasta 3 botones).
      */
     public boolean sendInteractiveButtonMessage(String toPhoneNumber, String bodyText, List<Map<String, String>> buttons) {
+        if (whatsappBlockedByPlan()) {
+            return false;
+        }
         if (config.getToken() == null || config.getToken().isBlank() || config.getPhoneId() == null || config.getPhoneId().isBlank()) {
             return false;
         }
@@ -729,6 +758,9 @@ public class WhatsAppService {
      * Envía un mensaje interactivo con lista desplegable de opciones (hasta 10 filas).
      */
     public boolean sendInteractiveListMessage(String toPhoneNumber, String headerText, String bodyText, String footerText, String buttonLabel, List<Map<String, Object>> sections) {
+        if (whatsappBlockedByPlan()) {
+            return false;
+        }
         if (config.getToken() == null || config.getToken().isBlank() || config.getPhoneId() == null || config.getPhoneId().isBlank()) {
             return false;
         }
@@ -796,6 +828,9 @@ public class WhatsAppService {
     }
 
     public WhatsAppSendResult sendTextMessageDirect(String toPhoneNumber, String message) {
+        if (whatsappBlockedByPlan()) {
+            return WhatsAppSendResult.fail(PLAN_BLOCKED_ERROR);
+        }
         try {
             if (config.getToken() == null || config.getToken().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Token no configurado");
@@ -871,7 +906,7 @@ public class WhatsAppService {
             return true;
         } else {
             log.error("[WHATSAPP] ❌ Error al enviar mensaje a {}: {}", normalizedPhone, result.errorMessage());
-            if (eventPublisher != null) {
+            if (eventPublisher != null && !PLAN_BLOCKED_ERROR.equals(result.errorMessage())) {
                 eventPublisher.publishEvent(WhatsAppFailedMessageEvent.builder()
                         .appointment(appointment)
                         .customer(appointment != null ? appointment.getCustomer() : null)
@@ -1047,6 +1082,9 @@ public class WhatsAppService {
                                                  String languageCode,
                                                  String headerParam,
                                                  List<String> bodyParams) {
+        if (whatsappBlockedByPlan()) {
+            return WhatsAppSendResult.fail(PLAN_BLOCKED_ERROR);
+        }
         try {
             if (config.getToken() == null || config.getToken().isEmpty()) {
                 log.warn("[WHATSAPP-SKIP] Token no configurado");
@@ -1131,7 +1169,7 @@ public class WhatsAppService {
             return true;
         } else {
             log.error("[WHATSAPP] ❌ Error al enviar template '{}' a {}: {}", templateName, normalizedPhone, result.errorMessage());
-            if (eventPublisher != null) {
+            if (eventPublisher != null && !PLAN_BLOCKED_ERROR.equals(result.errorMessage())) {
                 eventPublisher.publishEvent(WhatsAppFailedMessageEvent.builder()
                         .appointment(appointment)
                         .customer(appointment != null ? appointment.getCustomer() : null)

@@ -25,6 +25,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Invoices", description = "Operaciones de facturación y Boletas de Honorarios Electrónicas (SII v2 vía ApiGateway)")
+@cl.bunnycure.config.RequiresPlanFeature(cl.bunnycure.domain.enums.PlanFeature.SII_INVOICING)
 public class InvoiceApiController {
 
     private final ApiGatewaySiiService apiGatewaySiiService;

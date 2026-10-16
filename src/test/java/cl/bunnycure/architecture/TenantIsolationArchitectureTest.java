@@ -34,6 +34,7 @@ class TenantIsolationArchitectureTest {
     private static final Map<String, String> GLOBAL_ENTITIES = Map.of(
             "Tenant", "Es la propia tabla de salones",
             "PasswordResetToken", "Se busca por token aleatorio sin sesión; ligado a un User que sí tiene tenant",
+            "EmailVerificationToken", "Se busca por hash del token sin sesión (registro autoservicio); guarda tenant_id explícito",
             "WebhookProcessedEvent", "Deduplicación global de eventos de Meta (ids únicos a nivel plataforma)",
             "WebhookOperationalEvent", "Registro operativo interno de la plataforma; no se expone por API",
             "WhatsAppAdminAlertOutbox", "Cola global: el dispatcher resuelve el salón de cada fila desde su BookingRequest",

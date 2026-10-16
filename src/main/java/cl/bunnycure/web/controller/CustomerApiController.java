@@ -309,6 +309,7 @@ public class CustomerApiController {
     }
 
     @Operation(summary = "Obtener enlace de Google Wallet", description = "Genera un enlace firmado para guardar la tarjeta de fidelización en Google Wallet.")
+    @cl.bunnycure.config.RequiresPlanFeature(cl.bunnycure.domain.enums.PlanFeature.WALLET_PASSES)
     @GetMapping("/{id}/wallet/google-link")
     public ResponseEntity<ApiResponse<java.util.Map<String, String>>> getGoogleWalletLink(
             @PathVariable Long id) {

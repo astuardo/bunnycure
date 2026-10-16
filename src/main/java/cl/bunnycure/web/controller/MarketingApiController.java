@@ -23,6 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/marketing")
 @RequiredArgsConstructor
+@cl.bunnycure.config.RequiresPlanFeature(cl.bunnycure.domain.enums.PlanFeature.MARKETING_CAMPAIGNS)
 public class MarketingApiController {
 
     private final MarketingCampaignService campaignService;

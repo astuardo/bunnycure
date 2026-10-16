@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/inventory")
 @RequiredArgsConstructor
+@cl.bunnycure.config.RequiresPlanFeature(cl.bunnycure.domain.enums.PlanFeature.INVENTORY)
 public class InventoryApiController {
 
     private final ProductRepository productRepository;

@@ -95,6 +95,8 @@ public class SecurityConfig {
 							platformAccess.isPlatformAdmin(authentication.get())));
 			auth.requestMatchers("/api/users/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
 			auth.requestMatchers("/api/settings/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
+			// Suscripción y pagos del salón: solo administradoras
+			auth.requestMatchers("/api/billing/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
 			auth.requestMatchers("/api/inventory/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
 			auth.requestMatchers("/api/booking-requests/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN", "RECEPTIONIST");
 			auth.requestMatchers("/api/reminders/**").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN", "RECEPTIONIST");
@@ -110,6 +112,9 @@ public class SecurityConfig {
 			// Diagnóstico del webhook (expone metadatos de configuración): solo administradores.
 			// Debe ir antes de las reglas públicas de /api/webhooks/whatsapp/** (gana la primera coincidencia).
 			auth.requestMatchers("/api/webhooks/whatsapp/status", "/api/webhook/whatsapp/status").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
+
+			// Webhook de Mercado Pago (público; el controlador exige firma x-signature válida)
+			auth.requestMatchers(HttpMethod.POST, "/api/webhooks/mercadopago").permitAll();
 
 			// Webhook de WhatsApp (público para Meta: soporta plural /webhooks/ y singular /webhook/)
 			auth.requestMatchers(HttpMethod.GET, "/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**", "/api/webhook/whatsapp", "/api/webhook/whatsapp/**").permitAll();
