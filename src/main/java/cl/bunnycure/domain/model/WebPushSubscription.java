@@ -20,6 +20,14 @@ public class WebPushSubscription {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @org.hibernate.annotations.TenantId
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
+    /** Usuario autenticado dueño del dispositivo. Solo los avisos de su salón llegan a esta suscripción. */
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(nullable = false, unique = true, columnDefinition = "TEXT")
     private String endpoint;
 

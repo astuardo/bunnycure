@@ -77,8 +77,11 @@ public class SecurityConfig {
 			auth.requestMatchers("/api/auth/login", "/api/auth/logout", "/api/auth/refresh").permitAll();
 			auth.requestMatchers("/api/auth/csrf").permitAll();
 			
-			// Notificaciones Web Push (VAPID)
-			auth.requestMatchers("/api/push-subscriptions/**").permitAll();
+			// Notificaciones Web Push (VAPID): solo la clave pública es pública.
+			// Registrar/dar de baja/probar exige usuario autenticado; el diagnóstico, rol admin.
+			auth.requestMatchers(HttpMethod.GET, "/api/push-subscriptions/public-key").permitAll();
+			auth.requestMatchers("/api/push-subscriptions/debug").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
+			auth.requestMatchers("/api/push-subscriptions/**").authenticated();
 			
 			// API REST endpoints protegidos por RBAC
 			auth.requestMatchers("/api/auth/**").authenticated();

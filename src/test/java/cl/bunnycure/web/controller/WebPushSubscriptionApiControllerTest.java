@@ -1,5 +1,7 @@
 package cl.bunnycure.web.controller;
 
+import cl.bunnycure.domain.model.User;
+import cl.bunnycure.domain.repository.UserRepository;
 import cl.bunnycure.service.WebPushNotificationService;
 import cl.bunnycure.web.dto.WebPushSubscriptionRequestDto;
 import cl.bunnycure.web.dto.WebPushSubscriptionResponseDto;
@@ -11,12 +13,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -29,6 +34,9 @@ class WebPushSubscriptionApiControllerTest {
     @Mock
     private WebPushNotificationService webPushNotificationService;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private WebPushSubscriptionApiController controller;
 
@@ -39,6 +47,16 @@ class WebPushSubscriptionApiControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
         objectMapper = new ObjectMapper();
+    }
+
+    private static final Long USER_ID = 7L;
+    private static final TestingAuthenticationToken AUTH = new TestingAuthenticationToken("push-owner", null);
+
+    private void currentUserExists() {
+        User user = new User();
+        user.setId(USER_ID);
+        user.setUsername("push-owner");
+        when(userRepository.findByUsername("push-owner")).thenReturn(Optional.of(user));
     }
 
     @Test
@@ -68,10 +86,11 @@ class WebPushSubscriptionApiControllerTest {
                 .active(true)
                 .build();
 
-        when(webPushNotificationService.saveSubscription(any(WebPushSubscriptionRequestDto.class)))
+        currentUserExists();
+        when(webPushNotificationService.saveSubscription(any(WebPushSubscriptionRequestDto.class), eq(USER_ID)))
                 .thenReturn(responseDto);
 
-        mockMvc.perform(post("/api/push-subscriptions")
+        mockMvc.perform(post("/api/push-subscriptions").principal(AUTH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -79,33 +98,35 @@ class WebPushSubscriptionApiControllerTest {
                 .andExpect(jsonPath("$.data.id").value(10))
                 .andExpect(jsonPath("$.data.active").value(true));
 
-        verify(webPushNotificationService, times(1)).saveSubscription(any(WebPushSubscriptionRequestDto.class));
+        verify(webPushNotificationService, times(1)).saveSubscription(any(WebPushSubscriptionRequestDto.class), eq(USER_ID));
     }
 
     @Test
     void unsubscribe_DeactivatesSubscription() throws Exception {
-        mockMvc.perform(post("/api/push-subscriptions/unsubscribe")
+        currentUserExists();
+        mockMvc.perform(post("/api/push-subscriptions/unsubscribe").principal(AUTH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"endpoint\":\"https://push.example.com/sub/123\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").value("Suscripción eliminada"));
 
-        verify(webPushNotificationService, times(1)).deactivateSubscription("https://push.example.com/sub/123");
+        verify(webPushNotificationService, times(1)).deactivateSubscription("https://push.example.com/sub/123", USER_ID);
     }
 
     @Test
     void sendTest_DispatchesTestPushNotification() throws Exception {
-        when(webPushNotificationService.sendTestNotification("https://push.example.com/sub/123")).thenReturn(true);
+        currentUserExists();
+        when(webPushNotificationService.sendTestNotification("https://push.example.com/sub/123", USER_ID)).thenReturn(true);
 
-        mockMvc.perform(post("/api/push-subscriptions/test")
+        mockMvc.perform(post("/api/push-subscriptions/test").principal(AUTH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"endpoint\":\"https://push.example.com/sub/123\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.success").value(true));
 
-        verify(webPushNotificationService, times(1)).sendTestNotification("https://push.example.com/sub/123");
+        verify(webPushNotificationService, times(1)).sendTestNotification("https://push.example.com/sub/123", USER_ID);
     }
 
     @Test

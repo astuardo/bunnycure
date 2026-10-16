@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Configuración equivalente a la de Spring Boot por defecto (consola), con una diferencia:
+  %m / %msg / %message pasan por PiiMaskingConverter, que enmascara emails y teléfonos
+  en todos los logs (Heroku -> Logtail) para cumplir la Ley 21.719.
+-->
+<configuration>
+    <conversionRule conversionWord="m" class="cl.bunnycure.config.PiiMaskingConverter"/>
+    <conversionRule conversionWord="msg" class="cl.bunnycure.config.PiiMaskingConverter"/>
+    <conversionRule conversionWord="message" class="cl.bunnycure.config.PiiMaskingConverter"/>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

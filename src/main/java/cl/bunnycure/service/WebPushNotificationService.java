@@ -49,11 +49,18 @@ public class WebPushNotificationService {
     @Value("${bunnycure.webpush.private-key:}")
     private String webPushPrivateKey;
 
+    /**
+     * Registra el dispositivo del usuario autenticado en su salón (TenantContext actual).
+     */
     @Transactional
-    public WebPushSubscriptionResponseDto saveSubscription(WebPushSubscriptionRequestDto request) {
+    public WebPushSubscriptionResponseDto saveSubscription(WebPushSubscriptionRequestDto request, Long userId) {
+        subscriptionRepository.deleteByEndpointOutsideTenant(
+                request.getEndpoint(), cl.bunnycure.config.TenantContext.getCurrentTenantId());
+
         WebPushSubscription subscription = subscriptionRepository.findByEndpoint(request.getEndpoint())
                 .orElseGet(WebPushSubscription::new);
 
+        subscription.setUserId(userId);
         subscription.setEndpoint(request.getEndpoint());
         subscription.setP256dh(request.getKeys().getP256dh());
         subscription.setAuth(request.getKeys().getAuth());
@@ -64,52 +71,57 @@ public class WebPushNotificationService {
         return toDto(saved);
     }
 
+    /**
+     * Da de baja el dispositivo solo si pertenece al usuario autenticado.
+     */
     @Transactional
-    public void deactivateSubscription(String endpoint) {
-        subscriptionRepository.findByEndpoint(endpoint).ifPresent(subscription -> {
-            subscription.setActive(false);
-            subscriptionRepository.save(subscription);
-        });
+    public void deactivateSubscription(String endpoint, Long userId) {
+        subscriptionRepository.findByEndpoint(endpoint)
+                .filter(subscription -> userId != null && userId.equals(subscription.getUserId()))
+                .ifPresent(subscription -> {
+                    subscription.setActive(false);
+                    subscriptionRepository.save(subscription);
+                });
     }
 
     public String getPublicKey() {
         return webPushPublicKey;
     }
 
-    public boolean sendTestNotification(String endpoint) {
+    /**
+     * Envía una notificación de prueba solo a los dispositivos del usuario autenticado
+     * (o a uno de ellos, si se indica su endpoint).
+     */
+    public boolean sendTestNotification(String endpoint, Long userId) {
         if (!webPushEnabled || !isWebPushConfigured()) {
             log.warn("[WEB-PUSH] No se puede enviar test: webPushEnabled={} isConfigured={}", webPushEnabled, isWebPushConfigured());
             return false;
         }
 
-        if (endpoint != null && !endpoint.isBlank()) {
-            return subscriptionRepository.findByEndpoint(endpoint)
-                    .map(sub -> {
-                        PushService pushService = buildPushService();
-                        if (pushService == null) return false;
-                        Map<String, Object> payloadMap = new LinkedHashMap<>();
-                        payloadMap.put("title", "🐰 BunnyCure Notificaciones");
-                        payloadMap.put("body", "¡Notificación de prueba recibida exitosamente en este dispositivo! ✨");
-                        payloadMap.put("icon", "/icon-192.png");
-                        payloadMap.put("badge", "/icon-192.png");
-                        payloadMap.put("url", "/calendar");
-                        payloadMap.put("tag", "test-push-" + System.currentTimeMillis());
-                        try {
-                            String payload = objectMapper.writeValueAsString(payloadMap);
-                            sendToSubscription(pushService, sub, payload);
-                            return true;
-                        } catch (Exception e) {
-                            log.error("[WEB-PUSH] Error enviando push de prueba: {}", e.getMessage());
-                            return false;
-                        }
-                    }).orElse(false);
-        } else {
-            sendAdminCustomNotification(
-                    "🐰 BunnyCure Notificaciones",
-                    "¡Notificación de prueba recibida exitosamente en tu dispositivo! ✨",
-                    "/calendar"
-            );
+        List<WebPushSubscription> targets = subscriptionRepository.findByActiveTrueAndUserId(userId).stream()
+                .filter(sub -> endpoint == null || endpoint.isBlank() || endpoint.equals(sub.getEndpoint()))
+                .toList();
+        if (targets.isEmpty()) {
+            return false;
+        }
+
+        PushService pushService = buildPushService();
+        if (pushService == null) return false;
+
+        Map<String, Object> payloadMap = new LinkedHashMap<>();
+        payloadMap.put("title", "🐰 BunnyCure Notificaciones");
+        payloadMap.put("body", "¡Notificación de prueba recibida exitosamente en este dispositivo! ✨");
+        payloadMap.put("icon", "/icon-192.png");
+        payloadMap.put("badge", "/icon-192.png");
+        payloadMap.put("url", "/calendar");
+        payloadMap.put("tag", "test-push-" + System.currentTimeMillis());
+        try {
+            String payload = objectMapper.writeValueAsString(payloadMap);
+            targets.forEach(sub -> sendToSubscription(pushService, sub, payload));
             return true;
+        } catch (Exception e) {
+            log.error("[WEB-PUSH] Error enviando push de prueba: {}", e.getMessage());
+            return false;
         }
     }
 
@@ -246,17 +258,17 @@ public class WebPushNotificationService {
             subscription.setLastFailureAt(LocalDateTime.now());
             subscription.setLastFailureReason("Push interrupted");
             subscriptionRepository.save(subscription);
-            log.warn("[WEB-PUSH] Envío interrumpido para endpoint {}", subscription.getEndpoint());
+            log.warn("[WEB-PUSH] Envío interrumpido para endpoint {}", abbreviateEndpoint(subscription.getEndpoint()));
         } catch (JoseException | GeneralSecurityException | IOException | ExecutionException ex) {
             subscription.setLastFailureAt(LocalDateTime.now());
             subscription.setLastFailureReason(ex.getClass().getSimpleName() + ": " + ex.getMessage());
             subscriptionRepository.save(subscription);
-            log.warn("[WEB-PUSH] Error enviando push para endpoint {}: {}", subscription.getEndpoint(), ex.getMessage());
+            log.warn("[WEB-PUSH] Error enviando push para endpoint {}: {}", abbreviateEndpoint(subscription.getEndpoint()), ex.getMessage());
         } catch (Exception ex) {
             subscription.setLastFailureAt(LocalDateTime.now());
             subscription.setLastFailureReason(ex.getClass().getSimpleName() + ": " + ex.getMessage());
             subscriptionRepository.save(subscription);
-            log.warn("[WEB-PUSH] Error inesperado enviando push para endpoint {}: {}", subscription.getEndpoint(), ex.getMessage());
+            log.warn("[WEB-PUSH] Error inesperado enviando push para endpoint {}: {}", abbreviateEndpoint(subscription.getEndpoint()), ex.getMessage());
         }
     }
 
