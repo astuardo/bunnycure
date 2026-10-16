@@ -120,6 +120,9 @@ public class TenantPublicApiController {
                 .nightBlock(nightBlock)
                 .active(tenant.isActive())
                 .planTier(tenant.getPlanTier())
+                .planName(tenant.getSubscriptionPlan().getDisplayName())
+                .features(tenant.getSubscriptionPlan().getFeatures().stream().map(Enum::name).sorted().toList())
+                .subscriptionStatus(tenant.getSubscriptionStatus() != null ? tenant.getSubscriptionStatus().name() : null)
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(dto));

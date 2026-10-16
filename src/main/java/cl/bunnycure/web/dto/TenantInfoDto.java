@@ -29,4 +29,10 @@ public class TenantInfoDto {
     private String nightBlock;
     private boolean active;
     private String planTier;
+    /** Nombre comercial del plan (Emprendedora, Studio Pro, Franquicias). */
+    private String planName;
+    /** Funcionalidades de pago incluidas en el plan (códigos de PlanFeature). */
+    private java.util.List<String> features;
+    /** Estado de la suscripción (TRIALING, ACTIVE, PAST_DUE, SUSPENDED...). */
+    private String subscriptionStatus;
 }

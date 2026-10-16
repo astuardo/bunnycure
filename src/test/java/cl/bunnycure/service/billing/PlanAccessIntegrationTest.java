@@ -99,6 +99,21 @@ class PlanAccessIntegrationTest {
     }
 
     @Test
+    @DisplayName("tenant-info público expone plan, funcionalidades y estado (para la interfaz de todos los roles)")
+    void publicTenantInfo_ExposesPlanFeatures() throws Exception {
+        Long pro = createTenant("PRO", SubscriptionStatus.TRIALING);
+        mockMvc.perform(get("/api/public/tenant-info").header("X-Tenant-ID", pro))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.planName").value("Studio Pro"))
+                .andExpect(jsonPath("$.data.features").value(org.hamcrest.Matchers.hasItems("GIFT_CARDS", "SII_INVOICING")))
+                .andExpect(jsonPath("$.data.subscriptionStatus").value("TRIALING"));
+
+        Long standard = createTenant("STANDARD", SubscriptionStatus.ACTIVE);
+        mockMvc.perform(get("/api/public/tenant-info").header("X-Tenant-ID", standard))
+                .andExpect(jsonPath("$.data.features").isEmpty());
+    }
+
+    @Test
     @DisplayName("'Mi suscripción' es solo para administradoras")
     void billing_RequiresAdminRole() throws Exception {
         Long salon = createTenant("PRO", SubscriptionStatus.ACTIVE);
