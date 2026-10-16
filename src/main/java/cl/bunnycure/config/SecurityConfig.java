@@ -100,10 +100,13 @@ public class SecurityConfig {
 			auth.requestMatchers("/api/services/**").authenticated();
 			auth.requestMatchers("/api/whatsapp/**").authenticated();
 			
+			// Diagnóstico del webhook (expone metadatos de configuración): solo administradores.
+			// Debe ir antes de las reglas públicas de /api/webhooks/whatsapp/** (gana la primera coincidencia).
+			auth.requestMatchers("/api/webhooks/whatsapp/status", "/api/webhook/whatsapp/status").hasAnyRole("SUPER_ADMIN", "SALON_ADMIN", "ADMIN");
+
 			// Webhook de WhatsApp (público para Meta: soporta plural /webhooks/ y singular /webhook/)
 			auth.requestMatchers(HttpMethod.GET, "/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**", "/api/webhook/whatsapp", "/api/webhook/whatsapp/**").permitAll();
 			auth.requestMatchers(HttpMethod.POST, "/api/webhooks/whatsapp", "/api/webhooks/whatsapp/**", "/api/webhook/whatsapp", "/api/webhook/whatsapp/**").permitAll();
-			auth.requestMatchers("/api/webhooks/whatsapp/status", "/api/webhook/whatsapp/status").permitAll();
 			
 			// API de pruebas WhatsApp (solo en local)
 			if (isLocal) {
