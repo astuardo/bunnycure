@@ -32,6 +32,7 @@ public class MarketingCampaignService {
     private final CustomerRepository customerRepository;
     private final AppointmentRepository appointmentRepository;
     private final WhatsAppService whatsAppService;
+    private final cl.bunnycure.service.WhatsAppBusinessApiService whatsAppBusinessApiService;
     private final NotificationLogService notificationLogService;
     private final MarketingTemplateCatalog templateCatalog;
 
@@ -72,7 +73,7 @@ public class MarketingCampaignService {
                 alreadyExisted.add(def.name());
             } else {
                 log.info("[MARKETING-SYNC] Registrando plantilla en Meta: {}", def.name());
-                Optional<JsonNode> result = whatsAppService.createMessageTemplate(def.toMetaPayload());
+                Optional<JsonNode> result = whatsAppBusinessApiService.createMessageTemplate(def.toMetaPayload());
                 if (result.isPresent()) {
                     created.add(def.name());
                 } else {
@@ -302,7 +303,7 @@ public class MarketingCampaignService {
             ));
         }
 
-        Optional<JsonNode> res = whatsAppService.updateMessageTemplate(metaInfo.id(), Map.of("components", components));
+        Optional<JsonNode> res = whatsAppBusinessApiService.updateMessageTemplate(metaInfo.id(), Map.of("components", components));
         if (res.isPresent()) {
             log.info("[MARKETING] ✅ Plantilla '{}' (ID: {}) enviada a actualización en Meta", templateName, metaInfo.id());
             return Optional.of(optDef.get().toDto("PENDING", metaInfo.id()));
@@ -366,7 +367,7 @@ public class MarketingCampaignService {
     private Map<String, MetaTemplateInfo> fetchMetaTemplatesIndex() {
         Map<String, MetaTemplateInfo> index = new HashMap<>();
         try {
-            Optional<JsonNode> metaResponse = whatsAppService.fetchMessageTemplates();
+            Optional<JsonNode> metaResponse = whatsAppBusinessApiService.fetchMessageTemplates();
             if (metaResponse.isPresent()) {
                 JsonNode data = metaResponse.get().path("data");
                 if (data.isArray()) {
@@ -407,7 +408,7 @@ public class MarketingCampaignService {
         // 1. Eliminar de Meta Graph API
         boolean metaDeleted = false;
         try {
-            metaDeleted = whatsAppService.deleteMessageTemplate(templateName);
+            metaDeleted = whatsAppBusinessApiService.deleteMessageTemplate(templateName);
             log.info("[MARKETING-DELETE] Respuesta de Meta al eliminar '{}': {}", templateName, metaDeleted);
         } catch (Exception ex) {
             log.warn("[MARKETING-DELETE] Error al eliminar plantilla de Meta: {}", ex.getMessage());

@@ -1,5 +1,8 @@
 package cl.bunnycure.service;
 
+import cl.bunnycure.service.sii.ChileanRut;
+import cl.bunnycure.service.sii.SiiResponseParser;
+
 import cl.bunnycure.config.ApiGatewayConfig;
 import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
@@ -164,7 +167,7 @@ public class ApiGatewaySiiService {
         }
 
         // Validar RUT del cliente
-        if (customer.getRut() == null || customer.getRut().isBlank() || !validateRutFormat(customer.getRut())) {
+        if (customer.getRut() == null || customer.getRut().isBlank() || !ChileanRut.validateRutFormat(customer.getRut())) {
             String message = "RUT del cliente inválido o no provisto: " + customer.getRut();
             log.warn("[INVOICE-ERROR] No se puede emitir BHE: {}", message);
             createFailedLog(appointment, customer, amount, message);
@@ -189,9 +192,9 @@ public class ApiGatewaySiiService {
                 log.info("[INVOICE-RESPONSE] Respuesta de ApiGateway: {}", response.getBody());
                 JsonNode json = objectMapper.readTree(response.getBody());
 
-                String folio = extractFolio(json);
-                String codigo = extractCodigo(json);
-                String barcode = extractBarcode(json);
+                String folio = SiiResponseParser.extractFolio(json);
+                String codigo = SiiResponseParser.extractCodigo(json);
+                String barcode = SiiResponseParser.extractBarcode(json);
 
                 log.info("[INVOICE-SUCCESS] BHE emitida exitosamente. Folio: {}, Código SII: {}", folio, codigo);
 
@@ -252,8 +255,8 @@ public class ApiGatewaySiiService {
 
         boolean customerUpdated = false;
         if (overrideRut != null && !overrideRut.isBlank()) {
-            String sanitized = sanitizeRut(overrideRut);
-            if (!validateRutFormat(sanitized)) {
+            String sanitized = ChileanRut.sanitizeRut(overrideRut);
+            if (!ChileanRut.validateRutFormat(sanitized)) {
                 throw new IllegalArgumentException("El RUT ingresado no es válido: " + overrideRut);
             }
             customer.setRut(sanitized);
@@ -477,7 +480,7 @@ public class ApiGatewaySiiService {
             return dryRunResponse;
         }
 
-        String emisor = sanitizeRut(config.getSiiRut());
+        String emisor = ChileanRut.sanitizeRut(config.getSiiRut());
         String url = getBaseApiUrl() + DOCUMENTOS_BHE_ENDPOINT + emisor + "/" + effectivePeriodo + "?pagina=" + effectivePagina;
 
         Map<String, Object> body = new HashMap<>();
@@ -600,20 +603,20 @@ public class ApiGatewaySiiService {
 
             // Consultar documentos del SII para ese período
             JsonNode siiDocs = listIssuedInvoices(periodo, 1, true);
-            JsonNode docsArray = extractDocsArray(siiDocs);
+            JsonNode docsArray = SiiResponseParser.extractDocsArray(siiDocs);
 
             if (docsArray == null || docsArray.isEmpty()) {
                 // Fallback a período actual si difiere
                 String currentPeriodo = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
                 if (!currentPeriodo.equals(periodo)) {
                     siiDocs = listIssuedInvoices(currentPeriodo, 1, true);
-                    docsArray = extractDocsArray(siiDocs);
+                    docsArray = SiiResponseParser.extractDocsArray(siiDocs);
                 }
             }
 
             if (docsArray != null) {
                 for (JsonNode doc : docsArray) {
-                    String docFolio = extractFolio(doc);
+                    String docFolio = SiiResponseParser.extractFolio(doc);
                     boolean matchesFolio = false;
                     if (docFolio != null && !docFolio.equals("N/A")) {
                         if (folio.trim().equalsIgnoreCase(docFolio.trim())) {
@@ -628,7 +631,7 @@ public class ApiGatewaySiiService {
                     }
 
                     if (matchesFolio) {
-                        String realCode = extractCodigo(doc);
+                        String realCode = SiiResponseParser.extractCodigo(doc);
                         if (realCode == null || realCode.isBlank() || realCode.equalsIgnoreCase(rawCodigo)) {
                             if (doc.has("codigo") && !doc.get("codigo").isNull() && !doc.get("codigo").asText().isBlank()) {
                                 realCode = doc.get("codigo").asText().trim();
@@ -661,18 +664,6 @@ public class ApiGatewaySiiService {
         return null;
     }
 
-    private JsonNode extractDocsArray(JsonNode siiResponse) {
-        if (siiResponse == null) return null;
-        if (siiResponse.isArray()) return siiResponse;
-        if (siiResponse.has("documentos") && siiResponse.get("documentos").isArray()) {
-            return siiResponse.get("documentos");
-        }
-        if (siiResponse.has("data") && siiResponse.get("data").isArray()) {
-            return siiResponse.get("data");
-        }
-        return null;
-    }
-
     /**
      * Anula una boleta de honorarios emitida previamente en el SII
      */
@@ -681,7 +672,7 @@ public class ApiGatewaySiiService {
             throw new IllegalStateException("ApiGateway no está configurado");
         }
 
-        String emisor = sanitizeRut(config.getSiiRut());
+        String emisor = ChileanRut.sanitizeRut(config.getSiiRut());
         String causeCode = (causa != null && !causa.isBlank()) ? causa : "3";
         String url = getBaseApiUrl() + ANULAR_BHE_ENDPOINT + emisor + "/" + folio + "?causa=" + causeCode;
 
@@ -745,7 +736,7 @@ public class ApiGatewaySiiService {
                 .failedInvoicesCount(failedInvoicesCount)
                 .totalAmountMonth(totalAmountMonth != null ? totalAmountMonth : BigDecimal.ZERO)
                 .apiGatewayConfigured(config.isConfigured())
-                .emisorRut(sanitizeRut(config.getSiiRut()))
+                .emisorRut(ChileanRut.sanitizeRut(config.getSiiRut()))
                 .sendEmailEnabled(config.isSendEmailOnIssue())
                 .build();
     }
@@ -782,7 +773,7 @@ public class ApiGatewaySiiService {
             boolean rutValid = false;
             if (rut == null || rut.isBlank()) {
                 rutStatus = "MISSING";
-            } else if (validateRutFormat(rut)) {
+            } else if (ChileanRut.validateRutFormat(rut)) {
                 rutStatus = "VALID";
                 rutValid = true;
             } else {
@@ -916,7 +907,7 @@ public class ApiGatewaySiiService {
         if (docsArray != null) {
             for (JsonNode doc : docsArray) {
                 siiTotalCount++;
-                String folio = extractFolio(doc);
+                String folio = SiiResponseParser.extractFolio(doc);
                 if (folio != null && !folio.equals("N/A")) {
                     siiFolios.add(folio.trim());
                 }
@@ -1005,11 +996,11 @@ public class ApiGatewaySiiService {
         encabezado.put("IdDoc", idDoc);
 
         Map<String, Object> emisor = new HashMap<>();
-        emisor.put("RUTEmisor", sanitizeRut(config.getSiiRut()));
+        emisor.put("RUTEmisor", ChileanRut.sanitizeRut(config.getSiiRut()));
         encabezado.put("Emisor", emisor);
 
         Map<String, Object> receptor = new HashMap<>();
-        receptor.put("RUTRecep", sanitizeRut(customer.getRut()));
+        receptor.put("RUTRecep", ChileanRut.sanitizeRut(customer.getRut()));
         receptor.put("RznSocRecep", customer.getFullName() != null ? customer.getFullName() : "Cliente BunnyCure");
         receptor.put("DirRecep", "San Felipe");
         receptor.put("CmnaRecep", "Valparaiso");
@@ -1046,7 +1037,7 @@ public class ApiGatewaySiiService {
 
         Map<String, Object> auth = new HashMap<>();
         Map<String, String> pass = new HashMap<>();
-        pass.put("rut", sanitizeRut(siiRut));
+        pass.put("rut", ChileanRut.sanitizeRut(siiRut));
         pass.put("clave", siiPassword != null ? siiPassword : "");
         auth.put("pass", pass);
         return auth;
@@ -1080,159 +1071,9 @@ public class ApiGatewaySiiService {
         return headers;
     }
 
-    private String extractFolio(JsonNode json) {
-        if (json == null)
-            return "N/A";
-        if (json.has("folio"))
-            return json.get("folio").asText();
-        if (json.has("invoiceNumber"))
-            return json.get("invoiceNumber").asText();
-        if (json.has("boleta") && json.get("boleta").has("folio"))
-            return json.get("boleta").get("folio").asText();
-        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")
-                && json.get("Encabezado").get("IdDoc").has("Folio")) {
-            return json.get("Encabezado").get("IdDoc").get("Folio").asText();
-        }
-        if (json.has("data")) {
-            JsonNode data = json.get("data");
-            if (data.has("folio"))
-                return data.get("folio").asText();
-            if (data.has("Encabezado") && data.get("Encabezado").has("IdDoc")
-                    && data.get("Encabezado").get("IdDoc").has("Folio")) {
-                return data.get("Encabezado").get("IdDoc").get("Folio").asText();
-            }
-            if (data.has("boleta") && data.get("boleta").has("folio")) {
-                return data.get("boleta").get("folio").asText();
-            }
-        }
-        return "N/A";
-    }
-
-    public String extractCodigo(JsonNode json) {
-        if (json == null)
-            return null;
-        if (json.has("codigo") && !json.get("codigo").isNull() && !json.get("codigo").asText().isBlank())
-            return json.get("codigo").asText().trim();
-        if (json.has("data") && json.get("data").has("codigo") && !json.get("data").get("codigo").isNull() && !json.get("data").get("codigo").asText().isBlank())
-            return json.get("data").get("codigo").asText().trim();
-        if (json.has("boleta") && json.get("boleta").has("codigo") && !json.get("boleta").get("codigo").isNull() && !json.get("boleta").get("codigo").asText().isBlank())
-            return json.get("boleta").get("codigo").asText().trim();
-
-        // 1. Extraer CodigoBarras desde IdDoc (es el identificador oficial del SII para el PDF: e.g. 1866971000066525C5FC)
-        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")) {
-            JsonNode idDoc = json.get("Encabezado").get("IdDoc");
-            if (idDoc.has("CodigoBarras") && !idDoc.get("CodigoBarras").isNull() && !idDoc.get("CodigoBarras").asText().isBlank())
-                return idDoc.get("CodigoBarras").asText().trim();
-            if (idDoc.has("Codigo") && !idDoc.get("Codigo").isNull() && !idDoc.get("Codigo").asText().isBlank())
-                return idDoc.get("Codigo").asText().trim();
-            if (idDoc.has("codigo") && !idDoc.get("codigo").isNull() && !idDoc.get("codigo").asText().isBlank())
-                return idDoc.get("codigo").asText().trim();
-        }
-        if (json.has("data") && json.get("data").has("Encabezado") && json.get("data").get("Encabezado").has("IdDoc")) {
-            JsonNode idDoc = json.get("data").get("Encabezado").get("IdDoc");
-            if (idDoc.has("CodigoBarras") && !idDoc.get("CodigoBarras").isNull() && !idDoc.get("CodigoBarras").asText().isBlank())
-                return idDoc.get("CodigoBarras").asText().trim();
-            if (idDoc.has("Codigo") && !idDoc.get("Codigo").isNull() && !idDoc.get("Codigo").asText().isBlank())
-                return idDoc.get("Codigo").asText().trim();
-            if (idDoc.has("codigo") && !idDoc.get("codigo").isNull() && !idDoc.get("codigo").asText().isBlank())
-                return idDoc.get("codigo").asText().trim();
-        }
-        if (json.has("codigo_barras") && !json.get("codigo_barras").isNull() && !json.get("codigo_barras").asText().isBlank())
-            return json.get("codigo_barras").asText().trim();
-        if (json.has("data") && json.get("data").has("codigo_barras") && !json.get("data").get("codigo_barras").isNull() && !json.get("data").get("codigo_barras").asText().isBlank())
-            return json.get("data").get("codigo_barras").asText().trim();
-        if (json.has("codigo_verificacion") && !json.get("codigo_verificacion").isNull() && !json.get("codigo_verificacion").asText().isBlank())
-            return json.get("codigo_verificacion").asText().trim();
-        if (json.has("codigoVerificacion") && !json.get("codigoVerificacion").isNull() && !json.get("codigoVerificacion").asText().isBlank())
-            return json.get("codigoVerificacion").asText().trim();
-
-        return null;
-    }
-
-    public String extractBarcode(JsonNode json) {
-        if (json == null)
-            return null;
-        if (json.has("codigo_barras") && !json.get("codigo_barras").isNull() && !json.get("codigo_barras").asText().isBlank())
-            return json.get("codigo_barras").asText().trim();
-        if (json.has("codigo_inferior") && !json.get("codigo_inferior").isNull() && !json.get("codigo_inferior").asText().isBlank())
-            return json.get("codigo_inferior").asText().trim();
-        if (json.has("boleta") && json.get("boleta").has("codigo_barras") && !json.get("boleta").get("codigo_barras").isNull())
-            return json.get("boleta").get("codigo_barras").asText().trim();
-        if (json.has("Encabezado") && json.get("Encabezado").has("IdDoc")) {
-            JsonNode idDoc = json.get("Encabezado").get("IdDoc");
-            if (idDoc.has("CodigoBarras") && !idDoc.get("CodigoBarras").isNull() && !idDoc.get("CodigoBarras").asText().isBlank())
-                return idDoc.get("CodigoBarras").asText().trim();
-            if (idDoc.has("CodigoInferior") && !idDoc.get("CodigoInferior").isNull() && !idDoc.get("CodigoInferior").asText().isBlank())
-                return idDoc.get("CodigoInferior").asText().trim();
-        }
-        if (json.has("data")) {
-            JsonNode data = json.get("data");
-            if (data.has("codigo_barras") && !data.get("codigo_barras").isNull() && !data.get("codigo_barras").asText().isBlank())
-                return data.get("codigo_barras").asText().trim();
-            if (data.has("codigo_inferior") && !data.get("codigo_inferior").isNull() && !data.get("codigo_inferior").asText().isBlank())
-                return data.get("codigo_inferior").asText().trim();
-            if (data.has("Encabezado") && data.get("Encabezado").has("IdDoc")) {
-                JsonNode idDoc = data.get("Encabezado").get("IdDoc");
-                if (idDoc.has("CodigoBarras") && !idDoc.get("CodigoBarras").isNull() && !idDoc.get("CodigoBarras").asText().isBlank())
-                    return idDoc.get("CodigoBarras").asText().trim();
-                if (idDoc.has("CodigoInferior") && !idDoc.get("CodigoInferior").isNull() && !idDoc.get("CodigoInferior").asText().isBlank())
-                    return idDoc.get("CodigoInferior").asText().trim();
-            }
-        }
-        return null;
-    }
-
     // =========================================================================
     // RUT VALIDATION & SANITIZATION
     // =========================================================================
-
-    public String sanitizeRut(String rut) {
-        if (rut == null)
-            return "";
-        String cleaned = rut.replaceAll("[.\\s]", "").toUpperCase();
-        if (!cleaned.contains("-") && cleaned.length() > 1) {
-            String number = cleaned.substring(0, cleaned.length() - 1);
-            String dv = cleaned.substring(cleaned.length() - 1);
-            cleaned = number + "-" + dv;
-        }
-        return cleaned;
-    }
-
-    public boolean validateRutFormat(String rut) {
-        if (rut == null || rut.isBlank()) {
-            return false;
-        }
-        String sanitized = sanitizeRut(rut);
-        if (!sanitized.matches("^\\d{7,9}-[0-9K]$")) {
-            return false;
-        }
-        String[] parts = sanitized.split("-");
-        if (parts.length != 2)
-            return false;
-        String number = parts[0];
-        String expectedDv = parts[1];
-        return calculateRutCheckDigit(number).equalsIgnoreCase(expectedDv);
-    }
-
-    public String calculateRutCheckDigit(String rutNumberOnly) {
-        String cleaned = rutNumberOnly.replaceAll("[^0-9]", "");
-        if (cleaned.length() < 7) {
-            return "";
-        }
-        int multiplier = 2;
-        int sum = 0;
-        for (int i = cleaned.length() - 1; i >= 0; i--) {
-            sum += Integer.parseInt(String.valueOf(cleaned.charAt(i))) * multiplier;
-            multiplier = (multiplier == 7) ? 2 : multiplier + 1;
-        }
-        int remainder = sum % 11;
-        int checkDigit = 11 - remainder;
-        if (checkDigit == 11)
-            return "0";
-        if (checkDigit == 10)
-            return "K";
-        return String.valueOf(checkDigit);
-    }
 
     // =========================================================================
     // LOG PERSISTENCE

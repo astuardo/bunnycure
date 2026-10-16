@@ -36,7 +36,7 @@ public class MarketingTemplateAiService {
     private static final Pattern DISCOUNT_PATTERN = Pattern.compile("(?i)(\\d{1,2})\\s*%");
 
     private final MarketingTemplateRepository templateRepository;
-    private final WhatsAppService whatsAppService;
+    private final cl.bunnycure.service.WhatsAppBusinessApiService whatsAppBusinessApiService;
     private final MarketingTemplateCatalog templateCatalog;
     private ObjectMapper objectMapper = new ObjectMapper();
     private RestTemplate restTemplate = createFastRestTemplate();
@@ -275,7 +275,7 @@ public class MarketingTemplateAiService {
             Map<String, Object> metaPayload = buildMetaPayload(draft);
             try {
                 log.info("[AI-MARKETING] Registrando plantilla aprobada '{}' en Meta Cloud API v22.0...", draft.name());
-                Optional<JsonNode> metaResponse = whatsAppService.createMessageTemplate(metaPayload);
+                Optional<JsonNode> metaResponse = whatsAppBusinessApiService.createMessageTemplate(metaPayload);
                 if (metaResponse.isPresent()) {
                     JsonNode root = metaResponse.get();
                     metaId = root.path("id").asText(null);
@@ -330,7 +330,7 @@ public class MarketingTemplateAiService {
             Map<String, Object> metaPayload = buildMetaPayload(draft);
             try {
                 log.info("[AI-MARKETING] Registrando plantilla '{}' en Meta Cloud API v22.0...", draft.name());
-                Optional<JsonNode> metaResponse = whatsAppService.createMessageTemplate(metaPayload);
+                Optional<JsonNode> metaResponse = whatsAppBusinessApiService.createMessageTemplate(metaPayload);
                 if (metaResponse.isPresent()) {
                     JsonNode root = metaResponse.get();
                     metaId = root.path("id").asText(null);

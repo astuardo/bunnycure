@@ -28,7 +28,7 @@ public class CustomerServiceRecordService {
 
     private final CustomerServiceRecordRepository customerServiceRecordRepository;
     private final CustomerService customerService;
-    private final WhatsAppService whatsAppService;
+    private final WhatsAppBusinessApiService whatsAppBusinessApiService;
 
     @Transactional(readOnly = true)
     public List<CustomerServiceRecord> findLatestByCustomerId(Long customerId) {
@@ -116,7 +116,7 @@ public class CustomerServiceRecordService {
         // Keep only the service message in description, not the phone line from caption input.
         record.setPhotoCaption(parsedCaption.serviceDetail());
 
-        whatsAppService.downloadImageByMediaId(mediaId).ifPresent(media -> {
+        whatsAppBusinessApiService.downloadImageByMediaId(mediaId).ifPresent(media -> {
             record.setPhotoData(media.content());
             record.setMimeType(trimToNull(media.mimeType()));
             record.setMediaSha256(trimToNull(media.sha256()));

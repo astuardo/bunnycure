@@ -36,6 +36,7 @@ import java.util.Map;
 public class WhatsAppTestController {
     
     private final WhatsAppService whatsAppService;
+    private final cl.bunnycure.service.WhatsAppBusinessApiService whatsAppBusinessApiService;
     private final WhatsAppConfig whatsAppConfig;
 
     /**
@@ -107,7 +108,7 @@ public class WhatsAppTestController {
                 ? businessAccountId
                 : whatsAppConfig.getBusinessAccountId();
 
-        return whatsAppService.fetchMessageTemplates(accountId)
+        return whatsAppBusinessApiService.fetchMessageTemplates(accountId)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(500).body(Map.of(
                         "status", "error",
@@ -122,7 +123,7 @@ public class WhatsAppTestController {
     @GetMapping("/phone-health")
     public ResponseEntity<?> getPhoneHealth(@RequestParam(required = false) String phoneId) {
         String id = (phoneId != null && !phoneId.isBlank()) ? phoneId : whatsAppConfig.getPhoneId();
-        return whatsAppService.fetchPhoneNumberHealth(id)
+        return whatsAppBusinessApiService.fetchPhoneNumberHealth(id)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(500).body(Map.of(
                         "status", "error",
@@ -137,7 +138,7 @@ public class WhatsAppTestController {
     @GetMapping("/business-profile")
     public ResponseEntity<?> getBusinessProfile(@RequestParam(required = false) String phoneId) {
         String id = (phoneId != null && !phoneId.isBlank()) ? phoneId : whatsAppConfig.getPhoneId();
-        return whatsAppService.fetchBusinessProfile(id)
+        return whatsAppBusinessApiService.fetchBusinessProfile(id)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(500).body(Map.of(
                         "status", "error",
@@ -151,7 +152,7 @@ public class WhatsAppTestController {
      */
     @PostMapping("/business-profile")
     public ResponseEntity<?> updateBusinessProfile(@RequestBody Map<String, Object> profileData) {
-        boolean success = whatsAppService.updateBusinessProfile(profileData);
+        boolean success = whatsAppBusinessApiService.updateBusinessProfile(profileData);
         if (success) {
             return ResponseEntity.ok(Map.of("status", "success", "message", "Perfil comercial actualizado en WhatsApp."));
         }
@@ -168,7 +169,7 @@ public class WhatsAppTestController {
             @RequestParam(required = false) Long end,
             @RequestParam(required = false) String granularity,
             @RequestParam(required = false) String metricTypes) {
-        return whatsAppService.fetchTemplateAnalytics(start, end, granularity, metricTypes)
+        return whatsAppBusinessApiService.fetchTemplateAnalytics(start, end, granularity, metricTypes)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(500).body(Map.of(
                         "status", "error",

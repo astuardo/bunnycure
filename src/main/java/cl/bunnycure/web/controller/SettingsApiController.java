@@ -31,7 +31,7 @@ import java.util.*;
 public class SettingsApiController {
 
     private final AppSettingsService settingsService;
-    private final WhatsAppService whatsAppService;
+    private final cl.bunnycure.service.WhatsAppBusinessApiService whatsAppBusinessApiService;
     private final WhatsAppConfig whatsAppConfig;
 
     // Lista de claves válidas de configuración
@@ -585,9 +585,9 @@ public class SettingsApiController {
         response.put("apiVersion", "v22.0");
 
         if (configured) {
-            whatsAppService.fetchPhoneNumberHealth(phoneId).ifPresent(health -> response.put("health", health));
-            whatsAppService.fetchBusinessProfile(phoneId).ifPresent(profile -> response.put("businessProfile", profile));
-            whatsAppService.fetchMessageTemplates(businessAccountId).ifPresent(templates -> response.put("templates", templates));
+            whatsAppBusinessApiService.fetchPhoneNumberHealth(phoneId).ifPresent(health -> response.put("health", health));
+            whatsAppBusinessApiService.fetchBusinessProfile(phoneId).ifPresent(profile -> response.put("businessProfile", profile));
+            whatsAppBusinessApiService.fetchMessageTemplates(businessAccountId).ifPresent(templates -> response.put("templates", templates));
         }
 
         return ResponseEntity.ok(response);
@@ -596,7 +596,7 @@ public class SettingsApiController {
     @Operation(summary = "Actualiza el perfil de negocio en Meta WhatsApp")
     @PutMapping("/whatsapp/business-profile")
     public ResponseEntity<Map<String, Object>> updateWhatsAppBusinessProfile(@RequestBody Map<String, Object> profileData) {
-        boolean success = whatsAppService.updateBusinessProfile(profileData);
+        boolean success = whatsAppBusinessApiService.updateBusinessProfile(profileData);
         if (success) {
             return ResponseEntity.ok(Map.of("status", "success", "message", "Perfil comercial actualizado en WhatsApp."));
         }

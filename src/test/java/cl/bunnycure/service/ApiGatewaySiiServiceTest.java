@@ -71,26 +71,26 @@ class ApiGatewaySiiServiceTest {
 
     @Test
     void validateRutFormat_ValidRuts() {
-        assertTrue(service.validateRutFormat("18.664.589-8"));
-        assertTrue(service.validateRutFormat("18664589-8"));
-        assertTrue(service.validateRutFormat("11.111.111-1"));
-        assertTrue(service.validateRutFormat("11.111.112-K"));
-        assertTrue(service.validateRutFormat("7.654.321-6"));
+        assertTrue(cl.bunnycure.service.sii.ChileanRut.validateRutFormat("18.664.589-8"));
+        assertTrue(cl.bunnycure.service.sii.ChileanRut.validateRutFormat("18664589-8"));
+        assertTrue(cl.bunnycure.service.sii.ChileanRut.validateRutFormat("11.111.111-1"));
+        assertTrue(cl.bunnycure.service.sii.ChileanRut.validateRutFormat("11.111.112-K"));
+        assertTrue(cl.bunnycure.service.sii.ChileanRut.validateRutFormat("7.654.321-6"));
     }
 
     @Test
     void validateRutFormat_InvalidRuts() {
-        assertFalse(service.validateRutFormat("18.664.589-0")); // DV erróneo
-        assertFalse(service.validateRutFormat("invalid"));
-        assertFalse(service.validateRutFormat(""));
-        assertFalse(service.validateRutFormat(null));
+        assertFalse(cl.bunnycure.service.sii.ChileanRut.validateRutFormat("18.664.589-0")); // DV erróneo
+        assertFalse(cl.bunnycure.service.sii.ChileanRut.validateRutFormat("invalid"));
+        assertFalse(cl.bunnycure.service.sii.ChileanRut.validateRutFormat(""));
+        assertFalse(cl.bunnycure.service.sii.ChileanRut.validateRutFormat(null));
     }
 
     @Test
     void sanitizeRut_FormatsProperly() {
-        assertEquals("18664589-8", service.sanitizeRut("18.664.589-8"));
-        assertEquals("18664589-8", service.sanitizeRut("186645898"));
-        assertEquals("7654321-K", service.sanitizeRut("7.654.321-k"));
+        assertEquals("18664589-8", cl.bunnycure.service.sii.ChileanRut.sanitizeRut("18.664.589-8"));
+        assertEquals("18664589-8", cl.bunnycure.service.sii.ChileanRut.sanitizeRut("186645898"));
+        assertEquals("7654321-K", cl.bunnycure.service.sii.ChileanRut.sanitizeRut("7.654.321-k"));
     }
 
     @Test
@@ -426,8 +426,8 @@ class ApiGatewaySiiServiceTest {
                 """;
         JsonNode json = objectMapper.readTree(jsonStr);
 
-        String codigo = service.extractCodigo(json);
-        String barcode = service.extractBarcode(json);
+        String codigo = cl.bunnycure.service.sii.SiiResponseParser.extractCodigo(json);
+        String barcode = cl.bunnycure.service.sii.SiiResponseParser.extractBarcode(json);
 
         assertEquals("1866971000066525C5FC", codigo);
         assertEquals("1866971000066525C5FC", barcode);

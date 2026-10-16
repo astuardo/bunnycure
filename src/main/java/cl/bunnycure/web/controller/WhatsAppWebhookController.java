@@ -34,13 +34,16 @@ public class WhatsAppWebhookController {
     private static final int MAX_WEBHOOK_PAYLOAD_BYTES = 512 * 1024;
 
     private final WhatsAppWebhookService webhookService;
+    private final cl.bunnycure.service.WhatsAppWebhookSignatureVerifier signatureVerifier;
     private final Environment environment;
     private final ObjectReader webhookReader;
 
     public WhatsAppWebhookController(WhatsAppWebhookService webhookService,
+                                     cl.bunnycure.service.WhatsAppWebhookSignatureVerifier signatureVerifier,
                                      Environment environment,
                                      ObjectMapper objectMapper) {
         this.webhookService = webhookService;
+        this.signatureVerifier = signatureVerifier;
         this.environment = environment;
         this.webhookReader = buildSafeWebhookReader(objectMapper);
     }
@@ -132,7 +135,7 @@ public class WhatsAppWebhookController {
 
             String resolvedSignatureHeader = resolveSignatureHeader(signatureHeader, request);
 
-            if (!webhookService.isSignatureValid(rawPayload, resolvedSignatureHeader, appSecret)) {
+            if (!signatureVerifier.isSignatureValid(rawPayload, resolvedSignatureHeader, appSecret)) {
                 log.warn("[WEBHOOK] ❌ Invalid webhook signature");
                 log.warn("[WEBHOOK] Proxy context contentType={}, contentLength={}, xForwardedFor={}, xForwardedProto={}, xForwardedHost={}",
                         request.getContentType(),

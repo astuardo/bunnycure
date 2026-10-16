@@ -26,7 +26,7 @@ class MarketingTemplateAiServiceTest {
     private MarketingTemplateRepository templateRepository;
 
     @Mock
-    private WhatsAppService whatsAppService;
+    private cl.bunnycure.service.WhatsAppBusinessApiService whatsAppBusinessApiService;
 
     private MarketingTemplateCatalog templateCatalog;
     private MarketingTemplateAiService aiService;
@@ -36,7 +36,7 @@ class MarketingTemplateAiServiceTest {
         templateCatalog = new MarketingTemplateCatalog(templateRepository);
         aiService = new MarketingTemplateAiService(
                 templateRepository,
-                whatsAppService,
+                whatsAppBusinessApiService,
                 templateCatalog
         );
     }
@@ -81,7 +81,7 @@ class MarketingTemplateAiServiceTest {
         String metaJson = "{\"id\":\"meta-12345\",\"status\":\"PENDING\",\"category\":\"MARKETING\"}";
         try {
             var metaNode = new ObjectMapper().readTree(metaJson);
-            when(whatsAppService.createMessageTemplate(anyMap())).thenReturn(Optional.of(metaNode));
+            when(whatsAppBusinessApiService.createMessageTemplate(anyMap())).thenReturn(Optional.of(metaNode));
         } catch (Exception e) {
             fail(e);
         }
@@ -91,7 +91,7 @@ class MarketingTemplateAiServiceTest {
         assertNotNull(result);
         assertEquals("PENDING", result.getMetaStatus());
         assertEquals("meta-12345", result.getMetaId());
-        verify(whatsAppService).createMessageTemplate(anyMap());
+        verify(whatsAppBusinessApiService).createMessageTemplate(anyMap());
     }
 
     @Test
@@ -170,7 +170,7 @@ class MarketingTemplateAiServiceTest {
         assertTrue(draft.getBodyText().contains("20%"));
         // Asegurar que NO se guardó en BD ni se llamó a Meta
         verify(templateRepository, never()).save(any());
-        verify(whatsAppService, never()).createMessageTemplate(anyMap());
+        verify(whatsAppBusinessApiService, never()).createMessageTemplate(anyMap());
     }
 
     @Test
@@ -196,7 +196,7 @@ class MarketingTemplateAiServiceTest {
         String metaJson = "{\"id\":\"meta-approved-888\",\"status\":\"PENDING\",\"category\":\"MARKETING\"}";
         try {
             var metaNode = new ObjectMapper().readTree(metaJson);
-            when(whatsAppService.createMessageTemplate(anyMap())).thenReturn(Optional.of(metaNode));
+            when(whatsAppBusinessApiService.createMessageTemplate(anyMap())).thenReturn(Optional.of(metaNode));
         } catch (Exception e) {
             fail(e);
         }
@@ -214,6 +214,6 @@ class MarketingTemplateAiServiceTest {
         assertEquals("meta-approved-888", result.getMetaId());
 
         verify(templateRepository).save(any(MarketingTemplateEntity.class));
-        verify(whatsAppService).createMessageTemplate(anyMap());
+        verify(whatsAppBusinessApiService).createMessageTemplate(anyMap());
     }
 }

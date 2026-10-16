@@ -40,6 +40,9 @@ class WhatsAppWebhookControllerTest {
     @Mock
     private WhatsAppWebhookService webhookService;
 
+    @Mock
+    private cl.bunnycure.service.WhatsAppWebhookSignatureVerifier signatureVerifier;
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
 
@@ -48,6 +51,7 @@ class WhatsAppWebhookControllerTest {
         objectMapper = new ObjectMapper();
         WhatsAppWebhookController controller = new WhatsAppWebhookController(
                 webhookService,
+                signatureVerifier,
                 new MockEnvironment().withProperty("spring.profiles.active", "test"),
                 objectMapper
         );
@@ -60,7 +64,7 @@ class WhatsAppWebhookControllerTest {
     void receiveNotification_WithValidSignature_ProcessesWebhook() throws Exception {
         byte[] payload = webhookPayload();
         String signature = "sha256=" + hmacSha256Hex(payload, "secret123");
-        when(webhookService.isSignatureValid(any(byte[].class), eq(signature), eq("secret123"))).thenReturn(true);
+        when(signatureVerifier.isSignatureValid(any(byte[].class), eq(signature), eq("secret123"))).thenReturn(true);
 
         mockMvc.perform(post("/api/webhooks/whatsapp")
                         .contentType("application/json")
@@ -70,7 +74,7 @@ class WhatsAppWebhookControllerTest {
                 .andExpect(content().string("EVENT_RECEIVED"));
 
         ArgumentCaptor<byte[]> payloadCaptor = ArgumentCaptor.forClass(byte[].class);
-        verify(webhookService).isSignatureValid(payloadCaptor.capture(), eq(signature), eq("secret123"));
+        verify(signatureVerifier).isSignatureValid(payloadCaptor.capture(), eq(signature), eq("secret123"));
         assertEquals(new String(payload, StandardCharsets.UTF_8), new String(payloadCaptor.getValue(), StandardCharsets.UTF_8));
         verify(webhookService).processWebhookNotification(any(WhatsAppWebhookDto.class));
     }
@@ -78,7 +82,7 @@ class WhatsAppWebhookControllerTest {
     @Test
     void receiveNotification_WithInvalidSignature_ReturnsForbidden() throws Exception {
         byte[] payload = webhookPayload();
-        when(webhookService.isSignatureValid(any(byte[].class), anyString(), eq("secret123"))).thenReturn(false);
+        when(signatureVerifier.isSignatureValid(any(byte[].class), anyString(), eq("secret123"))).thenReturn(false);
 
         mockMvc.perform(post("/api/webhooks/whatsapp")
                         .contentType("application/json")
@@ -96,7 +100,7 @@ class WhatsAppWebhookControllerTest {
     @Test
     void receiveNotification_WithoutSignatureHeader_ReturnsForbidden() throws Exception {
         byte[] payload = webhookPayload();
-        when(webhookService.isSignatureValid(any(byte[].class), isNull(), eq("secret123"))).thenReturn(false);
+        when(signatureVerifier.isSignatureValid(any(byte[].class), isNull(), eq("secret123"))).thenReturn(false);
 
         mockMvc.perform(post("/api/webhooks/whatsapp")
                         .contentType("application/json")
@@ -111,7 +115,7 @@ class WhatsAppWebhookControllerTest {
     void receiveNotification_WithLegacySignatureHeader_ProcessesWebhook() throws Exception {
         byte[] payload = webhookPayload();
         String signature = "sha256=" + hmacSha256Hex(payload, "secret123");
-        when(webhookService.isSignatureValid(any(byte[].class), eq(signature), eq("secret123"))).thenReturn(true);
+        when(signatureVerifier.isSignatureValid(any(byte[].class), eq(signature), eq("secret123"))).thenReturn(true);
 
         mockMvc.perform(post("/api/webhooks/whatsapp")
                         .contentType("application/json")
@@ -134,7 +138,7 @@ class WhatsAppWebhookControllerTest {
                 .andExpect(status().isPayloadTooLarge())
                 .andExpect(content().string("Payload too large"));
 
-        verify(webhookService, never()).isSignatureValid(any(byte[].class), anyString(), anyString());
+        verify(signatureVerifier, never()).isSignatureValid(any(byte[].class), anyString(), anyString());
         verify(webhookService, never()).processWebhookNotification(any());
     }
 
@@ -142,7 +146,7 @@ class WhatsAppWebhookControllerTest {
     void receiveNotification_WithMalformedJson_ReturnsEventReceivedWithoutProcessing() throws Exception {
         byte[] payload = "{\"object\":\"whatsapp_business_account\",\"entry\":[".getBytes(StandardCharsets.UTF_8);
         String signature = "sha256=" + hmacSha256Hex(payload, "secret123");
-        when(webhookService.isSignatureValid(any(byte[].class), eq(signature), eq("secret123"))).thenReturn(true);
+        when(signatureVerifier.isSignatureValid(any(byte[].class), eq(signature), eq("secret123"))).thenReturn(true);
 
         mockMvc.perform(post("/api/webhooks/whatsapp")
                         .contentType("application/json")

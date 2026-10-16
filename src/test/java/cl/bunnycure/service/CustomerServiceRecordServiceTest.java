@@ -32,7 +32,7 @@ class CustomerServiceRecordServiceTest {
     private CustomerService customerService;
 
     @Mock
-    private WhatsAppService whatsAppService;
+    private cl.bunnycure.service.WhatsAppBusinessApiService whatsAppBusinessApiService;
 
     @InjectMocks
     private CustomerServiceRecordService customerServiceRecordService;
@@ -52,8 +52,8 @@ class CustomerServiceRecordServiceTest {
 
         when(customerServiceRecordRepository.findBySourceMessageId("wamid-1")).thenReturn(Optional.empty());
         when(customerService.findByPhone("+56912345678")).thenReturn(Optional.of(customer));
-        when(whatsAppService.downloadImageByMediaId("media-1"))
-                .thenReturn(Optional.of(new WhatsAppService.MediaDownloadResult(new byte[]{1, 2, 3}, "image/jpeg", "abc123")));
+        when(whatsAppBusinessApiService.downloadImageByMediaId("media-1"))
+                .thenReturn(Optional.of(new cl.bunnycure.service.WhatsAppBusinessApiService.MediaDownloadResult(new byte[]{1, 2, 3}, "image/jpeg", "abc123")));
         when(customerServiceRecordRepository.save(any(CustomerServiceRecord.class))).thenAnswer(inv -> {
             CustomerServiceRecord saved = inv.getArgument(0);
             saved.setId(99L);

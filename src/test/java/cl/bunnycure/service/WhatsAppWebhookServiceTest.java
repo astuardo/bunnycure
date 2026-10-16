@@ -264,37 +264,6 @@ class WhatsAppWebhookServiceTest {
     }
 
     @Test
-    void isSignatureValid_WithBytePayload_ReturnsTrueForValidSignature() throws Exception {
-        byte[] payload = "{\"test\":true}".getBytes(StandardCharsets.UTF_8);
-        String appSecret = "secret123";
-        String signature = "sha256=" + hmacSha256Hex(payload, appSecret);
-
-        boolean valid = webhookService.isSignatureValid(payload, signature, appSecret);
-
-        org.junit.jupiter.api.Assertions.assertTrue(valid);
-    }
-
-    @Test
-    void isSignatureValid_WithBytePayload_ReturnsFalseForInvalidSignature() {
-        byte[] payload = "{\"test\":true}".getBytes(StandardCharsets.UTF_8);
-
-        boolean valid = webhookService.isSignatureValid(payload, "sha256=deadbeef", "secret123");
-
-        org.junit.jupiter.api.Assertions.assertFalse(valid);
-    }
-
-    @Test
-    void isSignatureValid_WithMultipleHeaderValues_ReturnsTrueWhenOneSignatureMatches() throws Exception {
-        byte[] payload = "{\"test\":true}".getBytes(StandardCharsets.UTF_8);
-        String validSignature = hmacSha256Hex(payload, "secret123");
-        String signatureHeader = "sha256=deadbeef, sha256=" + validSignature;
-
-        boolean valid = webhookService.isSignatureValid(payload, signatureHeader, "secret123");
-
-        org.junit.jupiter.api.Assertions.assertTrue(valid);
-    }
-
-    @Test
     void processWebhookNotification_DuplicateMessageInDatabase_IsIgnored() {
         doThrow(new DataIntegrityViolationException("duplicate key"))
                 .when(webhookProcessedEventRepository)
@@ -348,17 +317,6 @@ class WhatsAppWebhookServiceTest {
         ));
 
         verify(whatsAppService, never()).sendTextMessage(any(), any());
-    }
-
-    private String hmacSha256Hex(byte[] payload, String secret) throws Exception {
-        Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-        byte[] digest = mac.doFinal(payload);
-        StringBuilder sb = new StringBuilder(digest.length * 2);
-        for (byte b : digest) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
     }
 
     private WhatsAppWebhookDto webhookWithMessage(WhatsAppWebhookDto.Message message) {

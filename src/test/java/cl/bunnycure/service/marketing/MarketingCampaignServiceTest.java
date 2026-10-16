@@ -40,6 +40,9 @@ class MarketingCampaignServiceTest {
     private WhatsAppService whatsAppService;
 
     @Mock
+    private cl.bunnycure.service.WhatsAppBusinessApiService whatsAppBusinessApiService;
+
+    @Mock
     private NotificationLogService notificationLogService;
 
     private MarketingTemplateCatalog templateCatalog;
@@ -52,6 +55,7 @@ class MarketingCampaignServiceTest {
                 customerRepository,
                 appointmentRepository,
                 whatsAppService,
+                whatsAppBusinessApiService,
                 notificationLogService,
                 templateCatalog
         );
@@ -100,7 +104,7 @@ class MarketingCampaignServiceTest {
                 }
                 """;
         var root = new ObjectMapper().readTree(json);
-        when(whatsAppService.fetchMessageTemplates()).thenReturn(Optional.of(root));
+        when(whatsAppBusinessApiService.fetchMessageTemplates()).thenReturn(Optional.of(root));
 
         List<MarketingTemplateDto> dtos = campaignService.getAvailableTemplates();
         assertFalse(dtos.isEmpty());
@@ -294,12 +298,12 @@ class MarketingCampaignServiceTest {
 
     @Test
     void deleteTemplate_DeletesFromMetaAndDb() {
-        when(whatsAppService.deleteMessageTemplate("promo_test")).thenReturn(true);
+        when(whatsAppBusinessApiService.deleteMessageTemplate("promo_test")).thenReturn(true);
 
         boolean deleted = campaignService.deleteTemplate("promo_test");
 
         assertTrue(deleted);
-        verify(whatsAppService).deleteMessageTemplate("promo_test");
+        verify(whatsAppBusinessApiService).deleteMessageTemplate("promo_test");
     }
 
     private Customer createCustomer(Long id, String name, String phone, int completedVisits) {
