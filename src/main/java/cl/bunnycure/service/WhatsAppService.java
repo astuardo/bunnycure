@@ -5,7 +5,6 @@ import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.domain.model.BookingRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -24,13 +23,10 @@ import cl.bunnycure.domain.model.WhatsAppSendResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
-import java.time.format.DateTimeFormatter;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -47,10 +43,8 @@ public class WhatsAppService {
     private final WhatsAppConfig config;
     private final RestTemplate restTemplate;
     private final AppSettingsService appSettingsService;
-    private final CalendarService calendarService;
     private final NotificationLogService notificationLogService;
     private final ObjectMapper objectMapper;
-    private final WhatsAppHandoffService whatsAppHandoffService;
     private final LoyaltyRewardService loyaltyRewardService;
     private final WhatsAppMessageBuilderService messageBuilder;
     private final WhatsAppAdminAlertDispatcher adminAlertDispatcher;
@@ -79,10 +73,8 @@ public class WhatsAppService {
         this.config = config;
         this.restTemplate = restTemplate;
         this.appSettingsService = appSettingsService;
-        this.calendarService = calendarService;
         this.notificationLogService = notificationLogService;
         this.objectMapper = objectMapper;
-        this.whatsAppHandoffService = whatsAppHandoffService;
         this.loyaltyRewardService = loyaltyRewardService;
         this.messageBuilder = messageBuilder != null ? messageBuilder : new WhatsAppMessageBuilderService(appSettingsService);
         this.adminAlertDispatcher = adminAlertDispatcher != null ? adminAlertDispatcher : new WhatsAppAdminAlertDispatcher(
@@ -1430,98 +1422,6 @@ public class WhatsAppService {
 
     private String asString(Object value) {
         return value == null ? null : String.valueOf(value);
-    }
-
-    private String resolveAdminAlertLanguageCode() {
-        String configured = config.getAdminBookingAlertLanguageCode();
-        if (configured == null || configured.isBlank()) {
-            return config.getCitaConfirmadaLanguageCode();
-        }
-        return configured;
-    }
-
-    private String buildAdminAlertText(BookingRequest request) {
-        String serviceName = request.getService() != null && request.getService().getName() != null
-                ? request.getService().getName()
-                : "(sin servicio)";
-        String preferredDate = request.getPreferredDate() != null
-                ? request.getPreferredDate().format(shortDateFormatter())
-                : "(sin fecha)";
-        String preferredBlock = formatPreferredBlock(request.getPreferredBlock());
-        String notes = request.getNotes() != null && !request.getNotes().isBlank()
-                ? request.getNotes().trim()
-                : "-";
-        String reviewLink = buildAdminReviewLink(request.getId());
-        String salonName = resolveSalonName(request.getTenantId());
-
-        return String.format(
-                "NUEVA SOLICITUD - %s\n\n" +
-                        "%s solicitó una hora.\n" +
-                        "Revisa disponibilidad en Solicitudes y confirma/reagenda.\n\n" +
-                        "ID solicitud: %s\n" +
-                        "Cliente: %s\n" +
-                        "Telefono: %s\n" +
-                        "Email: %s\n" +
-                        "Servicio: %s\n" +
-                        "Fecha preferida: %s\n" +
-                        "Bloque: %s\n" +
-                        "Notas: %s\n\n" +
-                        "Revisar ahora: %s",
-                salonName,
-                safeValue(request.getFullName()),
-                request.getId(),
-                safeValue(request.getFullName()),
-                safeValue(request.getPhone()),
-                safeValue(request.getEmail()),
-                serviceName,
-                preferredDate,
-                preferredBlock,
-                notes,
-                reviewLink
-        );
-    }
-
-    private String formatPreferredBlock(String rawBlock) {
-        if (rawBlock == null || rawBlock.isBlank()) {
-            return "(sin bloque)";
-        }
-        String normalized = rawBlock.trim();
-        return switch (normalized.toUpperCase(Locale.ROOT)) {
-            case "MORNING" -> "Manana";
-            case "AFTERNOON" -> "Tarde";
-            case "NIGHT" -> "Noche";
-            default -> normalized;
-        };
-    }
-
-    private String buildAdminReviewLink(Long bookingRequestId) {
-        String baseUrl = config.getAdminBookingRequestsUrl();
-        if (baseUrl == null || baseUrl.isBlank()) {
-            return "Panel admin -> /admin/booking-requests";
-        }
-        String trimmed = baseUrl.trim();
-        if (bookingRequestId == null) {
-            return trimmed;
-        }
-        return trimmed.endsWith("/") ? trimmed + bookingRequestId : trimmed + "/" + bookingRequestId;
-    }
-
-    private String safeValue(String value) {
-        return (value == null || value.isBlank()) ? "-" : value.trim();
-    }
-
-    private Locale resolveAppLocale() {
-        try {
-            Locale loc = appSettingsService != null ? appSettingsService.getAppJavaLocale() : null;
-            return loc != null ? loc : Locale.forLanguageTag("es-CL");
-        } catch (Exception ex) {
-            log.warn("[WHATSAPP] No se pudo resolver app.locale, usando fallback es_CL", ex);
-            return Locale.forLanguageTag("es-CL");
-        }
-    }
-
-    private DateTimeFormatter shortDateFormatter() {
-        return DateTimeFormatter.ofPattern("dd/MM/yyyy", resolveAppLocale());
     }
 
     public record MediaDownloadResult(byte[] content, String mimeType, String sha256) {
