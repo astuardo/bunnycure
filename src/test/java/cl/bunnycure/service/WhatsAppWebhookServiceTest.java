@@ -542,4 +542,49 @@ class WhatsAppWebhookServiceTest {
         org.junit.jupiter.api.Assertions.assertFalse(webhookService.matchesPhone("56912345678", "56999999999"));
         org.junit.jupiter.api.Assertions.assertFalse(webhookService.matchesPhone("", "56912345678"));
     }
+
+    // ── Enrutamiento multi-salón por phone_number_id ──────────────────────
+
+    @Test
+    void resolveTenantIdForPhoneNumberId_UsesTenantOwningTheNumber() {
+        cl.bunnycure.domain.repository.TenantRepository tenantRepository = org.mockito.Mockito.mock(cl.bunnycure.domain.repository.TenantRepository.class);
+        webhookService.setTenantRepository(tenantRepository);
+        when(tenantRepository.findFirstByWhatsappPhoneIdOrderByIdAsc("pnid-salon-2"))
+                .thenReturn(java.util.Optional.of(cl.bunnycure.domain.model.Tenant.builder().id(2L).build()));
+        when(tenantRepository.findFirstByWhatsappPhoneIdOrderByIdAsc("pnid-desconocido"))
+                .thenReturn(java.util.Optional.empty());
+
+        assertEquals(2L, webhookService.resolveTenantIdForPhoneNumberId("pnid-salon-2"));
+        assertEquals(cl.bunnycure.config.TenantContext.DEFAULT_TENANT_ID, webhookService.resolveTenantIdForPhoneNumberId("pnid-desconocido"));
+        assertEquals(cl.bunnycure.config.TenantContext.DEFAULT_TENANT_ID, webhookService.resolveTenantIdForPhoneNumberId(null));
+    }
+
+    @Test
+    void processWebhookNotification_ProcessesInOwningTenant_AndRestoresContext() {
+        cl.bunnycure.domain.repository.TenantRepository tenantRepository = org.mockito.Mockito.mock(cl.bunnycure.domain.repository.TenantRepository.class);
+        webhookService.setTenantRepository(tenantRepository);
+        when(tenantRepository.findFirstByWhatsappPhoneIdOrderByIdAsc("pnid-salon-2"))
+                .thenReturn(java.util.Optional.of(cl.bunnycure.domain.model.Tenant.builder().id(2L).build()));
+        when(appSettingsService.isWhatsappHandoffEnabled()).thenReturn(false);
+
+        java.util.concurrent.atomic.AtomicReference<Long> tenantWhileReplying = new java.util.concurrent.atomic.AtomicReference<>();
+        org.mockito.Mockito.doAnswer(inv -> {
+            tenantWhileReplying.set(cl.bunnycure.config.TenantContext.getCurrentTenantId());
+            return null;
+        }).when(whatsAppService).sendTextMessage(anyString(), anyString());
+
+        WhatsAppWebhookDto webhook = webhookWithMessage(textMessage("wamid-tenant-2", "56912345678", "Hola"));
+        WhatsAppWebhookDto.Metadata metadata = new WhatsAppWebhookDto.Metadata();
+        metadata.setPhoneNumberId("pnid-salon-2");
+        webhook.getEntry().get(0).getChanges().get(0).getValue().setMetadata(metadata);
+
+        cl.bunnycure.config.TenantContext.setCurrentTenantId(1L); // contexto de la petición pública
+        try {
+            webhookService.processWebhookNotification(webhook);
+            assertEquals(2L, tenantWhileReplying.get(), "El mensaje debe procesarse en el salón dueño del número");
+            assertEquals(1L, cl.bunnycure.config.TenantContext.getExplicitTenantId(), "El contexto previo debe restaurarse");
+        } finally {
+            cl.bunnycure.config.TenantContext.clear();
+        }
+    }
 }

@@ -18,16 +18,17 @@ public class AppSettingsService {
 
     private final AppSettingsRepository repository;
 
-    @Cacheable(value = "appSettings", key = "#key")
+    // La caché se indexa por salón: la misma clave tiene valores distintos en cada tenant.
+    @Cacheable(value = "appSettings", key = "T(cl.bunnycure.config.TenantContext).getCurrentTenantId() + ':' + #key")
     public String get(String key, String defaultValue) {
-        return repository.findById(key)
+        return repository.findByKey(key)
                 .map(AppSettings::getValue)
                 .orElse(defaultValue);
     }
 
-    @Cacheable(value = "appSettings", key = "#key + ':bool'")
+    @Cacheable(value = "appSettings", key = "T(cl.bunnycure.config.TenantContext).getCurrentTenantId() + ':' + #key + ':bool'")
     public boolean getBoolean(String key, boolean defaultValue) {
-        return repository.findById(key)
+        return repository.findByKey(key)
                 .map(s -> Boolean.parseBoolean(s.getValue()))
                 .orElse(defaultValue);
     }
@@ -35,7 +36,7 @@ public class AppSettingsService {
     @CacheEvict(value = "appSettings", allEntries = true)
     @Transactional
     public void set(String key, String value) {
-        var setting = repository.findById(key)
+        var setting = repository.findByKey(key)
                 .orElse(new AppSettings(key, value, null));
         setting.setValue(value);
         repository.save(setting);
@@ -45,7 +46,7 @@ public class AppSettingsService {
     @Transactional
     public void saveAll(Map<String, String> settings) {
         settings.forEach((k, v) -> {
-            var setting = repository.findById(k)
+            var setting = repository.findByKey(k)
                     .orElse(new AppSettings(k, v, null));
             setting.setValue(v);
             repository.save(setting);

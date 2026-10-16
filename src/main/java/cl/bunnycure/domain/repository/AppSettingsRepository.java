@@ -3,5 +3,9 @@ package cl.bunnycure.domain.repository;
 import cl.bunnycure.domain.model.AppSettings;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface AppSettingsRepository extends JpaRepository<AppSettings, String> {
+import java.util.Optional;
+
+/** AppSettings tiene @TenantId: todas las consultas quedan limitadas al salón actual. */
+public interface AppSettingsRepository extends JpaRepository<AppSettings, Long> {
+    Optional<AppSettings> findByKey(String key);
 }

@@ -199,6 +199,18 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Migraciones Flyway reales contra PostgreSQL (versiones gestionadas por Spring Boot) -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- SpringDoc OpenAPI (Swagger UI) for API documentation -->
         <dependency>
             <groupId>org.springdoc</groupId>

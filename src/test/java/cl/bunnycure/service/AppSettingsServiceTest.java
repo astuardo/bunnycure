@@ -25,7 +25,7 @@ class AppSettingsServiceTest {
 
     @Test
     void getHumanWhatsappNumber_UsesDedicatedSettingWhenPresent() {
-        when(repository.findById("whatsapp.human.number"))
+        when(repository.findByKey("whatsapp.human.number"))
                 .thenReturn(Optional.of(new AppSettings("whatsapp.human.number", "56988873031", null)));
 
         String result = appSettingsService.getHumanWhatsappNumber();
@@ -35,8 +35,8 @@ class AppSettingsServiceTest {
 
     @Test
     void getHumanWhatsappNumber_FallsBackToLegacyWhatsappNumber() {
-        when(repository.findById("whatsapp.human.number")).thenReturn(Optional.empty());
-        when(repository.findById("whatsapp.number"))
+        when(repository.findByKey("whatsapp.human.number")).thenReturn(Optional.empty());
+        when(repository.findByKey("whatsapp.number"))
                 .thenReturn(Optional.of(new AppSettings("whatsapp.number", "56977770000", null)));
 
         String result = appSettingsService.getHumanWhatsappNumber();
@@ -46,7 +46,7 @@ class AppSettingsServiceTest {
 
     @Test
     void isWhatsappHandoffEnabled_DefaultsToTrue() {
-        when(repository.findById("whatsapp.handoff.enabled")).thenReturn(Optional.empty());
+        when(repository.findByKey("whatsapp.handoff.enabled")).thenReturn(Optional.empty());
 
         assertTrue(appSettingsService.isWhatsappHandoffEnabled());
     }
@@ -55,14 +55,14 @@ class AppSettingsServiceTest {
 
     @Test
     void getReminderStrategy_DefaultIs2hours() {
-        when(repository.findById("reminder.strategy")).thenReturn(Optional.empty());
+        when(repository.findByKey("reminder.strategy")).thenReturn(Optional.empty());
 
         assertEquals(AppSettingsService.REMINDER_STRATEGY_2HOURS, appSettingsService.getReminderStrategy());
     }
 
     @Test
     void isReminder2HoursEnabled_TrueWhen2hours() {
-        when(repository.findById("reminder.strategy"))
+        when(repository.findByKey("reminder.strategy"))
                 .thenReturn(Optional.of(new AppSettings("reminder.strategy", "2hours", null)));
 
         assertTrue(appSettingsService.isReminder2HoursEnabled());
@@ -72,7 +72,7 @@ class AppSettingsServiceTest {
 
     @Test
     void isReminderMorningEnabled_TrueWhenMorning() {
-        when(repository.findById("reminder.strategy"))
+        when(repository.findByKey("reminder.strategy"))
                 .thenReturn(Optional.of(new AppSettings("reminder.strategy", "morning", null)));
 
         assertTrue(appSettingsService.isReminderMorningEnabled());
@@ -82,7 +82,7 @@ class AppSettingsServiceTest {
 
     @Test
     void isReminderMorningAndTwoHoursEnabled_WhenBoth() {
-        when(repository.findById("reminder.strategy"))
+        when(repository.findByKey("reminder.strategy"))
                 .thenReturn(Optional.of(new AppSettings("reminder.strategy", "both", null)));
 
         assertTrue(appSettingsService.isReminderMorningEnabled());
@@ -92,7 +92,7 @@ class AppSettingsServiceTest {
 
     @Test
     void isReminderDayBeforeEnabled_TrueWhenDayBefore() {
-        when(repository.findById("reminder.strategy"))
+        when(repository.findByKey("reminder.strategy"))
                 .thenReturn(Optional.of(new AppSettings("reminder.strategy", "day_before", null)));
 
         assertTrue(appSettingsService.isReminderDayBeforeEnabled());
@@ -102,7 +102,7 @@ class AppSettingsServiceTest {
 
     @Test
     void getAppJavaLocale_UsesUnderscoreFormat() {
-        when(repository.findById("app.locale"))
+        when(repository.findByKey("app.locale"))
                 .thenReturn(Optional.of(new AppSettings("app.locale", "es_CL", null)));
 
         Locale locale = appSettingsService.getAppJavaLocale();
@@ -113,7 +113,7 @@ class AppSettingsServiceTest {
 
     @Test
     void getAppJavaLocale_UsesLanguageTagFormat() {
-        when(repository.findById("app.locale"))
+        when(repository.findByKey("app.locale"))
                 .thenReturn(Optional.of(new AppSettings("app.locale", "en-US", null)));
 
         Locale locale = appSettingsService.getAppJavaLocale();
@@ -124,7 +124,7 @@ class AppSettingsServiceTest {
 
     @Test
     void getAppJavaLocale_FallsBackWhenInvalid() {
-        when(repository.findById("app.locale"))
+        when(repository.findByKey("app.locale"))
                 .thenReturn(Optional.of(new AppSettings("app.locale", "", null)));
 
         Locale locale = appSettingsService.getAppJavaLocale();
@@ -137,42 +137,42 @@ class AppSettingsServiceTest {
 
     @Test
     void getFieldEmailMode_DefaultsToOptional() {
-        when(repository.findById("field.email.mode")).thenReturn(Optional.empty());
+        when(repository.findByKey("field.email.mode")).thenReturn(Optional.empty());
 
         assertEquals(AppSettingsService.FIELD_MODE_OPTIONAL, appSettingsService.getFieldEmailMode());
     }
 
     @Test
     void getFieldGenderMode_DefaultsToOptional() {
-        when(repository.findById("field.gender.mode")).thenReturn(Optional.empty());
+        when(repository.findByKey("field.gender.mode")).thenReturn(Optional.empty());
 
         assertEquals(AppSettingsService.FIELD_MODE_OPTIONAL, appSettingsService.getFieldGenderMode());
     }
 
     @Test
     void getFieldBirthDateMode_DefaultsToOptional() {
-        when(repository.findById("field.birth-date.mode")).thenReturn(Optional.empty());
+        when(repository.findByKey("field.birth-date.mode")).thenReturn(Optional.empty());
 
         assertEquals(AppSettingsService.FIELD_MODE_OPTIONAL, appSettingsService.getFieldBirthDateMode());
     }
 
     @Test
     void getFieldEmergencyPhoneMode_DefaultsToHidden() {
-        when(repository.findById("field.emergency-phone.mode")).thenReturn(Optional.empty());
+        when(repository.findByKey("field.emergency-phone.mode")).thenReturn(Optional.empty());
 
         assertEquals(AppSettingsService.FIELD_MODE_HIDDEN, appSettingsService.getFieldEmergencyPhoneMode());
     }
 
     @Test
     void getFieldHealthNotesMode_DefaultsToHidden() {
-        when(repository.findById("field.health-notes.mode")).thenReturn(Optional.empty());
+        when(repository.findByKey("field.health-notes.mode")).thenReturn(Optional.empty());
 
         assertEquals(AppSettingsService.FIELD_MODE_HIDDEN, appSettingsService.getFieldHealthNotesMode());
     }
 
     @Test
     void getFieldGeneralNotesMode_DefaultsToOptional() {
-        when(repository.findById("field.general-notes.mode")).thenReturn(Optional.empty());
+        when(repository.findByKey("field.general-notes.mode")).thenReturn(Optional.empty());
 
         assertEquals(AppSettingsService.FIELD_MODE_OPTIONAL, appSettingsService.getFieldGeneralNotesMode());
     }
@@ -197,7 +197,7 @@ class AppSettingsServiceTest {
 
     @Test
     void getFieldEmailMode_ReturnsConfiguredValue() {
-        when(repository.findById("field.email.mode"))
+        when(repository.findByKey("field.email.mode"))
                 .thenReturn(Optional.of(new AppSettings("field.email.mode", "REQUIRED", null)));
 
         assertEquals(AppSettingsService.FIELD_MODE_REQUIRED, appSettingsService.getFieldEmailMode());
@@ -206,12 +206,12 @@ class AppSettingsServiceTest {
     @Test
     void getFieldGenderMode_SupportsAllModes() {
         // REQUIRED
-        when(repository.findById("field.gender.mode"))
+        when(repository.findByKey("field.gender.mode"))
                 .thenReturn(Optional.of(new AppSettings("field.gender.mode", "REQUIRED", null)));
         assertEquals(AppSettingsService.FIELD_MODE_REQUIRED, appSettingsService.getFieldGenderMode());
 
         // HIDDEN
-        when(repository.findById("field.gender.mode"))
+        when(repository.findByKey("field.gender.mode"))
                 .thenReturn(Optional.of(new AppSettings("field.gender.mode", "HIDDEN", null)));
         assertEquals(AppSettingsService.FIELD_MODE_HIDDEN, appSettingsService.getFieldGenderMode());
     }

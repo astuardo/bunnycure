@@ -67,6 +67,9 @@ public class WhatsAppWebhookService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private NotificationLogService notificationLogService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private cl.bunnycure.domain.repository.TenantRepository tenantRepository;
+
     @Value("${bunnycure.whatsapp.number:}")
     private String adminWhatsAppNumber;
 
@@ -93,6 +96,10 @@ public class WhatsAppWebhookService {
 
     public void setIncomingWhatsAppMessageService(IncomingWhatsAppMessageService incomingWhatsAppMessageService) {
         this.incomingWhatsAppMessageService = incomingWhatsAppMessageService;
+    }
+
+    public void setTenantRepository(cl.bunnycure.domain.repository.TenantRepository tenantRepository) {
+        this.tenantRepository = tenantRepository;
     }
 
     public boolean isSignatureValid(String rawPayload, String signatureHeader, String appSecret) {
@@ -213,8 +220,39 @@ public class WhatsAppWebhookService {
         }
 
         for (WhatsAppWebhookDto.Change change : entry.getChanges()) {
-            processChange(change);
+            processChangeInOwningTenant(change);
         }
+    }
+
+    /**
+     * El webhook llega como petición pública (sin salón resuelto). Cada cambio trae el
+     * phone_number_id del número de WhatsApp que recibió el evento: se procesa en el contexto
+     * del salón dueño de ese número, y el contexto previo se restaura al terminar.
+     */
+    private void processChangeInOwningTenant(WhatsAppWebhookDto.Change change) {
+        String phoneNumberId = change.getValue() != null && change.getValue().getMetadata() != null
+                ? change.getValue().getMetadata().getPhoneNumberId()
+                : null;
+        Long previousTenantId = cl.bunnycure.config.TenantContext.getExplicitTenantId();
+        try {
+            cl.bunnycure.config.TenantContext.setCurrentTenantId(resolveTenantIdForPhoneNumberId(phoneNumberId));
+            processChange(change);
+        } finally {
+            cl.bunnycure.config.TenantContext.setCurrentTenantId(previousTenantId);
+        }
+    }
+
+    /**
+     * Salón dueño del número de WhatsApp. Si ningún salón lo tiene configurado, es el número
+     * de la plataforma (WhatsAppConfig), que pertenece al salón principal.
+     */
+    Long resolveTenantIdForPhoneNumberId(String phoneNumberId) {
+        if (phoneNumberId == null || phoneNumberId.isBlank() || tenantRepository == null) {
+            return cl.bunnycure.config.TenantContext.DEFAULT_TENANT_ID;
+        }
+        return tenantRepository.findFirstByWhatsappPhoneIdOrderByIdAsc(phoneNumberId.trim())
+                .map(cl.bunnycure.domain.model.Tenant::getId)
+                .orElse(cl.bunnycure.config.TenantContext.DEFAULT_TENANT_ID);
     }
 
     private void processChange(WhatsAppWebhookDto.Change change) {

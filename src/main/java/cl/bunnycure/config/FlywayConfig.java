@@ -6,8 +6,16 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 
+/**
+ * Solo desarrollo local: repara el historial antes de migrar para tolerar bases H2 a medio migrar.
+ *
+ * NO se aplica en producción: repair() recalcula los checksums de migraciones ya aplicadas,
+ * lo que aceptaría en silencio cualquier edición de una migración antigua y anularía
+ * spring.flyway.validate-on-migrate. En Heroku se usa la estrategia por defecto (migrate con
+ * validación) y las migraciones se prueban antes sobre Postgres real (PostgresMigrationIntegrationTest).
+ */
 @Configuration
-@Profile({ "heroku", "local" })
+@Profile("local")
 public class FlywayConfig {
 
     @Bean

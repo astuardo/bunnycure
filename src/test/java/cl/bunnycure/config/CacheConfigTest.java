@@ -48,7 +48,7 @@ class CacheConfigTest {
     void get_CachesValueOnSubsequentCalls() {
         // Arrange
         String key = "test.cached.key";
-        when(repository.findById(key)).thenReturn(Optional.of(new AppSettings(key, "cached-val", null)));
+        when(repository.findByKey(key)).thenReturn(Optional.of(new AppSettings(key, "cached-val", null)));
 
         // Act - Call 1 (hits repository)
         String val1 = appSettingsService.get(key, "default");
@@ -58,16 +58,16 @@ class CacheConfigTest {
         // Assert
         assertEquals("cached-val", val1);
         assertEquals("cached-val", val2);
-        verify(repository, times(1)).findById(key);
+        verify(repository, times(1)).findByKey(key);
 
         // Act - Set (evicts cache)
-        when(repository.findById(key)).thenReturn(Optional.of(new AppSettings(key, "new-val", null)));
+        when(repository.findByKey(key)).thenReturn(Optional.of(new AppSettings(key, "new-val", null)));
         appSettingsService.set(key, "new-val");
 
         // Act - Call 3 after eviction (hits repository again)
         String val3 = appSettingsService.get(key, "default");
         assertEquals("new-val", val3);
-        verify(repository, times(3)).findById(key); // 1st read + 1 in set + 2nd read
+        verify(repository, times(3)).findByKey(key); // 1st read + 1 in set + 2nd read
     }
 
     @Test

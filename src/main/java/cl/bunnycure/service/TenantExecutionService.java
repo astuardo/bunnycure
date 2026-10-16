@@ -24,9 +24,10 @@ public class TenantExecutionService {
 
     /**
      * Ejecuta una tarea para cada salón activo registrado en la plataforma.
-     * En cada iteración establece TenantContext con el ID del salón y lo limpia en un bloque finally.
+     * En cada iteración establece TenantContext con el ID del salón y al terminar restaura el contexto previo.
      */
     public void executeForAllActiveTenants(String taskName, Consumer<Tenant> action) {
+        Long previousTenantId = TenantContext.getExplicitTenantId();
         List<Tenant> activeTenants;
         try {
             activeTenants = tenantRepository.findByActiveTrue();
@@ -49,32 +50,34 @@ public class TenantExecutionService {
                 log.error("[TENANT-EXEC] Error ejecutando {} en salón '{}' (ID={}): {}",
                         taskName, tenant.getName(), tenant.getId(), ex.getMessage(), ex);
             } finally {
-                TenantContext.clear();
+                TenantContext.setCurrentTenantId(previousTenantId);
             }
         }
     }
 
     /**
      * Ejecuta una acción puntual dentro del contexto de un tenant específico.
+     * Restaura el contexto previo al terminar: si se invoca dentro de una petición HTTP,
+     * el resto de la petición sigue en su salón (antes se limpiaba y caía al tenant por defecto).
      */
     public void executeInTenantContext(Long tenantId, Runnable action) {
-        try {
-            TenantContext.setCurrentTenantId(tenantId);
+        executeInTenantContext(tenantId, () -> {
             action.run();
-        } finally {
-            TenantContext.clear();
-        }
+            return null;
+        });
     }
 
     /**
-     * Ejecuta una función con retorno dentro del contexto de un tenant específico.
+     * Ejecuta una función con retorno dentro del contexto de un tenant específico,
+     * restaurando el contexto previo al terminar.
      */
     public <T> T executeInTenantContext(Long tenantId, Supplier<T> supplier) {
+        Long previousTenantId = TenantContext.getExplicitTenantId();
         try {
             TenantContext.setCurrentTenantId(tenantId);
             return supplier.get();
         } finally {
-            TenantContext.clear();
+            TenantContext.setCurrentTenantId(previousTenantId);
         }
     }
 }

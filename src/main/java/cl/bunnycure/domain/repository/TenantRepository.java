@@ -18,4 +18,7 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
     boolean existsByCustomDomainIgnoreCase(String customDomain);
 
     java.util.List<Tenant> findByActiveTrue();
+
+    /** Enrutamiento del webhook de WhatsApp: salón dueño del phone_number_id de Meta. */
+    Optional<Tenant> findFirstByWhatsappPhoneIdOrderByIdAsc(String whatsappPhoneId);
 }

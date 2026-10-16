@@ -19,6 +19,10 @@ public class IncomingWhatsAppMessage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @org.hibernate.annotations.TenantId
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     @Column(length = 120, unique = true)
     private String wamid;
 

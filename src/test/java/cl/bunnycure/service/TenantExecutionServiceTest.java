@@ -110,4 +110,35 @@ class TenantExecutionServiceTest {
         assertFalse(TenantContext.hasExplicitTenant());
         assertEquals(TenantContext.DEFAULT_TENANT_ID, TenantContext.getCurrentTenantId());
     }
+
+    @Test
+    void executeInTenantContext_shouldRestorePreviousRequestTenant() {
+        TenantContext.setCurrentTenantId(2L); // p.ej. petición HTTP del salón 2
+
+        Long seen = tenantExecutionService.executeInTenantContext(7L, TenantContext::getCurrentTenantId);
+
+        assertEquals(7L, seen);
+        assertEquals(2L, TenantContext.getExplicitTenantId(), "El resto de la petición debe seguir en el salón 2");
+    }
+
+    @Test
+    void executeInTenantContext_shouldRestorePreviousTenantEvenOnException() {
+        TenantContext.setCurrentTenantId(2L);
+
+        assertThrows(IllegalStateException.class, () ->
+                tenantExecutionService.executeInTenantContext(7L, () -> { throw new IllegalStateException("boom"); }));
+
+        assertEquals(2L, TenantContext.getExplicitTenantId());
+    }
+
+    @Test
+    void executeForAllActiveTenants_shouldRestorePreviousTenant() {
+        Tenant t1 = Tenant.builder().id(1L).slug("salon-a").name("Salón A").active(true).build();
+        when(tenantRepository.findByActiveTrue()).thenReturn(List.of(t1));
+        TenantContext.setCurrentTenantId(3L);
+
+        tenantExecutionService.executeForAllActiveTenants("Test Task", tenant -> { });
+
+        assertEquals(3L, TenantContext.getExplicitTenantId());
+    }
 }

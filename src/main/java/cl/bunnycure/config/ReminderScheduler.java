@@ -113,6 +113,12 @@ public class ReminderScheduler {
      */
     @Scheduled(cron = "0 */10 * * * *", zone = "${bunnycure.scheduler.timezone:America/Santiago}")
     public void checkAndSendUnavailabilityPushReminders() {
+        // Bloqueos, configuración y suscripciones push son por salón.
+        tenantExecutionService.executeForAllActiveTenants("Push Bloqueos de Agenda",
+                tenant -> checkAndSendUnavailabilityPushRemindersForCurrentTenant());
+    }
+
+    private void checkAndSendUnavailabilityPushRemindersForCurrentTenant() {
         try {
             String notificationsRaw = appSettingsService.get("schedule.unavailability.notifications", "");
             boolean notify24h = true;

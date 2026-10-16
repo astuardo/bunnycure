@@ -52,7 +52,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("getAppName should return BunnyCure by default")
     void testGetAppName() {
         // Arrange
-        when(repository.findById("app.name")).thenReturn(Optional.empty());
+        when(repository.findByKey("app.name")).thenReturn(Optional.empty());
 
         // Act
         String actual = appSettingsService.getAppName();
@@ -60,14 +60,14 @@ class AppSettingsServicePhase2Test {
         // Assert
         assertNotNull(actual, "App name should not be null");
         assertEquals("BunnyCure", actual, "App name should default to BunnyCure");
-        verify(repository, times(1)).findById("app.name");
+        verify(repository, times(1)).findByKey("app.name");
     }
 
     @Test
     @DisplayName("getAppSlogan should return default slogan with emoji")
     void testGetAppSlogan() {
         // Arrange
-        when(repository.findById("app.slogan")).thenReturn(Optional.empty());
+        when(repository.findByKey("app.slogan")).thenReturn(Optional.empty());
 
         // Act
         String actual = appSettingsService.getAppSlogan();
@@ -82,7 +82,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("getAppEmail should return valid email address")
     void testGetAppEmail() {
         // Arrange
-        when(repository.findById("app.email")).thenReturn(Optional.empty());
+        when(repository.findByKey("app.email")).thenReturn(Optional.empty());
 
         // Act
         String actual = appSettingsService.getAppEmail();
@@ -98,7 +98,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("getAppLogoUrl should return valid URL path")
     void testGetAppLogoUrl() {
         // Arrange
-        when(repository.findById("app.logo-url")).thenReturn(Optional.empty());
+        when(repository.findByKey("app.logo-url")).thenReturn(Optional.empty());
 
         // Act
         String actual = appSettingsService.getAppLogoUrl();
@@ -115,7 +115,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("getAppPrimaryColor should return valid HEX color")
     void testGetAppPrimaryColor() {
         // Arrange
-        when(repository.findById("app.primary-color")).thenReturn(Optional.empty());
+        when(repository.findByKey("app.primary-color")).thenReturn(Optional.empty());
         String hexColorRegex = "^#[0-9A-Fa-f]{6}$";
 
         // Act
@@ -132,7 +132,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("getAppSecondaryColor should return valid HEX color")
     void testGetAppSecondaryColor() {
         // Arrange
-        when(repository.findById("app.secondary-color")).thenReturn(Optional.empty());
+        when(repository.findByKey("app.secondary-color")).thenReturn(Optional.empty());
         String hexColorRegex = "^#[0-9A-Fa-f]{6}$";
 
         // Act
@@ -149,7 +149,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("getAppTimezone should return valid IANA timezone")
     void testGetAppTimezone() {
         // Arrange
-        when(repository.findById("app.timezone")).thenReturn(Optional.empty());
+        when(repository.findByKey("app.timezone")).thenReturn(Optional.empty());
 
         // Act
         String actual = appSettingsService.getAppTimezone();
@@ -167,7 +167,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("getAppLocale should return valid locale format (xx_YY)")
     void testGetAppLocale() {
         // Arrange
-        when(repository.findById("app.locale")).thenReturn(Optional.empty());
+        when(repository.findByKey("app.locale")).thenReturn(Optional.empty());
         String localeRegex = "^[a-z]{2}_[A-Z]{2}$";
 
         // Act
@@ -184,7 +184,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("getAppCurrency should return valid ISO 4217 currency code")
     void testGetAppCurrency() {
         // Arrange
-        when(repository.findById("app.currency")).thenReturn(Optional.empty());
+        when(repository.findByKey("app.currency")).thenReturn(Optional.empty());
 
         // Act
         String actual = appSettingsService.getAppCurrency();
@@ -200,7 +200,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("getAppServiceTip should return non-empty service advice")
     void testGetAppServiceTip() {
         // Arrange
-        when(repository.findById("app.service-tip")).thenReturn(Optional.empty());
+        when(repository.findByKey("app.service-tip")).thenReturn(Optional.empty());
 
         // Act
         String actual = appSettingsService.getAppServiceTip();
@@ -223,7 +223,7 @@ class AppSettingsServicePhase2Test {
         // Arrange
         String nonExistentKey = "nonexistent.key.that.does.not.exist.12345";
         String expectedDefault = "DEFAULT_VALUE";
-        when(repository.findById(nonExistentKey)).thenReturn(Optional.empty());
+        when(repository.findByKey(nonExistentKey)).thenReturn(Optional.empty());
 
         // Act
         String actual = appSettingsService.get(nonExistentKey, expectedDefault);
@@ -241,7 +241,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("All 10 branding getters should be non-null and non-empty")
     void testAllBrandingGettersReturnValues() {
         // Arrange - mock all keys as non-existent to get defaults
-        when(repository.findById(anyString())).thenReturn(Optional.empty());
+        when(repository.findByKey(anyString())).thenReturn(Optional.empty());
 
         // Act & Assert
         String appName = appSettingsService.getAppName();
@@ -284,7 +284,7 @@ class AppSettingsServicePhase2Test {
     @DisplayName("Both HEX colors should be different from each other")
     void testPrimaryAndSecondaryColorsDifferent() {
         // Arrange
-        when(repository.findById(anyString())).thenReturn(Optional.empty());
+        when(repository.findByKey(anyString())).thenReturn(Optional.empty());
 
         // Act
         String primary = appSettingsService.getAppPrimaryColor();
