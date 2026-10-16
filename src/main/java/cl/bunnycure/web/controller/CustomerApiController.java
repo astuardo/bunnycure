@@ -273,10 +273,8 @@ public class CustomerApiController {
 
     private String extractClientIp(jakarta.servlet.http.HttpServletRequest request) {
         if (request == null) return "unknown";
-        String xf = request.getHeader("X-Forwarded-For");
-        if (xf != null && !xf.isBlank()) {
-            return xf.split(",")[0].trim();
-        }
+        // La IP real la resuelve Tomcat (server.forward-headers-strategy=native).
+        // No leer X-Forwarded-For a mano: su primer valor lo controla el cliente.
         return request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
     }
 

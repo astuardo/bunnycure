@@ -104,8 +104,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 // Verificar si el usuario es SUPER_ADMIN
                 boolean isSuperAdmin = false;
                 if (username != null && userRepository != null) {
-                    Optional<User> userOpt = userRepository.findByUsername(username);
-                    isSuperAdmin = userOpt.map(u -> "SUPER_ADMIN".equalsIgnoreCase(u.getRole())).orElse(false);
+                    // username es único por tenant: buscar en el tenant del token verificado
+                    Optional<User> userOpt = userRepository.findByUsernameAndTenantId(username, tokenTenantId);
+                    isSuperAdmin = userOpt.map(User::isSuperAdmin).orElse(false);
                 }
 
                 if (!isSuperAdmin) {

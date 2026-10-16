@@ -91,10 +91,8 @@ public class PublicApiRateLimitingFilter extends OncePerRequestFilter {
     }
 
     private String extractClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
+        // La IP real la resuelve Tomcat (server.forward-headers-strategy=native).
+        // No leer X-Forwarded-For a mano: su primer valor lo controla el cliente.
         return request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
     }
 

@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -61,7 +62,7 @@ class CustomerApiControllerRateLimitTest {
     void lookup_ReturnsSanitizedDataWithoutExposingHealthNotes() throws Exception {
         mockMvc.perform(post("/api/customers/lookup")
                         .param("phone", "+56977665544")
-                        .header("X-Forwarded-For", "198.51.100.1"))
+                        .with(fromIp("198.51.100.1")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.found", is(true)))
                 .andExpect(jsonPath("$.fullName", is("Valentina Flores")))
@@ -80,14 +81,42 @@ class CustomerApiControllerRateLimitTest {
         for (int i = 0; i < 15; i++) {
             mockMvc.perform(post("/api/customers/lookup")
                             .param("phone", "+56977665544")
-                            .header("X-Forwarded-For", testIp))
+                            .with(fromIp(testIp)))
                     .andExpect(status().isOk());
         }
 
         // La petición 16 debe ser rechazada con HTTP 429 Too Many Requests
         mockMvc.perform(post("/api/customers/lookup")
                         .param("phone", "+56977665544")
-                        .header("X-Forwarded-For", testIp))
+                        .with(fromIp(testIp)))
                 .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    @DisplayName("Lookup público: rotar X-Forwarded-For falsificado no evade el límite de tasa")
+    void lookup_WhenClientSpoofsXForwardedFor_RateLimitStillApplies() throws Exception {
+        String realIp = "203.0.113.99";
+
+        for (int i = 0; i < 15; i++) {
+            mockMvc.perform(post("/api/customers/lookup")
+                            .param("phone", "+56977665544")
+                            .header("X-Forwarded-For", "10.66.0." + i)
+                            .with(fromIp(realIp)))
+                    .andExpect(status().isOk());
+        }
+
+        mockMvc.perform(post("/api/customers/lookup")
+                        .param("phone", "+56977665544")
+                        .header("X-Forwarded-For", "10.66.0.200")
+                        .with(fromIp(realIp)))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    /** Simula la IP que Tomcat (RemoteIpValve) entrega como remoteAddr detrás del router de Heroku. */
+    private static RequestPostProcessor fromIp(String ip) {
+        return request -> {
+            request.setRemoteAddr(ip);
+            return request;
+        };
     }
 }
