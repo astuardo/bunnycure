@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -42,6 +43,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestMailConfiguration.class)
 @DisplayName("Registro autoservicio: alta, verificación de email, prueba gratuita y login")
 class SignupIntegrationTest {
+
+    @Value("${bunnycure.scheduler.timezone:America/Santiago}")
+    private String timezone;
 
     private static final String EMAIL = "duena@salonnuevo.cl";
     private static final String PASSWORD = "ClaveSegura2026";
@@ -108,7 +112,8 @@ class SignupIntegrationTest {
 
         Tenant verified = tenantRepository.findById(tenant.getId()).orElseThrow();
         assertThat(verified.getSubscriptionStatus()).isEqualTo(SubscriptionStatus.TRIALING);
-        assertThat(verified.getTrialEndsOn()).isAfter(java.time.LocalDate.now().plusDays(13));
+        // misma zona que SignupService: en CI (UTC) la fecha del JVM puede ir un día por delante de Chile
+        assertThat(verified.getTrialEndsOn()).isAfter(java.time.LocalDate.now(java.time.ZoneId.of(timezone)).plusDays(13));
 
         // Repetir el enlace (doble clic) no falla
         mockMvc.perform(post("/api/public/signup/verify").contentType(MediaType.APPLICATION_JSON).content("{\"token\":\"" + token + "\"}"))
