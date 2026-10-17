@@ -41,7 +41,7 @@ class WhatsAppAdminAlertOutboxServiceTest {
     private BookingRequestRepository bookingRequestRepository;
 
     @Mock
-    private WhatsAppService whatsAppService;
+    private WhatsAppAppointmentNotifier whatsAppAppointmentNotifier;
 
     @Mock
     private AppSettingsService appSettingsService;
@@ -60,7 +60,7 @@ class WhatsAppAdminAlertOutboxServiceTest {
         service = new WhatsAppAdminAlertOutboxService(
                 outboxRepository,
                 bookingRequestRepository,
-                whatsAppService,
+                whatsAppAppointmentNotifier,
                 appSettingsService,
                 tenantExecutionService
         );
@@ -102,7 +102,7 @@ class WhatsAppAdminAlertOutboxServiceTest {
         when(outboxRepository.findByStatusInAndNextAttemptAtLessThanEqualOrderByCreatedAtAsc(anyCollection(), any(LocalDateTime.class), any(Pageable.class)))
                 .thenReturn(List.of(pending));
         when(bookingRequestRepository.findById(bookingId)).thenReturn(Optional.of(request));
-        when(whatsAppService.sendAdminBookingAlertSync(any(), any(BookingRequest.class))).thenReturn(true);
+        when(whatsAppAppointmentNotifier.sendAdminBookingAlertSync(any(), any(BookingRequest.class))).thenReturn(true);
         when(appSettingsService.getAdminAlertWhatsappNumber("56964499995")).thenReturn("56964499995");
 
         service.enqueueAndTryDispatch(bookingId);
@@ -130,7 +130,7 @@ class WhatsAppAdminAlertOutboxServiceTest {
         when(outboxRepository.findByStatusInAndNextAttemptAtLessThanEqualOrderByCreatedAtAsc(anyCollection(), any(LocalDateTime.class), any(Pageable.class)))
                 .thenReturn(List.of(pending));
         when(bookingRequestRepository.findById(bookingId)).thenReturn(Optional.of(request));
-        when(whatsAppService.sendAdminBookingAlertSync(any(), any(BookingRequest.class))).thenReturn(false);
+        when(whatsAppAppointmentNotifier.sendAdminBookingAlertSync(any(), any(BookingRequest.class))).thenReturn(false);
         when(outboxRepository.save(any(WhatsAppAdminAlertOutbox.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(appSettingsService.getAdminAlertWhatsappNumber("56964499995")).thenReturn("56964499995");
 
@@ -152,7 +152,7 @@ class WhatsAppAdminAlertOutboxServiceTest {
         service.enqueueAndTryDispatch(999L);
 
         verify(outboxRepository, never()).save(any(WhatsAppAdminAlertOutbox.class));
-        verify(whatsAppService, never()).sendAdminBookingAlertSync(any(), any(BookingRequest.class));
+        verify(whatsAppAppointmentNotifier, never()).sendAdminBookingAlertSync(any(), any(BookingRequest.class));
     }
 
     @Test
@@ -182,11 +182,11 @@ class WhatsAppAdminAlertOutboxServiceTest {
                 .thenReturn(List.of(pending));
         when(bookingRequestRepository.findById(bookingId)).thenReturn(Optional.of(request));
         when(tenantRepository.findById(salonTenantId)).thenReturn(Optional.of(salonTenant));
-        when(whatsAppService.sendAdminBookingAlertSync("+56999887766", request)).thenReturn(true);
+        when(whatsAppAppointmentNotifier.sendAdminBookingAlertSync("+56999887766", request)).thenReturn(true);
 
         service.dispatchDueAlerts();
 
-        verify(whatsAppService).sendAdminBookingAlertSync("+56999887766", request);
+        verify(whatsAppAppointmentNotifier).sendAdminBookingAlertSync("+56999887766", request);
     }
 
     private BookingRequest buildBookingRequest(Long bookingId) {

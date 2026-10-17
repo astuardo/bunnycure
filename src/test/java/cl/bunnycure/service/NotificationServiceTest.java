@@ -27,7 +27,7 @@ class NotificationServiceTest {
     private TemplateEngine templateEngine;
 
     @Mock
-    private WhatsAppService whatsAppService;
+    private WhatsAppAppointmentNotifier whatsAppAppointmentNotifier;
 
     @Mock
     private WhatsAppAdminAlertOutboxService whatsAppAdminAlertOutboxService;
@@ -48,7 +48,7 @@ class NotificationServiceTest {
         notificationService = new NotificationService(
                 mailSender,
                 templateEngine,
-                whatsAppService,
+                whatsAppAppointmentNotifier,
                 whatsAppAdminAlertOutboxService,
                 appSettingsService,
                 webPushNotificationService,
@@ -82,7 +82,7 @@ class NotificationServiceTest {
         notificationService.sendAppointmentReviewRequest(appointment);
 
         // Assert
-        verify(whatsAppService).sendValoracionServicioGoogleTemplate(appointment);
+        verify(whatsAppAppointmentNotifier).sendValoracionServicioGoogleTemplate(appointment);
     }
 
     @Test
@@ -103,7 +103,7 @@ class NotificationServiceTest {
         notificationService.sendAppointmentReviewRequest(appointment);
 
         // Assert
-        verify(whatsAppService).sendValoracionServicioGoogleTemplate(appointment);
+        verify(whatsAppAppointmentNotifier).sendValoracionServicioGoogleTemplate(appointment);
     }
 
     @Test
@@ -124,7 +124,7 @@ class NotificationServiceTest {
         notificationService.sendAppointmentReviewRequest(appointment);
 
         // Assert
-        verify(whatsAppService, never()).sendValoracionServicioGoogleTemplate(any());
+        verify(whatsAppAppointmentNotifier, never()).sendValoracionServicioGoogleTemplate(any());
     }
 
     @Test
@@ -145,6 +145,6 @@ class NotificationServiceTest {
         notificationService.sendAppointmentReviewRequest(appointment);
 
         // Assert
-        verify(whatsAppService, never()).sendValoracionServicioGoogleTemplate(any());
+        verify(whatsAppAppointmentNotifier, never()).sendValoracionServicioGoogleTemplate(any());
     }
 }

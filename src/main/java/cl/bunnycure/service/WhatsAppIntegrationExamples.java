@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class WhatsAppIntegrationExamples {
 
     private final WhatsAppService whatsAppService;
+    private final WhatsAppAppointmentNotifier whatsAppAppointmentNotifier;
     private final NotificationService notificationService;
 
     /**
@@ -30,13 +31,13 @@ public class WhatsAppIntegrationExamples {
      *   // Notificar por email
      *   notificationService.sendAppointmentConfirmation(savedAppointment);
      *   // Notificar por WhatsApp
-     *   whatsAppService.sendAppointmentConfirmation(savedAppointment);
+     *   whatsAppAppointmentNotifier.sendAppointmentConfirmation(savedAppointment);
      */
     public void ejemploConfirmacionCita(Appointment appointment) {
         // Email
         notificationService.sendAppointmentConfirmation(appointment);
         // WhatsApp
-        whatsAppService.sendAppointmentConfirmation(appointment);
+        whatsAppAppointmentNotifier.sendAppointmentConfirmation(appointment);
     }
 
     /**
@@ -56,7 +57,7 @@ public class WhatsAppIntegrationExamples {
      *   }
      *   // Notificar por WhatsApp (si tiene teléfono)
      *   if (saved.getPhone() != null && !saved.getPhone().isBlank()) {
-     *       whatsAppService.sendBookingRequestReceived(saved);
+     *       whatsAppAppointmentNotifier.sendBookingRequestReceived(saved);
      *   }
      */
     public void ejemploRecepcionSolicitud(BookingRequest request) {
@@ -66,7 +67,7 @@ public class WhatsAppIntegrationExamples {
         }
         // WhatsApp
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
-            whatsAppService.sendBookingRequestReceived(request);
+            whatsAppAppointmentNotifier.sendBookingRequestReceived(request);
         }
     }
 
@@ -87,7 +88,7 @@ public class WhatsAppIntegrationExamples {
      *   }
      *   // Notificar por WhatsApp (si tiene teléfono)
      *   if (request.getPhone() != null && !request.getPhone().isBlank()) {
-     *       whatsAppService.sendBookingRequestRejected(request);
+     *       whatsAppAppointmentNotifier.sendBookingRequestRejected(request);
      *   }
      */
     public void ejemploRechazoSolicitud(BookingRequest request) {
@@ -97,7 +98,7 @@ public class WhatsAppIntegrationExamples {
         }
         // WhatsApp
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
-            whatsAppService.sendBookingRequestRejected(request);
+            whatsAppAppointmentNotifier.sendBookingRequestRejected(request);
         }
     }
 
@@ -107,13 +108,13 @@ public class WhatsAppIntegrationExamples {
      * Modifica AppointmentReminderService líneas correspondientes:
      * 
      * Agrega después de enviar email:
-     *   whatsAppService.sendAppointmentReminder(appointment);
+     *   whatsAppAppointmentNotifier.sendAppointmentReminder(appointment);
      */
     public void ejemploRecordatorioCita(Appointment appointment) {
         // Email (lógica existente en AppointmentReminderService)
         notificationService.sendCancellationNotice(appointment); // o el método de recordatorio
         // WhatsApp
-        whatsAppService.sendAppointmentReminder(appointment);
+        whatsAppAppointmentNotifier.sendAppointmentReminder(appointment);
     }
 
     /**
@@ -123,13 +124,13 @@ public class WhatsAppIntegrationExamples {
      * 
      * Agrega:
      *   notificationService.sendCancellationNotice(appointment);
-     *   whatsAppService.sendAppointmentCancellation(appointment);
+     *   whatsAppAppointmentNotifier.sendAppointmentCancellation(appointment);
      */
     public void ejemploCancelacionCita(Appointment appointment) {
         // Email
         notificationService.sendCancellationNotice(appointment);
         // WhatsApp
-        whatsAppService.sendAppointmentCancellation(appointment);
+        whatsAppAppointmentNotifier.sendAppointmentCancellation(appointment);
     }
 
     /**

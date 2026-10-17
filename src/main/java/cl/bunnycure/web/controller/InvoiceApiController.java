@@ -29,19 +29,20 @@ import java.util.Map;
 public class InvoiceApiController {
 
     private final ApiGatewaySiiService apiGatewaySiiService;
+    private final cl.bunnycure.service.InvoiceReportService invoiceReportService;
 
     @Operation(summary = "Obtener resumen y KPIs de boletas del mes", description = "Retorna métricas generales de boletas emitidas, pendientes, montos y estado de conexión (100% datos locales).")
     @PreAuthorize("hasAnyRole('SALON_ADMIN','ADMIN','SUPER_ADMIN','RECEPTIONIST')")
     @GetMapping("/summary")
     public ResponseEntity<ApiResponse<InvoiceSummaryDto>> getSummary() {
-        InvoiceSummaryDto summary = apiGatewaySiiService.getSummary();
+        InvoiceSummaryDto summary = invoiceReportService.getSummary();
         return ResponseEntity.ok(ApiResponse.success(summary));
     }
 
     @Operation(summary = "Obtener cuota mensual de boletas", description = "Entrega compatibilidad para cuota de emisión.")
     @GetMapping("/quota")
     public ResponseEntity<ApiResponse<InvoiceQuotaResponseDto>> getQuota() {
-        long generatedThisMonth = apiGatewaySiiService.getGeneratedInvoicesThisMonth();
+        long generatedThisMonth = invoiceReportService.getGeneratedInvoicesThisMonth();
 
         InvoiceQuotaResponseDto dto = InvoiceQuotaResponseDto.builder()
                 .generatedThisMonth(generatedThisMonth)
@@ -62,7 +63,7 @@ public class InvoiceApiController {
             @Parameter(description = "Fecha fin (opcional)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
 
-        List<InvoicePendingAppointmentDto> pending = apiGatewaySiiService.getPendingInvoices(start, end);
+        List<InvoicePendingAppointmentDto> pending = invoiceReportService.getPendingInvoices(start, end);
         return ResponseEntity.ok(ApiResponse.success(pending));
     }
 
@@ -77,7 +78,7 @@ public class InvoiceApiController {
                 ? periodo
                 : LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
 
-        List<InvoiceIssuedItemDto> issued = apiGatewaySiiService.getLocalIssuedInvoices(effectivePeriodo);
+        List<InvoiceIssuedItemDto> issued = invoiceReportService.getLocalIssuedInvoices(effectivePeriodo);
         return ResponseEntity.ok(ApiResponse.success(issued));
     }
 
@@ -143,7 +144,7 @@ public class InvoiceApiController {
             @Parameter(description = "Forzar consulta externa al SII ignorando caché (consume créditos)")
             @RequestParam(defaultValue = "false") boolean forceRefresh) {
 
-        InvoiceContrastResultDto result = apiGatewaySiiService.contrastWithSii(periodo, forceRefresh);
+        InvoiceContrastResultDto result = invoiceReportService.contrastWithSii(periodo, forceRefresh);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

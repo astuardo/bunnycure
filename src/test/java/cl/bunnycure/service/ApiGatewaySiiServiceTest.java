@@ -312,7 +312,7 @@ class ApiGatewaySiiServiceTest {
         when(config.isConfigured()).thenReturn(true);
         when(config.getSiiRut()).thenReturn("76123456-7");
 
-        InvoiceSummaryDto summary = service.getSummary();
+        InvoiceSummaryDto summary = new InvoiceReportService(config, invoiceLogRepository, appointmentRepository, service).getSummary();
 
         assertNotNull(summary);
         assertEquals(15L, summary.getGeneratedThisMonth());

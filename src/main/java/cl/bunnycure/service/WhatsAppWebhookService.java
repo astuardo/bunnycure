@@ -2,31 +2,19 @@ package cl.bunnycure.service;
 
 import cl.bunnycure.domain.enums.AppointmentStatus;
 import cl.bunnycure.domain.model.Appointment;
-import cl.bunnycure.domain.model.WebhookOperationalEvent;
-import cl.bunnycure.domain.model.WebhookProcessedEvent;
 import cl.bunnycure.domain.repository.AppointmentRepository;
 import cl.bunnycure.domain.repository.WebhookOperationalEventRepository;
 import cl.bunnycure.domain.repository.WebhookProcessedEventRepository;
 import cl.bunnycure.web.dto.WhatsAppWebhookDto;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,17 +23,9 @@ import java.util.regex.Pattern;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class WhatsAppWebhookService {
-    private static final long DEDUPE_TTL_MILLIS = 10 * 60 * 1000L;
-    private static final long DEDUPE_CLEANUP_EVERY_EVENTS = 250;
-    private static final long ALERT_THROTTLE_MILLIS = 5 * 60 * 1000L;
     private static final Pattern APPOINTMENT_ID_PATTERN = Pattern.compile("(?:^|[:#_\\-])(\\d+)$");
 
-    private Map<String, Long> processedEventIds = new ConcurrentHashMap<>();
-    private Map<String, Long> lastAlertByKey = new ConcurrentHashMap<>();
-    private Map<String, Long> operationalEventCounters = new ConcurrentHashMap<>();
-    private AtomicLong dedupeChecksCounter = new AtomicLong(0);
     private final AppointmentRepository appointmentRepository;
     private final WebhookOperationalEventRepository webhookOperationalEventRepository;
     private final WebhookProcessedEventRepository webhookProcessedEventRepository;
@@ -54,6 +34,38 @@ public class WhatsAppWebhookService {
     private final WhatsAppHandoffService whatsAppHandoffService;
     private final CustomerServiceRecordService customerServiceRecordService;
     private final WebPushNotificationService webPushNotificationService;
+
+    /** Colaboradores internos (mismo paquete), construidos con las dependencias del servicio. */
+    private final WebhookEventDeduplicator deduplicator;
+    private final WebhookOperationalEventHandler operationalEvents;
+    private final WhatsAppAdminTemplateCommands adminTemplateCommands;
+    private final WhatsAppMessageStatusHandler messageStatuses;
+
+    public WhatsAppWebhookService(AppointmentRepository appointmentRepository,
+                                  WebhookOperationalEventRepository webhookOperationalEventRepository,
+                                  WebhookProcessedEventRepository webhookProcessedEventRepository,
+                                  WhatsAppService whatsAppService,
+                                  AppSettingsService appSettingsService,
+                                  WhatsAppHandoffService whatsAppHandoffService,
+                                  CustomerServiceRecordService customerServiceRecordService,
+                                  WebPushNotificationService webPushNotificationService) {
+        this.appointmentRepository = appointmentRepository;
+        this.webhookOperationalEventRepository = webhookOperationalEventRepository;
+        this.webhookProcessedEventRepository = webhookProcessedEventRepository;
+        this.whatsAppService = whatsAppService;
+        this.appSettingsService = appSettingsService;
+        this.whatsAppHandoffService = whatsAppHandoffService;
+        this.customerServiceRecordService = customerServiceRecordService;
+        this.webPushNotificationService = webPushNotificationService;
+        this.deduplicator = new WebhookEventDeduplicator(webhookProcessedEventRepository);
+        // Suppliers: los @Value se inyectan después del constructor y los tests los ajustan por reflexión
+        this.operationalEvents = new WebhookOperationalEventHandler(webhookOperationalEventRepository, whatsAppService,
+                () -> alertAdminOnRiskEvents, () -> adminWhatsAppNumber, this::resolveAdminWhatsAppNumber);
+        this.adminTemplateCommands = new WhatsAppAdminTemplateCommands(whatsAppService,
+                () -> marketingTemplateAiService, () -> marketingTemplateRepository,
+                () -> frontendBaseUrl, this::resolveAdminWhatsAppNumber);
+        this.messageStatuses = new WhatsAppMessageStatusHandler(deduplicator, () -> notificationLogService);
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private cl.bunnycure.service.marketing.MarketingTemplateAiService marketingTemplateAiService;
@@ -195,17 +207,17 @@ public class WhatsAppWebhookService {
                 }
                 // Procesar estados de mensajes (entregado, leído, etc.)
                 if (value.getStatuses() != null && !value.getStatuses().isEmpty()) {
-                    processMessageStatuses(value.getStatuses());
+                    messageStatuses.processMessageStatuses(value.getStatuses());
                 }
                 break;
                 
             case "message_template_status_update":
-                handleTemplateStatusUpdate(value);
-                handleOperationalWebhookEvent("message_template_status_update", value, isTemplateStatusRisk(value));
+                adminTemplateCommands.handleTemplateStatusUpdate(value);
+                operationalEvents.handle("message_template_status_update", value, operationalEvents.isTemplateStatusRisk(value));
                 break;
                 
             case "message_template_quality_update":
-                handleOperationalWebhookEvent("message_template_quality_update", value, true);
+                operationalEvents.handle("message_template_quality_update", value, true);
                 break;
                 
             case "phone_number_name_update":
@@ -214,11 +226,11 @@ public class WhatsAppWebhookService {
                 break;
                 
             case "phone_number_quality_update":
-                handleOperationalWebhookEvent("phone_number_quality_update", value, true);
+                operationalEvents.handle("phone_number_quality_update", value, true);
                 break;
                 
             case "account_alerts":
-                handleOperationalWebhookEvent("account_alerts", value, true);
+                operationalEvents.handle("account_alerts", value, true);
                 break;
                 
             case "account_update":
@@ -245,7 +257,7 @@ public class WhatsAppWebhookService {
         log.info("[WEBHOOK] 💬 Procesando {} mensaje(s) entrante(s)", messages.size());
 
         for (WhatsAppWebhookDto.Message message : messages) {
-            if (isDuplicateEvent("msg:" + message.getId())) {
+            if (deduplicator.isDuplicate("msg:" + message.getId())) {
                 log.info("[WEBHOOK] ♻️ Message already processed, skipping id={}", message.getId());
                 continue;
             }
@@ -351,8 +363,8 @@ public class WhatsAppWebhookService {
         }
 
         // Si es la administradora/dueña y solicita crear una plantilla de marketing
-        if (isCustomerRecordOwnerMessage(message) && isMarketingTemplateAiCommand(text)) {
-            handleAdminAiTemplateCreation(message, text);
+        if (isCustomerRecordOwnerMessage(message) && adminTemplateCommands.isMarketingTemplateAiCommand(text)) {
+            adminTemplateCommands.handleAdminAiTemplateCreation(message, text);
             return;
         }
 
@@ -380,118 +392,6 @@ public class WhatsAppWebhookService {
                 "Hola! Gracias por escribir a BunnyCure. " +
                         "Si quieres confirmar una cita, responde con el boton de confirmacion del mensaje que te enviamos."
         );
-    }
-
-    private boolean isMarketingTemplateAiCommand(String text) {
-        String lower = text.toLowerCase(Locale.ROOT).trim();
-        return lower.startsWith("crear plantilla")
-                || lower.startsWith("nueva plantilla")
-                || lower.startsWith("crea plantilla")
-                || lower.startsWith("plantilla:")
-                || lower.startsWith("promo:")
-                || lower.startsWith("crea una promo")
-                || lower.startsWith("crear promo")
-                || lower.startsWith("genera plantilla")
-                || lower.startsWith("generar plantilla");
-    }
-
-    private void handleAdminAiTemplateCreation(WhatsAppWebhookDto.Message message, String text) {
-        if (marketingTemplateAiService == null) {
-            log.warn("[WEBHOOK-AI] ⚠️ Solicitud de plantilla recibida pero marketingTemplateAiService no está disponible");
-            whatsAppService.sendTextMessage(message.getFrom(), "⚠️ Servicio de IA para plantillas no disponible en este momento.");
-            return;
-        }
-
-        try {
-            log.info("[WEBHOOK-AI] 🤖 Solicitud de plantilla recibida desde WhatsApp admin (from={}): {}", message.getFrom(), text);
-
-            String prompt = cleanAiCommandPrompt(text);
-            whatsAppService.sendTextMessage(
-                    message.getFrom(),
-                    "🤖 *Agente BunnyCure IA:* Procesando tu instrucción para la plantilla de marketing:\n"
-                            + "«" + prompt + "»\n\n"
-                            + "Validando políticas de Meta y registrando en caliente, dame un momento por favor 💅✨"
-            );
-
-            cl.bunnycure.web.dto.marketing.MarketingTemplateDto result =
-                    marketingTemplateAiService.generateAndSaveTemplate(prompt, true, "WHATSAPP_ADMIN");
-
-            StringBuilder reply = new StringBuilder();
-            reply.append("✨ *¡Plantilla Creada y Registrada con Éxito!*\n\n");
-            reply.append("📌 *Nombre Meta:* `").append(result.getName()).append("`\n");
-            reply.append("🏷️ *Campaña:* ").append(result.getDisplayName()).append("\n");
-            if (result.getHeaderText() != null && !result.getHeaderText().isBlank()) {
-                reply.append("📢 *Cabecera:* ").append(result.getHeaderText()).append("\n\n");
-            }
-            reply.append("💬 *Cuerpo:* \n\"").append(result.getBodyText()).append("\"\n\n");
-            if (result.getButtonText() != null && !result.getButtonText().isBlank()) {
-                reply.append("🔗 *Botón:* ").append(result.getButtonText()).append(" (").append(result.getButtonUrl()).append(")\n\n");
-            }
-
-            if (result.getMetaId() != null && !result.getMetaId().isBlank()) {
-                reply.append("🚀 *Estado en Meta:* Enviada a revisión automática (ID: `").append(result.getMetaId()).append("`).\n");
-                reply.append("Te avisaré automáticamente por acá en cuanto Meta la apruebe.");
-            } else {
-                reply.append("💾 Guardada en el catálogo interno de BunnyCure.");
-            }
-
-            reply.append("\n\n📱 Ver en panel web: ")
-                    .append(frontendBaseUrl != null ? frontendBaseUrl : "https://bunnycure-frontend.vercel.app")
-                    .append("/marketing");
-
-            whatsAppService.sendTextMessage(message.getFrom(), reply.toString());
-        } catch (Exception ex) {
-            log.error("[WEBHOOK-AI] ❌ Error creando plantilla desde WhatsApp: {}", ex.getMessage(), ex);
-            whatsAppService.sendTextMessage(message.getFrom(), "❌ *Agente BunnyCure IA:* Ocurrió un error al generar la plantilla: " + ex.getMessage());
-        }
-    }
-
-    private String cleanAiCommandPrompt(String text) {
-        return text.replaceFirst("(?i)^(crear plantilla|nueva plantilla|crea plantilla|plantilla:|promo:|crea una promo|crear promo|genera plantilla|generar plantilla)\\s*[:,-]?\\s*", "").trim();
-    }
-
-    private void handleTemplateStatusUpdate(WhatsAppWebhookDto.Value value) {
-        if (marketingTemplateRepository == null || value == null || value.getExtraFields() == null) {
-            return;
-        }
-
-        Map<String, Object> extra = value.getExtraFields();
-        String templateName = null;
-        if (extra.containsKey("message_template_name")) {
-            templateName = String.valueOf(extra.get("message_template_name"));
-        } else if (extra.containsKey("template_name")) {
-            templateName = String.valueOf(extra.get("template_name"));
-        } else if (extra.containsKey("element_name")) {
-            templateName = String.valueOf(extra.get("element_name"));
-        }
-
-        String event = extra.containsKey("event") ? String.valueOf(extra.get("event")) : null;
-        if (event == null && extra.containsKey("status")) {
-            event = String.valueOf(extra.get("status"));
-        }
-
-        if (templateName != null && event != null) {
-            log.info("[WEBHOOK-TEMPLATE] 🔄 Meta notificó actualización de plantilla: name='{}', event='{}'", templateName, event);
-            Optional<cl.bunnycure.domain.model.MarketingTemplateEntity> opt = marketingTemplateRepository.findByNameIgnoreCase(templateName);
-            if (opt.isPresent()) {
-                cl.bunnycure.domain.model.MarketingTemplateEntity entity = opt.get();
-                entity.setMetaStatus(event.toUpperCase(Locale.ROOT));
-                marketingTemplateRepository.save(entity);
-                log.info("[WEBHOOK-TEMPLATE] ✅ Estado de plantilla '{}' actualizado a '{}' en BD", entity.getName(), entity.getMetaStatus());
-
-                if ("APPROVED".equalsIgnoreCase(event)) {
-                    String adminPhone = resolveAdminWhatsAppNumber();
-                    if (adminPhone != null && !adminPhone.isBlank()) {
-                        String msg = "🎉 *¡Meta aprobó tu plantilla de marketing!*\n\n"
-                                + "La plantilla *\"" + entity.getDisplayName() + "\"* (`" + entity.getName() + "`) "
-                                + "ha sido aprobada oficialmente por WhatsApp.\n\n"
-                                + "Ya está disponible para despacho en tu panel: "
-                                + (frontendBaseUrl != null ? frontendBaseUrl : "https://bunnycure-frontend.vercel.app") + "/marketing";
-                        whatsAppService.sendTextMessage(adminPhone, msg);
-                    }
-                }
-            }
-        }
     }
 
     private void processButtonMessage(WhatsAppWebhookDto.Message message, String contactName) {
@@ -900,242 +800,6 @@ public class WhatsAppWebhookService {
 
         log.info("[WEBHOOK] 🤝 Derivando a atención humana. trigger={}, to={}", trigger, toPhoneNumber);
         whatsAppService.sendTextMessage(toPhoneNumber, finalMessage.trim());
-    }
-
-    private void processMessageStatuses(java.util.List<WhatsAppWebhookDto.Status> statuses) {
-        log.info("[WEBHOOK] 📊 Procesando {} estado(s) de mensaje(s)", statuses.size());
-
-        for (WhatsAppWebhookDto.Status status : statuses) {
-            String dedupeKey = "status:" + status.getId() + ":" + (status.getStatus() != null ? status.getStatus() : "");
-            if (isDuplicateEvent(dedupeKey)) {
-                log.info("[WEBHOOK] ♻️ Status already processed, skipping id={}, status={}", status.getId(), status.getStatus());
-                continue;
-            }
-
-            log.info("[WEBHOOK] 📬 Estado de mensaje");
-            log.info("[WEBHOOK] 🆔 Message ID: {}", status.getId());
-            log.info("[WEBHOOK] 📱 Recipient ID: {}", status.getRecipientId());
-            log.info("[WEBHOOK] ✅ Estado: {}", status.getStatus());
-            log.info("[WEBHOOK] ⏰ Timestamp: {}", status.getTimestamp());
-
-            // Estados posibles: sent, delivered, read, failed
-            switch (status.getStatus()) {
-                case "sent":
-                    log.info("[WEBHOOK] 📤 Mensaje enviado exitosamente");
-                    break;
-                case "delivered":
-                    log.info("[WEBHOOK] 📥 Mensaje entregado al destinatario");
-                    break;
-                case "read":
-                    log.info("[WEBHOOK] 👀 Mensaje leído por el destinatario");
-                    break;
-                case "failed":
-                    log.error("[WEBHOOK] ❌ Mensaje falló al enviarse");
-                    logFailedStatusErrors(status);
-                    break;
-                default:
-                    log.info("[WEBHOOK] ℹ️ Estado: {}", status.getStatus());
-            }
-
-            if (notificationLogService != null && status.getId() != null && status.getStatus() != null) {
-                try {
-                    notificationLogService.updateStatusByWamid(status.getId(), status.getStatus());
-                } catch (Exception e) {
-                    log.warn("[WEBHOOK] Error actualizando status de log para wamid {}: {}", status.getId(), e.getMessage());
-                }
-            }
-
-            // Información adicional
-            if (status.getConversation() != null) {
-                log.info("[WEBHOOK] 💬 Conversation ID: {}", status.getConversation().getId());
-                if (status.getConversation().getOrigin() != null) {
-                    log.info("[WEBHOOK] 🔄 Origin type: {}", status.getConversation().getOrigin().getType());
-                }
-            }
-
-            if (status.getPricing() != null) {
-                log.info("[WEBHOOK] 💰 Billable: {}", status.getPricing().isBillable());
-                log.info("[WEBHOOK] 💰 Category: {}", status.getPricing().getCategory());
-            }
-        }
-    }
-
-    private void logFailedStatusErrors(WhatsAppWebhookDto.Status status) {
-        if (status == null || status.getErrors() == null || status.getErrors().isEmpty()) {
-            log.error("[WEBHOOK] ❌ status=failed sin campo errors en payload");
-            return;
-        }
-
-        for (WhatsAppWebhookDto.StatusError error : status.getErrors()) {
-            String details = error.getErrorData() != null ? error.getErrorData().getDetails() : null;
-            log.error("[WEBHOOK] ❌ Meta error code={}, title={}, message={}, details={}, href={}",
-                    error.getCode(),
-                    error.getTitle(),
-                    error.getMessage(),
-                    details,
-                    error.getHref());
-        }
-    }
-
-    private boolean isDuplicateEvent(String eventId) {
-        if (eventId == null || eventId.isBlank()) {
-            return false;
-        }
-
-        long now = System.currentTimeMillis();
-        Long previous = processedEventIds.putIfAbsent(eventId, now);
-        if (previous != null && (now - previous) < DEDUPE_TTL_MILLIS) {
-            return true;
-        }
-
-        if (isAlreadyProcessedInDatabase(eventId)) {
-            processedEventIds.put(eventId, now);
-            cleanupOldEvents(now);
-            cleanupExpiredPersistedEventsIfNeeded(now);
-            return true;
-        }
-
-        cleanupOldEvents(now);
-        cleanupExpiredPersistedEventsIfNeeded(now);
-        return false;
-    }
-
-    private boolean isAlreadyProcessedInDatabase(String eventId) {
-        java.time.LocalDateTime processedAt = java.time.LocalDateTime.now();
-        WebhookProcessedEvent event = WebhookProcessedEvent.builder()
-                .eventId(eventId)
-                .processedAt(processedAt)
-                .expiresAt(processedAt.plusNanos(DEDUPE_TTL_MILLIS * 1_000_000L))
-                .build();
-
-        try {
-            webhookProcessedEventRepository.save(event);
-            return false;
-        } catch (DataIntegrityViolationException duplicate) {
-            log.debug("[WEBHOOK] ♻️ Duplicate event detected in DB id={}", eventId);
-            return true;
-        }
-    }
-
-    private void cleanupOldEvents(long now) {
-        if (processedEventIds.size() < 5000) {
-            return;
-        }
-        processedEventIds.entrySet().removeIf(entry -> (now - entry.getValue()) > DEDUPE_TTL_MILLIS);
-    }
-
-    private void cleanupExpiredPersistedEventsIfNeeded(long nowMillis) {
-        long checks = dedupeChecksCounter.incrementAndGet();
-        if (checks % DEDUPE_CLEANUP_EVERY_EVENTS != 0) {
-            return;
-        }
-
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        long deleted = webhookProcessedEventRepository.deleteByExpiresAtBefore(now);
-        if (deleted > 0) {
-            log.info("[WEBHOOK] 🧹 Deleted {} expired persisted webhook dedupe event(s)", deleted);
-        }
-    }
-
-    private void handleOperationalWebhookEvent(String field, WhatsAppWebhookDto.Value value, boolean notifyAdmin) {
-        long count = operationalEventCounters.merge(field, 1L, Long::sum);
-        String phoneId = value != null && value.getMetadata() != null ? value.getMetadata().getPhoneNumberId() : "unknown";
-
-        if (notifyAdmin) {
-            log.warn("[WEBHOOK] ⚠️ Evento operacional: {} (count={}, phoneId={})", field, count, phoneId);
-        } else {
-            log.info("[WEBHOOK] 📋 Evento operacional: {} (count={}, phoneId={})", field, count, phoneId);
-        }
-        log.debug("[WEBHOOK] Valor evento {}: {}", field, value);
-
-        persistOperationalEvent(field, phoneId, count, notifyAdmin, value);
-
-        if (notifyAdmin) {
-            maybeNotifyAdmin(field, phoneId, count);
-        }
-    }
-
-    private void persistOperationalEvent(String field,
-                                         String phoneId,
-                                         long count,
-                                         boolean riskEvent,
-                                         WhatsAppWebhookDto.Value value) {
-        try {
-            String payloadSummary = buildPayloadSummary(value);
-            WebhookOperationalEvent event = WebhookOperationalEvent.builder()
-                    .eventType(field)
-                    .phoneNumberId(phoneId)
-                    .riskEvent(riskEvent)
-                    .occurrenceCount(count)
-                    .payloadSummary(payloadSummary)
-                    .build();
-            webhookOperationalEventRepository.save(event);
-        } catch (Exception ex) {
-            log.warn("[WEBHOOK] ⚠️ No se pudo persistir evento operacional {}: {}", field, ex.getMessage());
-        }
-    }
-
-    private String buildPayloadSummary(WhatsAppWebhookDto.Value value) {
-        if (value == null) {
-            return "value=null";
-        }
-
-        int messagesCount = value.getMessages() != null ? value.getMessages().size() : 0;
-        int statusesCount = value.getStatuses() != null ? value.getStatuses().size() : 0;
-        String messagingProduct = value.getMessagingProduct() != null ? value.getMessagingProduct() : "unknown";
-        String displayPhone = value.getMetadata() != null && value.getMetadata().getDisplayPhoneNumber() != null
-                ? value.getMetadata().getDisplayPhoneNumber()
-                : "unknown";
-
-        String extraSummary = summarizeExtraFields(value.getExtraFields());
-        String summary = String.format("product=%s,displayPhone=%s,messages=%d,statuses=%d,extras=%s",
-                messagingProduct, displayPhone, messagesCount, statusesCount, extraSummary);
-        return summary.length() > 500 ? summary.substring(0, 500) : summary;
-    }
-
-    private String summarizeExtraFields(Map<String, Object> extraFields) {
-        if (extraFields == null || extraFields.isEmpty()) {
-            return "none";
-        }
-        String raw = extraFields.toString().replaceAll("\\s+", " ").trim();
-        if (raw.length() <= 240) {
-            return raw;
-        }
-        return raw.substring(0, 240) + "...";
-    }
-
-    private boolean isTemplateStatusRisk(WhatsAppWebhookDto.Value value) {
-        if (value == null || value.getExtraFields() == null || value.getExtraFields().isEmpty()) {
-            return false;
-        }
-
-        String raw = value.getExtraFields().toString().toLowerCase(Locale.ROOT);
-        return raw.contains("rejected")
-                || raw.contains("reject")
-                || raw.contains("paused")
-                || raw.contains("disabled")
-                || raw.contains("blocked");
-    }
-
-    private void maybeNotifyAdmin(String field, String phoneId, long count) {
-        if (!alertAdminOnRiskEvents || adminWhatsAppNumber == null || adminWhatsAppNumber.isBlank()) {
-            return;
-        }
-
-        long now = System.currentTimeMillis();
-        Long previousAlert = lastAlertByKey.putIfAbsent(field, now);
-        if (previousAlert != null && (now - previousAlert) < ALERT_THROTTLE_MILLIS) {
-            return;
-        }
-        lastAlertByKey.put(field, now);
-
-        String message = String.format(
-                "[BunnyCure] Alerta webhook: %s (phoneId=%s, ocurrencias=%d en esta instancia).",
-                field,
-                phoneId,
-                count
-        );
-        whatsAppService.sendTextMessage(resolveAdminWhatsAppNumber(), message);
     }
 
     private String resolveAdminWhatsAppNumber() {

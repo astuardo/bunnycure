@@ -22,7 +22,7 @@ public class AppointmentReminderService {
     private final AppointmentRepository appointmentRepository;
     private final NotificationService notificationService;
     private final AppSettingsService appSettingsService;
-    private final WhatsAppService whatsAppService;
+    private final WhatsAppAppointmentNotifier whatsAppAppointmentNotifier;
     private final WebPushNotificationService webPushNotificationService;
     private final TenantExecutionService tenantExecutionService;
 
@@ -129,7 +129,7 @@ public class AppointmentReminderService {
                 return;
             }
 
-            whatsAppService.sendRecordatorioCitaTemplate(appointment);
+            whatsAppAppointmentNotifier.sendRecordatorioCitaTemplate(appointment);
             log.info("[REMINDER-WA] ✅ Recordatorio WhatsApp enviado a {}", phone);
 
         } catch (Exception e) {

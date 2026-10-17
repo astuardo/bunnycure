@@ -63,9 +63,16 @@ class WhatsAppServiceTest {
 
     private WhatsAppService whatsAppService;
 
+    private WhatsAppAppointmentNotifier notifier;
+
     @BeforeEach
     void setUp() {
-        whatsAppService = new WhatsAppService(config, restTemplate, appSettingsService, calendarService, notificationLogService, objectMapper, whatsAppHandoffService, loyaltyRewardService);
+        WhatsAppMessageBuilderService messageBuilder = new WhatsAppMessageBuilderService(appSettingsService);
+        whatsAppService = new WhatsAppService(config, restTemplate, notificationLogService, objectMapper, messageBuilder);
+        // Mensajes de negocio sobre el transporte real (con RestTemplate simulado): se verifica el payload enviado a Meta
+        WhatsAppAdminAlertDispatcher adminAlertDispatcher = new WhatsAppAdminAlertDispatcher(
+                whatsAppService, messageBuilder, config, appSettingsService, calendarService, whatsAppHandoffService);
+        notifier = new WhatsAppAppointmentNotifier(whatsAppService, config, messageBuilder, adminAlertDispatcher, loyaltyRewardService);
     }
 
     @Test
@@ -146,7 +153,7 @@ class WhatsAppServiceTest {
         )).thenReturn(new ResponseEntity<>("{\"success\":true}", HttpStatus.OK));
 
         // Act
-        whatsAppService.sendAppointmentConfirmation(appointment);
+        notifier.sendAppointmentConfirmation(appointment);
 
         // Assert - esperar un poco para el async
         verify(restTemplate, timeout(1000)).exchange(
@@ -164,7 +171,7 @@ class WhatsAppServiceTest {
         appointment.getCustomer().setPhone(null);
 
         // Act
-        whatsAppService.sendAppointmentConfirmation(appointment);
+        notifier.sendAppointmentConfirmation(appointment);
 
         // Assert
         verify(restTemplate, never()).exchange(anyString(), any(HttpMethod.class), ArgumentMatchers.<HttpEntity<?>>any(), ArgumentMatchers.<Class<Object>>any());
@@ -239,7 +246,7 @@ class WhatsAppServiceTest {
         )).thenReturn(new ResponseEntity<>("{\"success\":true}", HttpStatus.OK));
 
         // Act
-        whatsAppService.sendBookingRequestReceived(request);
+        notifier.sendBookingRequestReceived(request);
 
         // Assert
         verify(restTemplate, timeout(1000)).exchange(
@@ -265,7 +272,7 @@ class WhatsAppServiceTest {
                 eq(String.class)
         )).thenReturn(new ResponseEntity<>("{\"success\":true}", HttpStatus.OK));
 
-        boolean sent = whatsAppService.sendAdminBookingAlertSync("+56964499995", request);
+        boolean sent = notifier.sendAdminBookingAlertSync("+56964499995", request);
 
         assertTrue(sent);
         verify(restTemplate).exchange(
@@ -304,7 +311,7 @@ class WhatsAppServiceTest {
                 .thenThrow(new RuntimeException("text failed"))
                 .thenReturn(new ResponseEntity<>("{\"success\":true}", HttpStatus.OK));
 
-        boolean sent = whatsAppService.sendAdminBookingAlertSync("+56964499995", request);
+        boolean sent = notifier.sendAdminBookingAlertSync("+56964499995", request);
 
         assertTrue(sent);
         verify(restTemplate, times(2)).exchange(
@@ -337,7 +344,7 @@ class WhatsAppServiceTest {
         )).thenReturn(new ResponseEntity<>("{\"messages\":[{\"id\":\"wamid.HBgL\"}]}", HttpStatus.OK));
 
         // Act
-        boolean sent = whatsAppService.sendValoracionServicioGoogleTemplateSync(appointment);
+        boolean sent = notifier.sendValoracionServicioGoogleTemplateSync(appointment);
 
         // Assert
         assertTrue(sent);
@@ -377,7 +384,7 @@ class WhatsAppServiceTest {
         when(config.isUseTemplateForReview()).thenReturn(false);
 
         // Act
-        boolean sent = whatsAppService.sendValoracionServicioGoogleTemplateSync(appointment);
+        boolean sent = notifier.sendValoracionServicioGoogleTemplateSync(appointment);
 
         // Assert
         assertFalse(sent);
@@ -392,7 +399,7 @@ class WhatsAppServiceTest {
         when(config.isUseTemplateForReview()).thenReturn(true);
 
         // Act
-        boolean sent = whatsAppService.sendValoracionServicioGoogleTemplateSync(appointment);
+        boolean sent = notifier.sendValoracionServicioGoogleTemplateSync(appointment);
 
         // Assert
         assertFalse(sent);
@@ -495,7 +502,7 @@ class WhatsAppServiceTest {
         Appointment appointment = createTestAppointment();
         appointment.setObservations("Notas previas\n\n--- CANCELACIÓN ---\nCancelado por: Manicurista\nMotivo: Emergencia personal");
 
-        String reason = whatsAppService.resolveCancellationReason(appointment);
+        String reason = notifier.resolveCancellationReason(appointment);
         assertEquals("Manicurista: Emergencia personal", reason);
     }
 
@@ -504,7 +511,7 @@ class WhatsAppServiceTest {
         Appointment appointment = createTestAppointment();
         appointment.setObservations("--- CANCELACIÓN ---\nCancelado por: Cliente\nMotivo: Problemas de transporte");
 
-        String reason = whatsAppService.resolveCancellationReason(appointment);
+        String reason = notifier.resolveCancellationReason(appointment);
         assertEquals("Cliente: Problemas de transporte", reason);
     }
 
@@ -512,12 +519,12 @@ class WhatsAppServiceTest {
     void resolveCancellationReason_NullOrBlankObservations() {
         Appointment appointment = createTestAppointment();
         appointment.setObservations(null);
-        assertEquals("No especificado", whatsAppService.resolveCancellationReason(appointment));
+        assertEquals("No especificado", notifier.resolveCancellationReason(appointment));
 
         appointment.setObservations("   ");
-        assertEquals("No especificado", whatsAppService.resolveCancellationReason(appointment));
+        assertEquals("No especificado", notifier.resolveCancellationReason(appointment));
 
-        assertEquals("No especificado", whatsAppService.resolveCancellationReason(null));
+        assertEquals("No especificado", notifier.resolveCancellationReason(null));
     }
 
     @Test
@@ -525,7 +532,7 @@ class WhatsAppServiceTest {
         Appointment appointment = createTestAppointment();
         appointment.setObservations("Cliente tuvo un inconveniente médico");
 
-        String reason = whatsAppService.resolveCancellationReason(appointment);
+        String reason = notifier.resolveCancellationReason(appointment);
         assertEquals("Cliente tuvo un inconveniente médico", reason);
     }
 
@@ -547,7 +554,7 @@ class WhatsAppServiceTest {
                 eq(String.class)
         )).thenReturn(new ResponseEntity<>("{\"messages\":[{\"id\":\"wamid.123\"}]}", HttpStatus.OK));
 
-        whatsAppService.sendCancelacionCitaTemplate(appointment);
+        notifier.sendCancelacionCitaTemplate(appointment);
 
         verify(restTemplate, timeout(1000)).exchange(
                 urlCaptor.capture(),

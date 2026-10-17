@@ -28,7 +28,7 @@ public class NotificationService {
 
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
-    private final WhatsAppService whatsAppService;
+    private final WhatsAppAppointmentNotifier whatsAppAppointmentNotifier;
     private final WhatsAppAdminAlertOutboxService whatsAppAdminAlertOutboxService;
     private final AppSettingsService appSettingsService;
     private final WebPushNotificationService webPushNotificationService;
@@ -75,12 +75,12 @@ public class NotificationService {
         if (pref != null && pref.allowsWhatsApp() && customer.getPhone() != null) {
             log.info("[NOTIFICATION] Enviando confirmación de cita por WhatsApp a {}", 
                     customer.getPhone());
-            whatsAppService.sendCitaConfirmadaTemplate(appointment);
+            whatsAppAppointmentNotifier.sendCitaConfirmadaTemplate(appointment);
         }
         
         // Siempre enviar notificación al admin/dueña
         log.info("[NOTIFICATION] Enviando alerta de nueva cita al admin");
-        whatsAppService.sendAdminAppointmentCreatedAlert(appointment);
+        whatsAppAppointmentNotifier.sendAdminAppointmentCreatedAlert(appointment);
     }
 
     @Async
@@ -97,7 +97,7 @@ public class NotificationService {
 
         if (pref != null && pref.allowsWhatsApp() && customer.getPhone() != null && !customer.getPhone().isBlank()) {
             log.info("[NOTIFICATION] Enviando WhatsApp de modificación de cita a {}", customer.getPhone());
-            whatsAppService.sendCitaConfirmadaTemplate(appointment, dateChanged, timeChanged);
+            whatsAppAppointmentNotifier.sendCitaConfirmadaTemplate(appointment, dateChanged, timeChanged);
         }
     }
 
@@ -120,7 +120,7 @@ public class NotificationService {
         if (pref != null && pref.allowsWhatsApp() && customer.getPhone() != null) {
             log.info("[NOTIFICATION] Enviando notificación de cancelación por WhatsApp a {}", 
                     customer.getPhone());
-            whatsAppService.sendCancelacionCitaTemplate(appointment);
+            whatsAppAppointmentNotifier.sendCancelacionCitaTemplate(appointment);
         }
     }
 
@@ -140,7 +140,7 @@ public class NotificationService {
         if (pref != null && pref.allowsWhatsApp() && customer.getPhone() != null && !customer.getPhone().isBlank()) {
             log.info("[NOTIFICATION] Enviando solicitud de valoración de Google por WhatsApp a {}", 
                     customer.getPhone());
-            whatsAppService.sendValoracionServicioGoogleTemplate(appointment);
+            whatsAppAppointmentNotifier.sendValoracionServicioGoogleTemplate(appointment);
         } else {
             log.info("[NOTIFICATION-SKIP] Cliente {} no permite WhatsApp o no tiene teléfono configurado",
                     customer.getFullName());
@@ -192,7 +192,7 @@ public class NotificationService {
                 && request.getPhone() != null && !request.getPhone().isBlank()) {
             log.info("[NOTIFICATION] Enviando confirmación de recepción por WhatsApp a {}", 
                     request.getPhone());
-            whatsAppService.sendAgendaEnRevisionTemplate(request);
+            whatsAppAppointmentNotifier.sendAgendaEnRevisionTemplate(request);
         }
     }
 
@@ -231,7 +231,7 @@ public class NotificationService {
                 && request.getPhone() != null && !request.getPhone().isBlank()) {
             log.info("[NOTIFICATION] Enviando rechazo de solicitud por WhatsApp a {}", 
                     request.getPhone());
-            whatsAppService.sendSolicitudRechazadaTemplate(request);
+            whatsAppAppointmentNotifier.sendSolicitudRechazadaTemplate(request);
         }
     }
 
@@ -302,7 +302,7 @@ public class NotificationService {
         if (pref != null && pref.allowsWhatsApp() && customer.getPhone() != null) {
             log.info("[NOTIFICATION] Enviando actualización de sellos por WhatsApp a {}", 
                     customer.getPhone());
-            whatsAppService.sendLoyaltyUpdateMessage(customer);
+            whatsAppAppointmentNotifier.sendLoyaltyUpdateMessage(customer);
         }
         
         // Nota: Envío de email para sellos pendiente de diseño de plantilla HTML específica.
@@ -476,7 +476,7 @@ public class NotificationService {
             // Enviar WhatsApp solo si tiene teléfono Y la preferencia lo permite
             if (pref != null && pref.allowsWhatsApp() && phone != null && !phone.isEmpty()) {
                 try {
-                    whatsAppService.sendRecordatorioCitaTemplate(appointment);
+                    whatsAppAppointmentNotifier.sendRecordatorioCitaTemplate(appointment);
                 } catch (Exception e) {
                     log.warn("[WHATSAPP-WARN] No se pudo enviar WhatsApp recordatorio: {}", e.getMessage());
                 }

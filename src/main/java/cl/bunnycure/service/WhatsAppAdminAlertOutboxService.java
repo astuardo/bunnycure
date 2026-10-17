@@ -28,7 +28,7 @@ public class WhatsAppAdminAlertOutboxService {
 
     private final WhatsAppAdminAlertOutboxRepository outboxRepository;
     private final BookingRequestRepository bookingRequestRepository;
-    private final WhatsAppService whatsAppService;
+    private final WhatsAppAppointmentNotifier whatsAppAppointmentNotifier;
     private final AppSettingsService appSettingsService;
     private final TenantExecutionService tenantExecutionService;
 
@@ -145,7 +145,7 @@ public class WhatsAppAdminAlertOutboxService {
 
     private void sendAlertForRequest(WhatsAppAdminAlertOutbox event, BookingRequest request) {
         String targetNumber = resolveAdminAlertNumber(request != null ? request.getTenantId() : null);
-        boolean sent = whatsAppService.sendAdminBookingAlertSync(targetNumber, request);
+        boolean sent = whatsAppAppointmentNotifier.sendAdminBookingAlertSync(targetNumber, request);
         if (sent) {
             event.setStatus(OutboxStatus.SENT);
             event.setSentAt(LocalDateTime.now());
@@ -193,10 +193,10 @@ public class WhatsAppAdminAlertOutboxService {
         Long targetTenantId = request.getTenantId();
         if (targetTenantId != null && tenantExecutionService != null) {
             tenantExecutionService.executeInTenantContext(targetTenantId, () -> {
-                whatsAppService.sendAdminBookingAlertSync(resolveAdminAlertNumber(targetTenantId), finalRequest);
+                whatsAppAppointmentNotifier.sendAdminBookingAlertSync(resolveAdminAlertNumber(targetTenantId), finalRequest);
             });
         } else {
-            whatsAppService.sendAdminBookingAlertSync(resolveAdminAlertNumber(targetTenantId), finalRequest);
+            whatsAppAppointmentNotifier.sendAdminBookingAlertSync(resolveAdminAlertNumber(targetTenantId), finalRequest);
         }
     }
 

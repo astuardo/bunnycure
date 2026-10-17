@@ -5,7 +5,6 @@ import cl.bunnycure.domain.model.Appointment;
 import cl.bunnycure.exception.ValidationException;
 import cl.bunnycure.service.AppointmentService;
 import cl.bunnycure.service.NotificationService;
-import cl.bunnycure.service.ApiGatewaySiiService;
 import cl.bunnycure.service.WhatsAppHandoffService;
 
 import cl.bunnycure.web.dto.*;
@@ -49,11 +48,11 @@ public class AppointmentApiController {
 
     private final AppointmentService appointmentService;
     private final WhatsAppHandoffService whatsAppHandoffService;
-    private final ApiGatewaySiiService apiGatewaySiiService;
+    private final cl.bunnycure.service.InvoiceReportService invoiceReportService;
     private final NotificationService notificationService;
     private final cl.bunnycure.service.AppointmentReminderService reminderService;
     private final cl.bunnycure.service.UserService userService;
-    private final cl.bunnycure.service.WhatsAppService whatsAppService;
+    private final cl.bunnycure.service.WhatsAppAppointmentNotifier whatsAppAppointmentNotifier;
     private final cl.bunnycure.service.NotificationLogService notificationLogService;
 
     @Operation(
@@ -312,7 +311,7 @@ public class AppointmentApiController {
             description = "Entrega cuántas boletas se han generado este mes y si conviene generar por defecto.")
     @GetMapping("/invoice-quota")
     public ResponseEntity<ApiResponse<InvoiceQuotaResponseDto>> getInvoiceQuota() {
-        long generatedThisMonth = apiGatewaySiiService.getGeneratedInvoicesThisMonth();
+        long generatedThisMonth = invoiceReportService.getGeneratedInvoicesThisMonth();
 
         InvoiceQuotaResponseDto dto = InvoiceQuotaResponseDto.builder()
                 .generatedThisMonth(generatedThisMonth)
@@ -455,7 +454,7 @@ public class AppointmentApiController {
             throw new ValidationException("La clienta asociada a la cita no posee número de teléfono registrado");
         }
 
-        whatsAppService.sendCitaConfirmadaTemplate(appointment);
+        whatsAppAppointmentNotifier.sendCitaConfirmadaTemplate(appointment);
 
         Map<String, Object> result = new HashMap<>();
         result.put("appointmentId", id);
