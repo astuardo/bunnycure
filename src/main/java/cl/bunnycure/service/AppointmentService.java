@@ -192,8 +192,27 @@ public class AppointmentService {
             LocalDate startDate,
             LocalDate endDate,
             Pageable pageable) {
-        Specification<Appointment> spec = AppointmentSpecifications.filter(customerId, status, specialistId, startDate, endDate);
-        Page<Appointment> page = appointmentRepository.findAll(spec, pageable);
+        return findPaged(customerId, status == null ? null : List.of(status), specialistId, startDate, endDate, false, pageable);
+    }
+
+    /**
+     * @param nearestFirst ordena por cercanía a hoy (próximas ascendente, luego historial descendente).
+     *                     Ignora el sort del Pageable para que el orden de la especificación prevalezca.
+     */
+    public Page<Appointment> findPaged(
+            Long customerId,
+            java.util.Collection<AppointmentStatus> statuses,
+            Long specialistId,
+            LocalDate startDate,
+            LocalDate endDate,
+            boolean nearestFirst,
+            Pageable pageable) {
+        LocalDate nearestFrom = nearestFirst ? getNowInConfiguredZone().toLocalDate() : null;
+        Pageable effectivePageable = nearestFirst
+                ? org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize())
+                : pageable;
+        Specification<Appointment> spec = AppointmentSpecifications.filter(customerId, statuses, specialistId, startDate, endDate, nearestFrom);
+        Page<Appointment> page = appointmentRepository.findAll(spec, effectivePageable);
         page.getContent().forEach(a -> {
             try {
                 if (a.getServices() != null) {

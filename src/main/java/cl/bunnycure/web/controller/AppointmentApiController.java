@@ -77,6 +77,12 @@ public class AppointmentApiController {
             @Parameter(description = "Filtrar por estado")
             @RequestParam(required = false) AppointmentStatus status,
 
+            @Parameter(description = "Filtrar por varios estados (separados por coma). Se combina con 'status'")
+            @RequestParam(required = false) List<AppointmentStatus> statuses,
+
+            @Parameter(description = "Orden: 'nearest' = próximas citas primero (ascendente) y luego historial (descendente)")
+            @RequestParam(required = false) String order,
+
             @Parameter(description = "ID opcional de especialista")
             @RequestParam(required = false) Long specialistId,
 
@@ -112,12 +118,21 @@ public class AppointmentApiController {
             effectiveEnd = startDate;
         }
 
+        java.util.Set<AppointmentStatus> effectiveStatuses = new java.util.LinkedHashSet<>();
+        if (status != null) {
+            effectiveStatuses.add(status);
+        }
+        if (statuses != null) {
+            effectiveStatuses.addAll(statuses);
+        }
+
         Page<Appointment> page = appointmentService.findPaged(
                 customerId,
-                status,
+                effectiveStatuses,
                 effectiveSpecialistId,
                 effectiveStart,
                 effectiveEnd,
+                "nearest".equalsIgnoreCase(order),
                 pageable);
 
         Page<AppointmentResponseDto> dtos = page.map(this::toResponseDto);
