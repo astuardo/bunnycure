@@ -1,16 +1,9 @@
 package cl.bunnycure.service;
 
 import cl.bunnycure.config.WhatsAppConfig;
-import cl.bunnycure.domain.model.Appointment;
-import cl.bunnycure.domain.model.BookingRequest;
-import cl.bunnycure.domain.model.Customer;
-import cl.bunnycure.domain.model.ServiceCatalog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpEntity;
@@ -19,9 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
