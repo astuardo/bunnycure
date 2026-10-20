@@ -21,7 +21,8 @@ class CustomerSearchTextTest {
     void splitsQueryIntoFourNormalizedTerms() {
         assertEquals(List.of("soto", "camila", "", ""), CustomerSearchText.terms("  Soto   CAMILA "));
         assertEquals(List.of("15007919", "", "", ""), CustomerSearchText.terms("15.007.919"));
-        assertEquals(List.of("9", "7000", "0005", ""), CustomerSearchText.terms("9 7000 0005"));
+        assertEquals(List.of("970000005", "", "", ""), CustomerSearchText.terms("9 7000 0005"));
+        assertEquals(List.of("camila", "70000005", "", ""), CustomerSearchText.terms("Camila 70000005"));
     }
 
     @Test

@@ -46,6 +46,10 @@ public final class CustomerSearchText {
      */
     public static List<String> terms(String query) {
         String normalized = normalize(query);
+        // Solo dígitos con espacios ("9 7000 0005", "15 007 919"): es un teléfono o RUT escrito por bloques.
+        if (normalized.matches("[0-9 ]+")) {
+            normalized = normalized.replace(" ", "");
+        }
         String[] words = normalized.isEmpty() ? new String[0] : normalized.split(" ");
         String[] terms = new String[MAX_TERMS];
         Arrays.fill(terms, "");
