@@ -75,6 +75,10 @@ public class Customer {
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Appointment> appointments = new ArrayList<>();
 
+    /** Nombre, teléfono, RUT y email normalizados para la búsqueda (ver {@link CustomerSearchText}). */
+    @Column(name = "search_text", length = 400)
+    private String searchText;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -102,6 +106,12 @@ public class Customer {
         if (publicId == null || publicId.isBlank()) {
             publicId = UUID.randomUUID().toString();
         }
+        refreshSearchText();
+    }
+
+    @PreUpdate
+    public void refreshSearchText() {
+        searchText = CustomerSearchText.of(this);
     }
 
     /**

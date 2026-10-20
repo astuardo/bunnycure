@@ -1,6 +1,7 @@
 package cl.bunnycure.service;
 
 import cl.bunnycure.domain.model.Customer;
+import cl.bunnycure.domain.model.CustomerSearchText;
 import cl.bunnycure.domain.repository.CustomerRepository;
 import cl.bunnycure.exception.ResourceNotFoundException;
 import cl.bunnycure.web.dto.CustomerDto;
@@ -170,7 +171,11 @@ public class CustomerService {
         if (query == null || query.isBlank()) {
             return findAllSummary(pageable);
         }
-        return customerRepository.searchWithAppointmentCount(query.trim(), pageable)
+        List<String> terms = CustomerSearchText.terms(query);
+        if (terms.get(0).isEmpty()) {
+            return findAllSummary(pageable);
+        }
+        return customerRepository.searchWithAppointmentCount(terms.get(0), terms.get(1), terms.get(2), terms.get(3), pageable)
                 .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]));
     }
 
@@ -214,7 +219,11 @@ public class CustomerService {
         if (query == null || query.isBlank()) {
             return findSpecialistSummary(specialistId, pageable);
         }
-        return customerRepository.searchSpecialistCustomers(specialistId, query.trim(), pageable)
+        List<String> terms = CustomerSearchText.terms(query);
+        if (terms.get(0).isEmpty()) {
+            return findSpecialistSummary(specialistId, pageable);
+        }
+        return customerRepository.searchSpecialistCustomers(specialistId, terms.get(0), terms.get(1), terms.get(2), terms.get(3), pageable)
                 .map(row -> new CustomerSummary((Customer) row[0], (Long) row[1]));
     }
 

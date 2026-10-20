@@ -59,31 +59,40 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
         SELECT c, COUNT(a) as appointmentCount
         FROM Customer c
         LEFT JOIN c.appointments a
-        WHERE LOWER(c.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.rut) LIKE LOWER(CONCAT('%', :query, '%'))
+        WHERE c.searchText LIKE CONCAT('%', :t1, '%')
+           AND c.searchText LIKE CONCAT('%', :t2, '%')
+           AND c.searchText LIKE CONCAT('%', :t3, '%')
+           AND c.searchText LIKE CONCAT('%', :t4, '%')
         GROUP BY c
         ORDER BY c.fullName ASC
     """)
-    List<Object[]> searchWithAppointmentCount(@org.springframework.data.repository.query.Param("query") String query);
+    List<Object[]> searchWithAppointmentCount(@org.springframework.data.repository.query.Param("t1") String t1,
+            @org.springframework.data.repository.query.Param("t2") String t2,
+            @org.springframework.data.repository.query.Param("t3") String t3,
+            @org.springframework.data.repository.query.Param("t4") String t4);
 
     @Query(value = """
         SELECT c, COUNT(a) as appointmentCount
         FROM Customer c
         LEFT JOIN c.appointments a
-        WHERE LOWER(c.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.rut) LIKE LOWER(CONCAT('%', :query, '%'))
+        WHERE c.searchText LIKE CONCAT('%', :t1, '%')
+           AND c.searchText LIKE CONCAT('%', :t2, '%')
+           AND c.searchText LIKE CONCAT('%', :t3, '%')
+           AND c.searchText LIKE CONCAT('%', :t4, '%')
         GROUP BY c
         ORDER BY c.fullName ASC
     """, countQuery = """
         SELECT COUNT(c) FROM Customer c
-        WHERE LOWER(c.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.rut) LIKE LOWER(CONCAT('%', :query, '%'))
+        WHERE c.searchText LIKE CONCAT('%', :t1, '%')
+           AND c.searchText LIKE CONCAT('%', :t2, '%')
+           AND c.searchText LIKE CONCAT('%', :t3, '%')
+           AND c.searchText LIKE CONCAT('%', :t4, '%')
     """)
     org.springframework.data.domain.Page<Object[]> searchWithAppointmentCount(
-            @org.springframework.data.repository.query.Param("query") String query,
+            @org.springframework.data.repository.query.Param("t1") String t1,
+            @org.springframework.data.repository.query.Param("t2") String t2,
+            @org.springframework.data.repository.query.Param("t3") String t3,
+            @org.springframework.data.repository.query.Param("t4") String t4,
             org.springframework.data.domain.Pageable pageable
     );
 
@@ -119,15 +128,19 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
         FROM Customer c
         INNER JOIN c.appointments a
         WHERE a.specialist.id = :specialistId
-          AND (LOWER(c.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.rut) LIKE LOWER(CONCAT('%', :query, '%')))
+          AND (c.searchText LIKE CONCAT('%', :t1, '%')
+           AND c.searchText LIKE CONCAT('%', :t2, '%')
+           AND c.searchText LIKE CONCAT('%', :t3, '%')
+           AND c.searchText LIKE CONCAT('%', :t4, '%'))
         GROUP BY c
         ORDER BY c.fullName ASC
     """)
     List<Object[]> searchSpecialistCustomers(
             @org.springframework.data.repository.query.Param("specialistId") Long specialistId,
-            @org.springframework.data.repository.query.Param("query") String query
+            @org.springframework.data.repository.query.Param("t1") String t1,
+            @org.springframework.data.repository.query.Param("t2") String t2,
+            @org.springframework.data.repository.query.Param("t3") String t3,
+            @org.springframework.data.repository.query.Param("t4") String t4
     );
 
     @Query(value = """
@@ -135,22 +148,27 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
         FROM Customer c
         INNER JOIN c.appointments a
         WHERE a.specialist.id = :specialistId
-          AND (LOWER(c.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.rut) LIKE LOWER(CONCAT('%', :query, '%')))
+          AND (c.searchText LIKE CONCAT('%', :t1, '%')
+           AND c.searchText LIKE CONCAT('%', :t2, '%')
+           AND c.searchText LIKE CONCAT('%', :t3, '%')
+           AND c.searchText LIKE CONCAT('%', :t4, '%'))
         GROUP BY c
         ORDER BY c.fullName ASC
     """, countQuery = """
         SELECT COUNT(DISTINCT c) FROM Customer c
         INNER JOIN c.appointments a
         WHERE a.specialist.id = :specialistId
-          AND (LOWER(c.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :query, '%'))
-           OR LOWER(c.rut) LIKE LOWER(CONCAT('%', :query, '%')))
+          AND (c.searchText LIKE CONCAT('%', :t1, '%')
+           AND c.searchText LIKE CONCAT('%', :t2, '%')
+           AND c.searchText LIKE CONCAT('%', :t3, '%')
+           AND c.searchText LIKE CONCAT('%', :t4, '%'))
     """)
     org.springframework.data.domain.Page<Object[]> searchSpecialistCustomers(
             @org.springframework.data.repository.query.Param("specialistId") Long specialistId,
-            @org.springframework.data.repository.query.Param("query") String query,
+            @org.springframework.data.repository.query.Param("t1") String t1,
+            @org.springframework.data.repository.query.Param("t2") String t2,
+            @org.springframework.data.repository.query.Param("t3") String t3,
+            @org.springframework.data.repository.query.Param("t4") String t4,
             org.springframework.data.domain.Pageable pageable
     );
 
