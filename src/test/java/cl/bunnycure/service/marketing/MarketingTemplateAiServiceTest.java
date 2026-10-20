@@ -2,7 +2,6 @@ package cl.bunnycure.service.marketing;
 
 import cl.bunnycure.domain.model.MarketingTemplateEntity;
 import cl.bunnycure.domain.repository.MarketingTemplateRepository;
-import cl.bunnycure.service.WhatsAppService;
 import cl.bunnycure.web.dto.marketing.MarketingTemplateDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;

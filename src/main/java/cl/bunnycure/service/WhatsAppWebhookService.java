@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -27,8 +26,6 @@ public class WhatsAppWebhookService {
     private static final Pattern APPOINTMENT_ID_PATTERN = Pattern.compile("(?:^|[:#_\\-])(\\d+)$");
 
     private final AppointmentRepository appointmentRepository;
-    private final WebhookOperationalEventRepository webhookOperationalEventRepository;
-    private final WebhookProcessedEventRepository webhookProcessedEventRepository;
     private final WhatsAppService whatsAppService;
     private final AppSettingsService appSettingsService;
     private final WhatsAppHandoffService whatsAppHandoffService;
@@ -50,8 +47,6 @@ public class WhatsAppWebhookService {
                                   CustomerServiceRecordService customerServiceRecordService,
                                   WebPushNotificationService webPushNotificationService) {
         this.appointmentRepository = appointmentRepository;
-        this.webhookOperationalEventRepository = webhookOperationalEventRepository;
-        this.webhookProcessedEventRepository = webhookProcessedEventRepository;
         this.whatsAppService = whatsAppService;
         this.appSettingsService = appSettingsService;
         this.whatsAppHandoffService = whatsAppHandoffService;

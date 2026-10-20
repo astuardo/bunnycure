@@ -333,7 +333,6 @@ public class NotificationService {
 
             String html = templateEngine.process(template, ctx);
             sendHtml(appointment.getCustomer().getEmail(), subject, html, appointment);
-            log.info("[MAIL-OK] {} → {}", subject, appointment.getCustomer().getEmail());
 
         } catch (Exception e) {
             log.error("[MAIL-ERROR] No se pudo enviar a {}: {}",
