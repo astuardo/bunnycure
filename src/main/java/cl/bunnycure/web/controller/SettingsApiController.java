@@ -2,7 +2,6 @@ package cl.bunnycure.web.controller;
 
 import cl.bunnycure.config.WhatsAppConfig;
 import cl.bunnycure.service.AppSettingsService;
-import cl.bunnycure.service.WhatsAppService;
 import cl.bunnycure.web.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
