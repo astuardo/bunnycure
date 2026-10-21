@@ -48,7 +48,7 @@ class SignupIntegrationTest {
     private String timezone;
 
     private static final String EMAIL = "duena@salonnuevo.cl";
-    private static final String PASSWORD = "ClaveSegura2026";
+    private static final String PASSWORD = "ClaveSegura2026"; // ggignore: contraseña de usuaria ficticia del test
 
     @Autowired private MockMvc mockMvc;
     @Autowired private TenantRepository tenantRepository;

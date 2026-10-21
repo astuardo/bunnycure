@@ -43,8 +43,8 @@ services:
       SPRING_DATASOURCE_USERNAME: bunnycure_user
       SPRING_DATASOURCE_PASSWORD: bunnycure_secure_dev_pass
       APP_TIMEZONE: America/Santiago
-      # Llave JWT segura para staging / dev
-      JWT_SECRET: YXV0b2dlbmVyYXRlZF9zZWN1cmVfc3RhZ2luZ19qd3Rfc2VjcmV0X2tleV9idW5ueWN1cmVfMjAyNg==
+      # Llave JWT: se lee de .env (no versionado). Ver .env.example
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (ver .env.example)}
       JWT_ACCESS_EXPIRATION: 28800000
       JWT_REFRESH_EXPIRATION: 604800000
       # Por seguridad en staging, deshabilitar disparos de cobro/alertas reales a WhatsApp

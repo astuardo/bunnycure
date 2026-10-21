@@ -229,3 +229,6 @@ htmlcov/
 JwtTest.java
 JwtTest.class
 SecurityConfig
+
+# Caché local de ggshield (GitGuardian)
+.cache_ggshield

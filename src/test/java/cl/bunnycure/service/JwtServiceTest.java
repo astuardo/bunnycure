@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class JwtServiceTest {
 
     private JwtService jwtService;
-    private final String strongSecret = "052f6c36836a61907797277089c48c58b98bb6e0291caff75c72402dde0a592cd05b8fe490013dea30125e52ad4990e8740ea9339879ba6026ae1480930e06bf";
+    private final String strongSecret = "052f6c36836a61907797277089c48c58b98bb6e0291caff75c72402dde0a592cd05b8fe490013dea30125e52ad4990e8740ea9339879ba6026ae1480930e06bf"; // ggignore: llave solo para tests, no es credencial real
 
     @BeforeEach
     void setUp() {
