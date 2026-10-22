@@ -16,8 +16,11 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 /**
@@ -200,9 +203,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
         }
 
         // Parámetro de URL: ?tenant=slug o ?salon=slug
-        String slugParam = request.getParameter("tenant");
+        String slugParam = queryParam(request, "tenant");
         if (slugParam == null || slugParam.isBlank()) {
-            slugParam = request.getParameter("salon");
+            slugParam = queryParam(request, "salon");
         }
         if (slugParam != null && !slugParam.isBlank()) {
             Optional<Tenant> tenantOpt = tenantRepository.findBySlugIgnoreCase(slugParam.trim());
@@ -213,6 +216,17 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
         // Fallback por defecto al salón principal (ID=1)
         return TenantContext.DEFAULT_TENANT_ID;
+    }
+
+    /**
+     * Lee solo la query string. request.getParameter() obligaría a parsear el cuerpo
+     * (form/multipart) en este filtro, y un upload enorme reventaría antes de llegar al controller.
+     */
+    private String queryParam(HttpServletRequest request, String name) {
+        String query = request.getQueryString();
+        if (query == null || query.isBlank()) return null;
+        String value = UriComponentsBuilder.newInstance().query(query).build().getQueryParams().getFirst(name);
+        return value == null ? null : UriUtils.decode(value, StandardCharsets.UTF_8);
     }
 
     private String extractSubdomainSlug(String host) {
