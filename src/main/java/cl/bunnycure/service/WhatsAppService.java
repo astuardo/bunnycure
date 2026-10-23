@@ -32,7 +32,11 @@ import java.util.Map;
 @Service
 public class WhatsAppService {
 
-    private static final String WHATSAPP_API_URL = "https://graph.facebook.com/v22.0";
+    /** URL base de la Graph API (por defecto la de Meta; los tests la apuntan a localhost). */
+    private String apiUrl() {
+        String url = config.getBaseUrl();
+        return url == null || url.isBlank() ? WhatsAppConfig.DEFAULT_BASE_URL : url;
+    }
 
     private final WhatsAppConfig config;
     private final RestTemplate restTemplate;
@@ -126,7 +130,7 @@ public class WhatsAppService {
         }
 
         try {
-            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String url = String.format("%s/%s/messages", apiUrl(), config.getPhoneId());
 
             Map<String, Object> payload = new HashMap<>();
             payload.put("messaging_product", "whatsapp");
@@ -169,7 +173,7 @@ public class WhatsAppService {
         }
 
         try {
-            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String url = String.format("%s/%s/messages", apiUrl(), config.getPhoneId());
             String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
 
             Map<String, Object> payload = new HashMap<>();
@@ -213,7 +217,7 @@ public class WhatsAppService {
         }
 
         try {
-            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String url = String.format("%s/%s/messages", apiUrl(), config.getPhoneId());
             String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
 
             Map<String, Object> payload = new HashMap<>();
@@ -254,7 +258,7 @@ public class WhatsAppService {
         }
 
         try {
-            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String url = String.format("%s/%s/messages", apiUrl(), config.getPhoneId());
             String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
 
             Map<String, Object> payload = new HashMap<>();
@@ -312,7 +316,7 @@ public class WhatsAppService {
         }
 
         try {
-            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String url = String.format("%s/%s/messages", apiUrl(), config.getPhoneId());
             String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
 
             Map<String, Object> payload = new HashMap<>();
@@ -388,7 +392,7 @@ public class WhatsAppService {
                 return WhatsAppSendResult.fail("Phone ID de WhatsApp no configurado");
             }
 
-            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String url = String.format("%s/%s/messages", apiUrl(), config.getPhoneId());
             String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
 
             Map<String, Object> payload = new HashMap<>();
@@ -529,7 +533,7 @@ public class WhatsAppService {
                 return WhatsAppSendResult.fail("Phone ID de WhatsApp no configurado");
             }
 
-            String url = String.format("%s/%s/messages", WHATSAPP_API_URL, config.getPhoneId());
+            String url = String.format("%s/%s/messages", apiUrl(), config.getPhoneId());
             String normalizedPhone = normalizePhoneNumber(toPhoneNumber);
             String lang = languageCode != null && !languageCode.isBlank() ? languageCode : config.getCitaConfirmadaLanguageCode();
 

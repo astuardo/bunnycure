@@ -27,7 +27,11 @@ import java.util.Optional;
 @Service
 public class WhatsAppBusinessApiService {
 
-    private static final String WHATSAPP_API_URL = "https://graph.facebook.com/v22.0";
+    /** URL base de la Graph API (por defecto la de Meta; los tests la apuntan a localhost). */
+    private String apiUrl() {
+        String url = config.getBaseUrl();
+        return url == null || url.isBlank() ? WhatsAppConfig.DEFAULT_BASE_URL : url;
+    }
 
     private final WhatsAppConfig config;
     private final RestTemplate restTemplate;
@@ -54,7 +58,7 @@ public class WhatsAppBusinessApiService {
             HttpEntity<Void> metadataRequest = new HttpEntity<>(metadataHeaders);
 
             ResponseEntity<Map<String, Object>> metadataResponse = restTemplate.exchange(
-                    String.format("%s/%s", WHATSAPP_API_URL, mediaId),
+                    String.format("%s/%s", apiUrl(), mediaId),
                     HttpMethod.GET,
                     metadataRequest,
                     new ParameterizedTypeReference<Map<String, Object>>() {}
@@ -120,7 +124,7 @@ public class WhatsAppBusinessApiService {
         }
 
         try {
-            String url = String.format("%s/%s/message_templates", WHATSAPP_API_URL, businessAccountId.trim());
+            String url = String.format("%s/%s/message_templates", apiUrl(), businessAccountId.trim());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(config.getToken());
@@ -170,7 +174,7 @@ public class WhatsAppBusinessApiService {
         }
 
         try {
-            String url = String.format("%s/%s/message_templates", WHATSAPP_API_URL, businessAccountId.trim());
+            String url = String.format("%s/%s/message_templates", apiUrl(), businessAccountId.trim());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(config.getToken());
@@ -219,7 +223,7 @@ public class WhatsAppBusinessApiService {
         }
 
         try {
-            String url = String.format("%s/%s", WHATSAPP_API_URL, templateId.trim());
+            String url = String.format("%s/%s", apiUrl(), templateId.trim());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(config.getToken());
@@ -275,7 +279,7 @@ public class WhatsAppBusinessApiService {
 
         try {
             String url = String.format("%s/%s/message_templates?name=%s",
-                    WHATSAPP_API_URL, businessAccountId.trim(), templateName.trim());
+                    apiUrl(), businessAccountId.trim(), templateName.trim());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(config.getToken());
@@ -320,7 +324,7 @@ public class WhatsAppBusinessApiService {
 
         try {
             String url = String.format("%s/%s?fields=id,verified_name,display_phone_number,quality_rating,messaging_limit_tier,code_verification_status",
-                    WHATSAPP_API_URL, phoneId.trim());
+                    apiUrl(), phoneId.trim());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(config.getToken());
@@ -361,7 +365,7 @@ public class WhatsAppBusinessApiService {
 
         try {
             String url = String.format("%s/%s/whatsapp_business_profile?fields=about,address,description,email,profile_picture_url,websites,vertical",
-                    WHATSAPP_API_URL, phoneId.trim());
+                    apiUrl(), phoneId.trim());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(config.getToken());
@@ -398,7 +402,7 @@ public class WhatsAppBusinessApiService {
         }
 
         try {
-            String url = String.format("%s/%s/whatsapp_business_profile", WHATSAPP_API_URL, phoneId.trim());
+            String url = String.format("%s/%s/whatsapp_business_profile", apiUrl(), phoneId.trim());
 
             Map<String, Object> payload = new HashMap<>(profileData);
             payload.put("messaging_product", "whatsapp");
@@ -442,7 +446,7 @@ public class WhatsAppBusinessApiService {
             String metrics = (metricTypes != null && !metricTypes.isBlank()) ? metricTypes : "SENT,DELIVERED,READ,CLICKED";
 
             String url = String.format("%s/%s/template_analytics?start=%d&end=%d&granularity=%s&metric_types=%s",
-                    WHATSAPP_API_URL, businessAccountId.trim(), start, end, gran, metrics);
+                    apiUrl(), businessAccountId.trim(), start, end, gran, metrics);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(config.getToken());
