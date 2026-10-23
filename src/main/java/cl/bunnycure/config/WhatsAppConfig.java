@@ -25,6 +25,10 @@ public class WhatsAppConfig {
     @Autowired(required = false)
     private AppSettingsService appSettingsService;
 
+    /** Graph API de Meta. Configurable para que los tests no salgan a internet (whatsapp.api.base-url). */
+    public static final String DEFAULT_BASE_URL = "https://graph.facebook.com/v22.0";
+
+    private String baseUrl = DEFAULT_BASE_URL;
     private String token;
     private String phoneId;
     private String businessAccountId = "1449551576874115";
